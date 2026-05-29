@@ -1,0 +1,99 @@
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700,800" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Poppins:400,700,900" rel="stylesheet">
+    <title>{{subject}}</title>
+    <style media="screen">
+      *{
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html, body{
+        font-family: 'Open Sans', sans-serif;
+        font-size: 1em;
+        color: #4a4a4a;
+      }
+      .templates{
+        width: 100%;
+        height: 100%;
+        padding: 100px 0;
+        background: #fafafa;
+      }
+      .templates .templates-content{
+        width: 900px;
+        margin: 0 auto;
+        box-sizing: border-box;
+        background: white;
+        box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+        border-radius: 5px;
+        overflow: hidden;
+      }
+      .templates .templates-content .templates-header{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: 'Poppins', sans-serif;
+        background: -webkit-linear-gradient(#0083AE, #1970b9);
+        padding: 30px;
+        color: white;
+      }
+      .templates .templates-content .templates-header h2{
+        font-family: 'Poppins', sans-serif;
+      }
+      .templates .templates-content .templates-header span{
+        font-weight: bold;
+      }
+      .templates .templates-content .templates-body{
+        padding: 30px;
+      }
+      .templates .templates-content .templates-body div{
+        font-size: .9em;
+        display: flex;
+        margin-bottom: 25px;
+      }
+      .templates .templates-content .templates-body div p{
+        font-weight: bold;
+        margin-right: 10px;
+      }
+      .templates .templates-content .templates-body div span{
+        text-align: justify;
+      }
+    </style>
+</head>
+  <body>
+    <div class="templates">
+      <div class="templates-content">
+        <div class="templates-header">
+          <h2>BOLUFE AUTO SALES</h2>
+          <!-- <span>March 9, 2018 - 10:52 PM</span> -->
+        </div>
+        <div class="templates-body">
+          {{#unless locale}}
+            <div>
+              <p>Estimado </span>{{client}}</p><br />
+            </div>
+            <div>
+              <p>Gracias por reservar un coche con nosotros</p><br />
+              <span>Hemos recivido su deposito para el <strong><a href="{{dataUrl}}">{{carinterested}}</a><strong> y nos gustaria agradecerle por su interes en Bofule. Por favor no dude en comunicarse con nosotros al 305-602-8191 si tiene alguna pregunta o inquietud.</span><br />
+              <span>Tenga un grandioso día.</span><br />
+            </div>
+          {{else}}
+              <div>
+                <p>Dear {{client}}</p><br />
+              </div>
+              <div>
+                <p>Thank you for reserving a car with us!</p><br />
+                <span>We have received your deposit for the <strong><a href="{{dataUrl}}">{{carinterested}}</a><strong> and would like to thank you for your interest in Bofule. Please do not hesitate to reach out to us at 305-602-8191 if you have any questions or concerns.</span><br />
+              </div>
+          {{/unless}}
+          <div>
+            <p>URL:</p>
+            <span><a href="{{dataUrl}}">{{dataUrl}}</a></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

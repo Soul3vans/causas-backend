@@ -1,0 +1,359 @@
+# scalar Upload
+
+type Users {
+  _id: ID
+  name: String!
+  email: String
+  password: String!
+  avatar: String
+  joinDate: String
+  role: Int
+}
+
+type UsersInvolved {
+  userIn: Users
+  status: String
+}
+
+type Litigant {
+  _id: ID
+  participant: String
+  rut: String
+  person: String
+  name: String
+}
+
+type Movement {
+  _id: ID
+  invoice: String
+  document: [String]
+  annex: String
+  stage: String
+  procedure: String
+  descProcedure: String
+  dateProcedure: String
+  page: Int
+  book: String
+}
+
+type Cases {
+  _id: ID
+  rol: String
+  cover: String
+  createdBy: Users!
+  admission: String
+  estAdmin: String
+  process: String
+  location: String
+  stage: String
+  processState: String
+  court: String
+  movementsHistory: [Movement]
+  litigants: [Litigant]
+  extLink: String
+  status: String
+  createdAt: String
+  updatedAt: String
+  debtor: String
+  visibility: Boolean
+  typeSearch: String
+}
+
+type CasesViewed {
+  caseBankruptcy: Cases
+  viewedBy: Users
+}
+
+type Message {
+  _id: ID
+  messageBody: String!
+  messageType: String!
+  messageImage: String
+}
+
+type Messages {
+  to: Users
+  title: String!
+  text: String!
+  status: Boolean
+  type: String
+  createdAt: String
+}
+
+type CaseStatistics {
+  CLOSED: Int
+  ACTIVE: Int
+  INACTIVE: Int
+}
+
+type Token {
+  token: String!
+}
+
+type Posts {
+  _id: ID
+  title: String!
+  imageUrl: String!
+  categories: [String]!
+  description: String!
+  createdDate: String
+  likes: Int
+  createdBy: Users!
+  message: [Message]
+}
+
+type Patients {
+  _id: ID
+  name: String!
+  lastname: String!
+  imageUrl: String!
+  service: Int!
+  bed: Int!
+  state: Int!
+  sex: Int!
+  createdDate: String
+  createdBy: Users
+}
+
+type Checks {
+  _id: ID
+  section: String!
+  user: ID!
+  checkDate: String!
+  affectations: String
+  observations: String
+}
+
+type Activity {
+  _id: String
+  name: String
+  priority: Priority
+  caseId: Cases
+  startTime: String
+  endTime: String
+  createdBy: Users
+}
+
+type GetChecks {
+  _id: ID
+  section: String!
+  user: Users!
+  fullUser: [Users]!
+  checkDate: String!
+}
+
+type p {
+  checksws: [GetChecks]
+  totalChecks: Int
+  totalUsers: Int
+}
+
+type GetDate {
+  day: Int!
+  month: Int!
+  year: Int!
+}
+
+type GetChecksUsers {
+  _id: ID
+  fullUser: Users
+  section: String
+  checkDate: String
+  affectations: String
+  Observations: String
+}
+
+type PostsPage {
+  posts: [Posts]
+  hasMore: Boolean
+}
+
+type LikesFaves {
+  likes: Int
+  favorites: [Posts]
+}
+
+type File {
+  id: ID!
+  filename: String!
+  mimetype: String!
+  path: String!
+}
+
+type ActivitiesFiles {
+  program: String
+  bibliography: String
+  cloister: String
+  minicurriculum: String
+}
+
+type Priority {
+  _id: String
+  name: String
+  color: String
+}
+
+#type Priority {
+#  _id: String
+#  title: String
+#  color: String
+#}
+
+type PriorityResult {
+  priority: Priority
+  message: Message
+}
+
+type ActivityResult {
+  activity: Activity
+  message: Message
+}
+
+type SignedUrlResult {
+  url: String
+  message: Message
+}
+
+input UsersInput {
+  userId: ID
+  name: String!
+  avatar: String
+  email: String!
+  password: String
+  role: Int
+}
+
+input UpdatePasswordInput {
+  userId: ID!
+  currentPassword: String!
+  password: String!
+}
+
+input UpdateUsersPasswordInput {
+  userId: ID!
+  password: String!
+}
+
+input ActivityInput {
+  name: String
+  priority: String
+  caseId: String
+  startTime: String
+  endTime: String
+  createdBy: String
+}
+
+input ActivityUpdateInput {
+  _id: String
+  name: String
+  priority: String
+  caseId: String
+  startTime: String
+  endTime: String
+}
+
+input CaseInput {
+  rol: String
+  era: String
+  court: String
+  typeSearch: String
+  createdBy: ID
+  involved: [InvUserInput]
+}
+
+input UpCaseInput {
+  id: String
+  rol: String
+  court: String
+  typeSearch: String
+}
+
+input InvUserInput {
+  _id: ID
+}
+
+input InvUsersInput {
+  userIn: InvUserInput
+  status: String
+}
+
+input InvInput {
+  caseId: ID!
+  invUsers: [InvUsersInput!]!
+}
+
+input searchInput {
+  caseId: ID
+  searchTerm: String
+}
+
+input PriorityInput {
+  id: String
+  name: String
+}
+
+input SignedUrlInput {
+  fileName: String
+  cause: String
+}
+
+type Query {
+  getCases: [Cases]
+  getCaseViewed: [CasesViewed]
+  getCasesByUser(userId: ID!): [Cases]
+  getCase(id: String!): Cases!
+  getCasesInfo: CaseStatistics!
+  getCasesInfoAdmin: CaseStatistics!
+
+  getUsers: [Users]!
+  getUser(userId: String!): Users!
+  getCurrentUser: Users
+  getUserUnreadMessages(userId: ID!): [Messages]!
+  getUserMessages(userId: ID!): [Messages]!
+  getInvolvedUsers(caseId: String!): [UsersInvolved]!
+  searchMovements(input: searchInput): [Movement]!
+  # zszdfdfdsfsd
+  getChecksOfDate(day: Int, month: Int, year: Int): [GetChecks]!
+  getDateOfChecks: [GetDate]
+  getChecksOfUsers(id: ID!, month: Int, year: Int): [GetChecksUsers]!
+  searchUsers(searchTerm: String): [Users]!
+  infiniteScrollPosts(pageNum: Int!, pageSize: Int!): PostsPage
+
+  getPriorities: [Priority]!
+
+  getActivities: [Activity]!
+  getActivitiesByDate(days: Int!): [Activity]!
+}
+
+type Mutation {
+  addCase(input: CaseInput!): Message!
+  updateCase(input: UpCaseInput!): Message!
+  deleteCase(caseId: ID!): Message!
+  # updateCases(): Message!
+
+  deleteActivity(id: ID!): Message!
+
+  addInvUsers(input: InvInput!): Message!
+
+  addPriority(input: PriorityInput!): PriorityResult!
+  addActivity(input: ActivityInput!): ActivityResult!
+
+  updateUser(params: UsersInput!): Users!
+  updateUsers(input: UsersInput!): Message!
+  updateUserPassword(params: UpdatePasswordInput!): Message!
+  updateUsersPassword(input: UpdateUsersPasswordInput!): Message!
+  updateVisibilityCase(id: ID!, visibility: Boolean!): Message!
+  updateActivity(input: ActivityUpdateInput!): ActivityResult!
+
+  deleteUserPost(postId: ID!): Posts!
+  deleteUser(userId: ID!): Message!
+  addPostMessage(messageBody: String!, userId: ID!, postId: ID!): Message!
+  signupUsers(params: UsersInput!): Message!
+  signinUsers(email: String, password: String): Token!
+
+  addDdor: Message!
+
+  getFileSignedS3Url(input: SignedUrlInput!): SignedUrlResult!
+
+  # uploadFile(file: Upload!): File
+}

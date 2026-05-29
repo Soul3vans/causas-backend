@@ -1,0 +1,123 @@
+<?xml version="1.0"?>
+<?adf version="1.0"?>
+  <adf>
+    <prospect status="">
+      <!-- status:new|resend; -->
+      <id sequence="" source=""></id>
+      <!-- sequence:1-n; source:free text; -->
+      <requestdate>2018-07-31T15:43:04-05:00</requestdate>
+      <vehicle interest="" status="">
+        <!-- interest:buy|lease|sell|trade-in|test-drive; status:new|used; -->
+        <id sequence="" source=""></id>
+        <year></year>
+        <make></make>
+        <model></model>
+        <vin></vin>
+        <stock></stock>
+        <trim></trim>
+        <doors></doors>
+        <bodystyle></bodystyle>
+        <transmission></transmission>
+        <odometer status="" units=""></odometer>
+        <!-- status:unknown|rolledover|replaced|original; units:km|mi; -->
+        <condition></condition>
+        <!-- excellent|good|fair|poor|unknown -->
+        <colorcombination>
+          <interiorcolor></interiorcolor>
+          <exteriorcolor></exteriorcolor>
+          <preference></preference>
+          <!-- 1-n -->
+        </colorcombination>
+        <imagetag width="" height="" alttext=""></imagetag>
+        <!-- url -->
+        <price type="" currency="" delta="" relativeto="" source=""></price>
+        <!-- numeric, e.g. 19500 -->
+        <!-- type:quote|offer|msrp|invoice|call|appraisal|asking; currency:ISO 4217 3-letter code; delta:absolute|relative|percentage; relativeto:msrp|invoice; source:free text; -->
+        <pricecomments></pricecomments>
+        <option>
+          <optionname></optionname>
+          <manufacturercode></manufacturercode>
+          <stock></stock>
+          <weighting></weighting>
+          <!-- -100 to +100 -->
+          <price type="" currency="" delta="" relativeto="" source=""></price>
+        </option>
+        <finance>
+          <method></method>
+          <!-- cash|finance|lease -->
+          <amount type="" limit="" currency=""></amount>
+          <!-- type:downpayment|monthly|total; limit:maximum|minimum|exact; currency:ISO 4217 -->
+          <balance type="" currency=""></balance>
+          <!-- type:finance|residual; currency:ISO 4217 -->
+        </finance>
+        <comments></comments>
+      </vehicle>
+      <customer>
+        <id sequence="" source=""></id>
+        <contact primarycontact="">
+          <!-- primarycontact:1|0 -->
+          <name part="" type=""></name>
+          <!-- part:first|middle|suffix|last|full; type:individual|business; -->
+          <email preferredcontact=""></email>
+          <!-- preferredcontact:0|1 -->
+          <phone type="" time="" preferredcontact=""></phone>
+          <!-- type:phone|fax|cellphone|pager; time:morning|afternoon|evening|nopreference|day; preferredcontact:0|1 -->
+          <address type=""> <!-- type:work|home|delivery -->
+          <street line=""></street> <!-- line:1-5 -->
+          <apartment></apartment>
+          <city></city>
+          <regioncode></regioncode> <!-- Free-form, 2-char code recommended for North America -->
+          <postalcode></postalcode>
+          <country></country> <!-- ISO 3166 2-letter code -->
+        </address>
+        </contact>
+        <timeframe>
+          <description></description>
+          <earliestdate></earliestdate>
+          <!-- ISO 8601 -->
+          <latestdate></latestdate>
+          <!-- ISO 8601 -->
+        </timeframe>
+        <comments></comments>
+      </customer>
+      <vendor>
+        <id sequence="" source=""></id>
+        <vendorname></vendorname>
+        <url></url>
+        <contact primarycontact="">
+          <name part="" type=""></name>
+          <email preferredcontact=""></email>
+          <phone type="" time="" preferredcontact=""></phone>
+          <address type=""> <!-- type:work|home|delivery -->
+          <street line=""></street> <!-- line:1-5 -->
+          <apartment></apartment>
+          <city></city>
+          <regioncode></regioncode> <!-- Free-form, 2-char code recommended for North America -->
+          <postalcode></postalcode>
+          <country></country> <!-- ISO 3166 2-letter code -->
+        </address>
+        </contact>
+      </vendor>
+      <provider>
+        <id sequence="" source=""></id>
+        <name part="" type=""></name>
+        <service></service>
+        <url></url>
+        <email preferredcontact=""></email>
+        <phone type="" time="" preferredcontact=""></phone>
+        <contact primarycontact="">
+          <name part="" type=""></name>
+          <email preferredcontact=""></email>
+          <phone type="" time="" preferredcontact=""></phone>
+          <address type=""> <!-- type:work|home|delivery -->
+          <street line=""></street> <!-- line:1-5 -->
+          <apartment></apartment>
+          <city></city>
+          <regioncode></regioncode> <!-- Free-form, 2-char code recommended for North America -->
+          <postalcode></postalcode>
+          <country></country> <!-- ISO 3166 2-letter code -->
+        </address>
+        </contact>
+      </provider>
+    </prospect>
+  </adf>

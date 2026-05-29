@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<?adf version="1.0"?>
+  <adf>
+    <prospect status="new">
+      <!-- status:new|resend; -->
+      <id sequence="1" source=""></id>
+      <!-- sequence:1-n; source:free text; -->
+      <requestdate>{{requestdate}}</requestdate>
+      <vehicle interest="lease" status="used">
+        <year>{{year}}</year>
+        <make>{{make}}</make>
+        <model>{{model}}</model>
+        <trim>{{trim}}</trim>
+        <comments>{{comments}}</comments>
+      </vehicle>
+      <customer>
+        <contact primarycontact="1">
+          <name part="full" type="individual">{{fullName}}</name>
+          <email preferredcontact="1">{{email}}</email>
+          <phone type="phone" time="morning" preferredcontact="0">{{phone}}</phone>
+        </contact>
+      </customer>
+      <provider>
+        <name part="full" type="business">Bolufe Auto Sales</name>
+        <service></service>
+        <contact primarycontact="1">
+          <email preferredcontact="0">info@bolufeautosales.com
+          </email>
+          <phone type="phone" time="day" preferredcontact="1">305-602-8191</phone>
+        </contact>
+      </provider>
+    </prospect>
+  </adf>

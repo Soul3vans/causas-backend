@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.cause = void 0;
+const plugins_1 = require("../plugins");
+const cause_1 = require("./cause");
+const civil_cause_rol_collect_1 = require("./civil-cause-rol.collect");
+const civil_cause_active_1 = require("./civil-cause.active");
+const scrape = new plugins_1.ScrapService();
+const fileService = new plugins_1.FileSystemService();
+const civilCauseActiveScrape = new civil_cause_active_1.CivilCauseActiveScrape(scrape);
+const civilCauseRolCollectScrape = new civil_cause_rol_collect_1.CivilCauseRolCollectScrape(scrape, fileService);
+const cause = new cause_1.Cause(civilCauseActiveScrape, civilCauseRolCollectScrape);
+exports.cause = cause;

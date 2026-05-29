@@ -1,0 +1,180 @@
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700,800" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Poppins:400,700,900" rel="stylesheet">
+    <title>{{subject}}</title>
+    <style media="screen">
+      *{
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html, body{
+        font-family: 'Open Sans', sans-serif;
+        font-size: 1em;
+        color: #4a4a4a;
+      }
+      .templates{
+        width: 100%;
+        height: 100%;
+        padding: 100px 0;
+        background: #fafafa;
+      }
+      .templates .templates-content{
+        width: 900px;
+        margin: 0 auto;
+        box-sizing: border-box;
+        background: white;
+        box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+        border-radius: 5px;
+        overflow: hidden;
+      }
+      .templates .templates-content .templates-header{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: 'Poppins', sans-serif;
+        background: -webkit-linear-gradient(#0083AE, #1970b9);
+        padding: 30px;
+        color: white;
+      }
+      .templates .templates-content .templates-header h2{
+        font-family: 'Poppins', sans-serif;
+      }
+      .templates .templates-content .templates-header span{
+        font-weight: bold;
+      }
+      .templates .templates-content .templates-body{
+        padding: 30px;
+      }
+      .templates .templates-content .templates-body div{
+        font-size: .9em;
+        display: flex;
+        margin-bottom: 25px;
+      }
+      .templates .templates-content .templates-body div p{
+        font-weight: bold;
+        margin-right: 10px;
+      }
+      .templates .templates-content .templates-body div span{
+        text-align: justify;
+      }
+    </style>
+</head>
+  <body>
+    <div class="templates">
+      <div class="templates-content">
+        <div class="templates-header">
+          <h2>BOLUFE AUTO SALES</h2>
+          <!-- <span>March 9, 2018 - 10:52 PM</span> -->
+        </div>
+        <div class="templates-body">
+          <div>
+            <p>Customer Name:</p>
+            <span>{{client}}</span>
+          </div>
+          {{#unless ssn}}
+              <div>
+                <p>Phone Number:</p>
+                <span>{{phone}}</span>
+              </div>
+              <div>
+                <p>Email Address:</p>
+                <span>{{email}}</span>
+              </div>
+            {{#if carinterested}}
+              <div>
+                <p>Interested:</p>
+                <span>{{carinterested}}</span>
+              </div>
+            {{/if}}
+            {{#if caronwed}}
+              <div>
+                <p>Car:</p>
+                <span>{{caronwed}}</span>
+              </div>
+            {{/if}}
+            {{#if zipcode}}
+              <div>
+                <p>Zipcode:</p>
+                <span>{{zipcode}}</span>
+              </div>
+            {{/if}}
+            {{#if miles}}
+              <div>
+                <p>Miles:</p>
+                <span>{{miles}}</span>
+              </div>
+            {{/if}}
+            {{#if dataUrl}}
+              <div>
+                <p>URL:</p>
+                <span><a href="{{dataUrl}}">{{dataUrl}}</a></span>
+              </div>
+            {{/if}}
+            {{#if comments}}
+              <div>
+                <p>Comments:</p>
+                <span>{{comments}}</span>
+              </div>
+            {{/if}}
+            {{#if dataPrefered}}
+              <div>
+                <p>Prefered Date:</p>
+                <span>{{dataPrefered}}</a></span>
+              </div>
+            {{/if}}
+          {{else}}
+            <div>
+              <p>Email Address:</p>
+              <span>{{email}}</a></span>
+            </div>
+            <div>
+              <p>Ssn:</p>
+              <span>{{ssn}}</a></span>
+            </div>
+            <div>
+              <p>Phone:</p>
+              <span>{{phone}}</a></span>
+            </div>
+            <div>
+              <p>Dob:</p>
+              <span>{{dob}}</a></span>
+            </div>
+            <div>
+              <p>Address:</p>
+              <span>{{address}}</a></span>
+            </div>
+            <div>
+              <p>Apt:</p>
+              <span>{{apt}}</a></span>
+            </div>
+            <div>
+              <p>State:</p>
+              <span>{{state}}</a></span>
+            </div>
+            <div>
+              <p>City:</p>
+              <span>{{city}}</a></span>
+            </div>
+            <div>
+              <p>Zip:</p>
+              <span>{{zip}}</a></span>
+            </div>
+            <div>
+              <p>House:</p>
+              <span>{{house}}</a></span>
+            </div>
+              {{#if housePayment}}
+                <div>
+                  <p>House:</p>
+                  <span>{{housePayment}}</a></span>
+                </div>
+              {{/if}}
+          {{/unless}}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<?adf version="1.0"?>
+  <adf>
+    <prospect status="new">
+      <!-- status:new|resend; -->
+      <id sequence="1" source=""></id>
+      <!-- sequence:1-n; source:free text; -->
+      <requestdate>{{requestdate}}</requestdate>
+      <customer>
+        <contact primarycontact="1">
+          <name part="full" type="individual">{{fullName}}</name>
+          <email preferredcontact="1">{{email}}</email>
+          <phone type="phone" time="morning" preferredcontact="0">{{phone}}</phone>
+          <address type="home"> <!-- type:work|home|delivery -->
+            <street line="1-5">{{address}}</street> <!-- line:1-5 -->
+            <apartment>{{apt}}</apartment>
+            <city>{{city}}</city>
+            <postalcode>{{zip}}</postalcode>
+            <country>US</country>
+          </address>
+        </contact>
+      </customer>
+      <provider>
+        <name part="full" type="business">Bolufe Auto Sales</name>
+        <service></service>
+        <contact primarycontact="1">
+          <email preferredcontact="0">info@bolufeautosales.com
+          </email>
+          <phone type="phone" time="day" preferredcontact="1">305-602-8191</phone>
+        </contact>
+      </provider>
+    </prospect>
+  </adf>
