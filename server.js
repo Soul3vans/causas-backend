@@ -36,7 +36,6 @@ MongoDatabase.connect({
   dbName: envs.MONGO_DB_NAME
 })
 
-// verificar JWT Token
 const getUser = async token => {
   if (token) {
     try {
@@ -49,14 +48,10 @@ const getUser = async token => {
   }
 }
 
-// Tareas programadas (cron jobs)
+// Tareas programadas (se ejecutan en segundo plano sin bloquear)
 cron.schedule('*/30 * * * *', () => sendActivityReminder())
-cron.schedule('00 04 * * *', () => dailyScraps(), {
-  timezone: 'America/Santiago'
-})
-cron.schedule('30 06 * * *', () => casesUpdater(), {
-  timezone: 'America/Santiago'
-})
+cron.schedule('00 04 * * *', () => dailyScraps(), { timezone: 'America/Santiago' })
+cron.schedule('30 06 * * *', () => casesUpdater(), { timezone: 'America/Santiago' })
 
 const app = express()
 
@@ -77,11 +72,9 @@ const server = new ApolloServer({
       name: error.name,
       message: error.message.replace('Context creation failed:', '')
     }
-
     if (error.message.startsWith('Database Error: ')) {
       return new Error('Internal server error')
     }
-
     return error
   },
   context: async ({ req }) => {
@@ -106,32 +99,45 @@ const server = new ApolloServer({
   }
 })
 
-await server.start().then(() => {
+// Función principal para iniciar el servidor
+async function startServer() {
+  try {
+    // 1. Iniciar Apollo Server
+    await server.start()
+    console.log('✅ Apollo Server iniciado')
 
-server.applyMiddleware({ app, cors: corsOptions })
+    // 2. Aplicar middleware a Express
+    server.applyMiddleware({ app, cors: corsOptions })
+    console.log('✅ Middleware de Apollo aplicado')
 
-// Ruta de prueba para verificar que el servidor funciona
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Servidor funcionando correctamente',
-    status: 'online',
-    graphql: `${req.protocol}://${req.get('host')}${server.graphqlPath}`
-  });
-});
+    // 3. Rutas adicionales
+    app.get('/', (req, res) => {
+      res.json({
+        message: 'Servidor funcionando correctamente',
+        status: 'online',
+        graphql: `${req.protocol}://${req.get('host')}${server.graphqlPath}`
+      })
+    })
 
-// Ruta de health check para Render (opcional pero recomendada)
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
-});
+    app.get('/health', (req, res) => {
+      res.status(200).send('OK')
+    })
 
-// ============================================================
-// 🔥 CAMBIO IMPORTANTE: Usar PORT de Render o 4000 para local
-// 🔥 Escuchar en 0.0.0.0 para que Render pueda recibir tráfico
-// ============================================================
-const PORT = process.env.PORT || 4000
-const HOST = '0.0.0.0'
+    // 4. Puerto y host
+    const PORT = process.env.PORT || 4000
+    const HOST = '0.0.0.0'
 
-app.listen({ port: PORT, host: HOST }, () => {
-  console.log(`🚀 Servidor corriendo en http://${HOST}:${PORT}${server.graphqlPath}`);
-})
-});
+    // 5. Iniciar servidor HTTP
+    app.listen(PORT, HOST, () => {
+      console.log(`🚀 Servidor corriendo en http://${HOST}:${PORT}`)
+      console.log(`📡 GraphQL endpoint: http://${HOST}:${PORT}${server.graphqlPath}`)
+      console.log(`✅ Health check: http://${HOST}:${PORT}/health`)
+    })
+  } catch (error) {
+    console.error('❌ Error al iniciar el servidor:', error)
+    process.exit(1)
+  }
+}
+
+// Ejecutar
+startServer()
