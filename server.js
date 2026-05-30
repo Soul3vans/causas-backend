@@ -106,7 +106,23 @@ const server = new ApolloServer({
   }
 })
 
+await server.start().then(() => {
+
 server.applyMiddleware({ app, cors: corsOptions })
+
+// Ruta de prueba para verificar que el servidor funciona
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Servidor funcionando correctamente',
+    status: 'online',
+    graphql: `${req.protocol}://${req.get('host')}${server.graphqlPath}`
+  });
+});
+
+// Ruta de health check para Render (opcional pero recomendada)
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
 
 // ============================================================
 // 🔥 CAMBIO IMPORTANTE: Usar PORT de Render o 4000 para local
@@ -115,6 +131,7 @@ server.applyMiddleware({ app, cors: corsOptions })
 const PORT = process.env.PORT || 4000
 const HOST = '0.0.0.0'
 
-app.listen({ port: PORT, host: HOST }, () =>
-  console.log(`🚀 Servidor corriendo en http://${HOST}:${PORT}${server.graphqlPath}`)
-)
+app.listen({ port: PORT, host: HOST }, () => {
+  console.log(`🚀 Servidor corriendo en http://${HOST}:${PORT}${server.graphqlPath}`);
+})
+});
