@@ -67,6 +67,8 @@ if (process.env.NODE_ENV === 'production') {
 const server = new ApolloServer({
   typeDefs,
   resolvers,
+  introspection: true,   // 👈 Necesario para que el Playground funcione en producción
+  playground: true,      // 👈 Habilita la interfaz gráfica de GraphQL
   formatError: error => {
     error = {
       name: error.name,
