@@ -29,7 +29,7 @@ class Daily extends node_events_1.default {
         };
         this.on("dailyAnchorsEmpty", (msg) => {
             console.log(msg);
-            process.exit();
+            // process.exit();
         });
     }
     async rawData(filters) {

@@ -56,7 +56,7 @@ const dailyScraps = async function () {
     setTimeout(() => {
       console.log(luxonDateTime(false, DateTime.DATETIME_FULL_WITH_SECONDS))
       console.log('Proceso Terminado')
-      process.exit()
+      // process.exit()
     }, 60000)
   }
 }

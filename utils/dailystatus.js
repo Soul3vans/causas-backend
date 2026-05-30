@@ -39,10 +39,10 @@ const run = async () => {
   } finally {
     const timeout = setTimeout(() => {
       console.log('Closing of the process...')
-      process.exit(0)
+      // process.exit(0)
     }, const_1.DEFAULT_TIMEOUT_PROCESS)
     timeout.unref()
   }
 }
-exports.run = run
-;(0, exports.run)()
+exports.run = run;
+// (0, exports.run)()
