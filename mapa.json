@@ -1,0 +1,343 @@
+{
+  "projectName": "causas-concursales-server",
+  "projectDescription": "Sistema de Gestión de Causas Concursales - Backend GraphQL con Express y MongoDB",
+  "version": "1.0.0",
+  "lastUpdated": "2026-05-31",
+  
+  "architecture": {
+    "pattern": "GraphQL + Express",
+    "database": "MongoDB",
+    "apiType": "GraphQL",
+    "language": "JavaScript/Node.js",
+    "typeSystem": "Mongoose ODM",
+    "authentication": "JWT (JSON Web Tokens)",
+    "packageManager": "Yarn 4.5.0"
+  },
+
+  "coreStack": {
+    "server": {
+      "express": "^4.21.1",
+      "apollo-server-express": "^2.13.0",
+      "graphql": "^15.9.0"
+    },
+    "database": {
+      "mongoose": "^7.0.3"
+    },
+    "authentication": {
+      "jsonwebtoken": "^8.5.1",
+      "bcrypt": "^5.0.1"
+    },
+    "utilities": {
+      "moment": "^2.29.3",
+      "luxon": "^2.3.1",
+      "md5": "^2.3.0",
+      "node-cron": "^3.0.3"
+    },
+    "scraping": {
+      "puppeteer": "^15.3.2",
+      "puppeteer-extra": "^3.3.4",
+      "puppeteer-extra-plugin-stealth": "^2.11.0",
+      "random-useragent": "^0.5.0"
+    },
+    "email": {
+      "nodemailer": "^6.7.2"
+    },
+    "uploads": {
+      "graphql-upload": "^13.0.0",
+      "@aws-sdk/client-s3": "^3.674.0",
+      "@aws-sdk/s3-request-presigner": "^3.674.0"
+    }
+  },
+
+  "directoryStructure": {
+    "root": {
+      "server.js": "Punto de entrada principal - Configuración de Apollo Server y Express",
+      "resolvers.js": "Todos los resolvers GraphQL (Queries y Mutations)",
+      "package.json": "Configuración del proyecto y dependencias",
+      "apollo.config.js": "Configuración de Apollo Client/DevTools"
+    },
+    "config/": "Configuraciones de aplicación",
+    "models/": "Modelos Mongoose - Esquemas de base de datos",
+    "gql/": "Definiciones GraphQL (TypeDefs)",
+    "utils/": "Utilidades y helpers",
+    "workers/": "Jobs en segundo plano y tareas programadas",
+    "views/": "Vistas o templates",
+    "variables.env": "Variables de entorno (NO usar en producción)"
+  },
+
+  "models": {
+    "Users": {
+      "description": "Modelo de usuarios del sistema",
+      "purposes": ["Autenticación", "Gestión de permisos", "Relación con casos"]
+    },
+    "Cases": {
+      "description": "Modelo de causas/procesos legales",
+      "purposes": ["Almacenar información de causas", "Historial de movimientos", "Datos de litigantes"]
+    },
+    "Activity": {
+      "description": "Modelo de actividades/tareas",
+      "purposes": ["Tareas programadas", "Calendario de actividades", "Seguimiento de procesos"]
+    },
+    "Posts": {
+      "description": "Modelo de publicaciones/foros",
+      "purposes": ["Comunicación entre usuarios", "Comentarios en casos"]
+    },
+    "Patients": {
+      "description": "Modelo de pacientes/deudores",
+      "purposes": ["Información de deudores en causas"]
+    },
+    "Checks": {
+      "description": "Modelo de inspecciones/verificaciones",
+      "purposes": ["Registro de chequeos periódicos", "Seguimiento de afectaciones"]
+    },
+    "File": {
+      "description": "Modelo de archivos",
+      "purposes": ["Gestión de documentos"]
+    },
+    "Messages": {
+      "description": "Modelo de mensajes entre usuarios",
+      "purposes": ["Notificaciones", "Comunicación interna"]
+    },
+    "InvolvedUsersCase": {
+      "description": "Modelo de relación entre usuarios y causas",
+      "purposes": ["Usuarios involucrados en cada causa", "Estados de participación"]
+    },
+    "CasesViewed": {
+      "description": "Modelo de seguimiento de causas vistas",
+      "purposes": ["Auditoría de acceso a causas"]
+    },
+    "CasesUpdated": {
+      "description": "Modelo temporal de actualizaciones de causas",
+      "purposes": ["Diferenciación de cambios en causas"]
+    },
+    "CasesReviews": {
+      "description": "Modelo de revisiones de causas",
+      "purposes": ["Control de cambios y auditoría"]
+    },
+    "CasesSettings": {
+      "description": "Modelo de configuración de causas",
+      "purposes": ["Permisos por usuario en causa"]
+    },
+    "Priority": {
+      "description": "Modelo de niveles de prioridad",
+      "purposes": ["Asignación de prioridades a actividades"]
+    }
+  },
+
+  "graphQLResolvers": {
+    "Query": {
+      "authentication": [
+        "getCurrentUser - Obtiene usuario actual autenticado",
+        "getUser - Obtiene usuario por ID"
+      ],
+      "userManagement": [
+        "getUsers - Lista todos los usuarios",
+        "getInvolvedUsers - Usuarios involucrados en una causa",
+        "searchUsers - Búsqueda de usuarios por texto"
+      ],
+      "cases": [
+        "getCases - Lista todas las causas",
+        "getCase - Obtiene causa específica por ID",
+        "getCaseViewed - Causas vistas por usuario actual",
+        "getCasesByUser - Causas creadas por usuario específico",
+        "getCasesInfo - Estadísticas de causas por estado (usuario)",
+        "getCasesInfoAdmin - Estadísticas de causas globales"
+      ],
+      "messages": [
+        "getUserMessages - Mensajes de usuario",
+        "getUserUnreadMessages - Mensajes no leídos"
+      ],
+      "search": [
+        "searchMovements - Búsqueda de movimientos en causas",
+        "infiniteScrollPosts - Carga paginada de publicaciones"
+      ],
+      "activities": [
+        "getActivities - Lista todas las actividades",
+        "getActivitiesByDate - Actividades en rango de fechas"
+      ],
+      "checks": [
+        "getChecksOfDate - Chequeos de fecha específica",
+        "getChecksOfUsers - Chequeos de usuario en período",
+        "getDateOfChecks - Fechas con chequeos disponibles"
+      ],
+      "priority": [
+        "getPriorities - Lista de prioridades"
+      ]
+    },
+    "Mutation": {
+      "authentication": [
+        "signinUsers - Login (email + password)",
+        "signupUsers - Registro de nuevo usuario"
+      ],
+      "userManagement": [
+        "updateUser - Actualizar datos básicos",
+        "updateUsers - Actualizar datos con validación",
+        "updateUserPassword - Cambiar contraseña (requiere actual)",
+        "updateUsersPassword - Cambiar contraseña sin verificación",
+        "deleteUser - Eliminar usuario"
+      ],
+      "cases": [
+        "addCase - Agregar nueva causa (con scraping)",
+        "updateCase - Actualizar causa existente",
+        "deleteCase - Eliminar causa",
+        "addDdor - Actualizar deudores en causas",
+        "updateVisibilityCase - Cambiar visibilidad/permisos"
+      ],
+      "caseUsers": [
+        "addInvUsers - Agregar usuarios a causa"
+      ],
+      "activities": [
+        "addActivity - Crear nueva actividad",
+        "updateActivity - Actualizar actividad",
+        "deleteActivity - Eliminar actividad"
+      ],
+      "priority": [
+        "addPriority - Crear/actualizar prioridad"
+      ],
+      "posts": [
+        "addPostMessage - Añadir comentario a publicación",
+        "deleteUserPost - Eliminar publicación"
+      ],
+      "files": [
+        "getFileSignedS3Url - Obtener URL firmada para S3"
+      ]
+    }
+  },
+
+  "workers": {
+    "mailSender": {
+      "activityReminder": {
+        "schedule": "*/30 * * * * (cada 30 minutos)",
+        "purpose": "Enviar recordatorios de actividades próximas"
+      },
+      "dailyScraps": {
+        "schedule": "00 04 * * * America/Santiago (4 AM diariamente)",
+        "purpose": "Actualización diaria de causas desde sistema de justicia"
+      },
+      "casesUpdater": {
+        "schedule": "30 06 * * * America/Santiago (6:30 AM diariamente)",
+        "purpose": "Procesar y notificar cambios en causas"
+      }
+    }
+  },
+
+  "utilities": {
+    "db": "MongoDatabase - Conexión a MongoDB",
+    "plugins": "Plugins y configuraciones (FileSystemService para S3)",
+    "mail": "Configuración de nodemailer para envío de emails",
+    "scrapper": "Web scraping de tribunales",
+    "causes": {
+      "getCivilCauseDetail": "Obtener detalles de causa civil del sistema judicial",
+      "scrapeUnified": "Scraping unificado de sistemas de justicia"
+    },
+    "seedsjudge": "Mapeo de tribunales (ID <-> Nombre)"
+  },
+
+  "keyFeatures": [
+    "Gestión completa de causas legales",
+    "Web scraping automático de sistemas judiciales",
+    "Actualización automática de causas en segundo plano",
+    "Sistema de usuarios con roles",
+    "Involucrar múltiples usuarios por causa",
+    "Actividades y calendario integrado",
+    "Sistema de prioridades",
+    "Mensajería interna entre usuarios",
+    "Chequeos y inspecciones con seguimiento",
+    "Almacenamiento en S3 con URLs firmadas",
+    "Envío de emails y notificaciones",
+    "Auditoría de acceso a causas"
+  ],
+
+  "authentication": {
+    "type": "JWT",
+    "secret": "Configurado en process.env.SECRET",
+    "tokenExpiry": "1 hora",
+    "headerName": "authorization",
+    "password": {
+      "hashing": "bcrypt",
+      "cost": "Default bcrypt"
+    }
+  },
+
+  "environment": {
+    "required": [
+      "MONGO_URI - URI de conexión MongoDB",
+      "MONGO_DB_NAME - Nombre de la base de datos",
+      "SECRET - Clave para JWT",
+      "CORS_ORIGIN_URI - Origen CORS permitido",
+      "PORT - Puerto del servidor (default: 4000)"
+    ],
+    "optional": [
+      "NODE_ENV - Ambiente (production/development)"
+    ]
+  },
+
+  "endpoints": {
+    "health": "GET / - Health check",
+    "graphql": "POST /graphql - Endpoint GraphQL (Apollo Server)",
+    "playground": "GET /graphql - GraphQL Playground (desarrollo)"
+  },
+
+  "developmentScripts": {
+    "start": "node server.js",
+    "server": "nodemon -e \"gql,js\" server.js (Recarga en cambios)",
+    "client": "cd ../client && yarn serve (Inicia cliente)",
+    "dev": "Inicia servidor y cliente en paralelo"
+  },
+
+  "dataFlow": {
+    "causeFetch": [
+      "1. Usuario solicita agregar causa",
+      "2. Sistema realiza scraping del sistema judicial",
+      "3. Datos se guardan en MongoDB",
+      "4. Se asignan usuarios involucrados",
+      "5. Se notifica a todos los usuarios"
+    ],
+    "caseUpdate": [
+      "1. Cron job ejecuta cada 6:30 AM",
+      "2. Scraping de causas registradas",
+      "3. Comparación con datos previos",
+      "4. Si hay cambios, se actualiza la causa",
+      "5. Se notifica a usuarios involucrados"
+    ],
+    "authentication": [
+      "1. Usuario envía email + password en signinUsers",
+      "2. Contraseña se compara con bcrypt",
+      "3. Se genera JWT con datos del usuario",
+      "4. JWT se retorna al cliente",
+      "5. Cliente incluye JWT en header Authorization"
+    ]
+  },
+
+  "performanceNotes": [
+    "MongoDB conectada con Mongoose ODM",
+    "Agregaciones de MongoDB para consultas complejas",
+    "Paginación en búsquedas (infiniteScrollPosts)",
+    "Tareas programadas en segundo plano (no bloquean)",
+    "S3 presigned URLs para descargas seguras"
+  ],
+
+  "securityConsiderations": [
+    "JWT para autenticación stateless",
+    "Bcrypt para hash de contraseñas",
+    "CORS configurado con variable de entorno",
+    "Contraseñas no se retornan en queries",
+    "Context-based authorization en resolvers",
+    "Scraping con stealth plugin (puppeteer)"
+  ],
+
+  "knownIssues": [
+    "Método findOneAndRemove deprecado (usar findOneAndDelete)",
+    "Algunos resolvers no tienen manejo completo de errores",
+    "Variables de entorno en versionControl (.env expuesto)"
+  ],
+
+  "nextSteps": [
+    "Implementar validaciones más robustas en inputs",
+    "Añadir tests unitarios y E2E",
+    "Mejorar manejo de errores con tipos específicos",
+    "Implementar caché (Redis)",
+    "Documentación de GraphQL schema",
+    "Rate limiting en endpoints"
+  ]
+}
