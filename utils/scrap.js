@@ -152,7 +152,7 @@ const td = async (options, frame) => {
 const ss = async () => {
   const browser = await puppeteer.launch({ headless: false })
   const page = await browser.newPage()
-  await page.goto('https://civil.pjud.cl/CIVILPORWEB/', {
+  await page.goto('https://oficinajudicialvirtual.pjud.cl/', {
     // wait completed load
     waitUntil: 'load',
     // Remove the timeout
