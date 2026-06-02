@@ -147,7 +147,7 @@ const td = async (options, frame) => {
               arr[i].push(book)
               let tdind = b[i].querySelectorAll('td')
               if (tdind[1].querySelector('img')) {
-                arr[i][1] = `https://civil.pjud.cl/CIVILPORWEB/${
+                arr[i][1] = `https://oficinajudicialvirtual.pjud.cl/${
                   tdind[1]
                     .querySelector('img')
                     .getAttribute('onClick')
@@ -357,7 +357,7 @@ const scrapRawData = async scrapOptions => {
     //     )
     //   })
     // )
-    await page.goto('https://civil.pjud.cl/CIVILPORWEB/', {
+    await page.goto('https://oficinajudicialvirtual.pjud.cl/', {
       // wait completed load
       waitUntil: 'load',
       // Remove the timeout

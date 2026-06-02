@@ -68,7 +68,7 @@ const td = async (options, frame) => {
         if (waitForSelector === '#Historia') {
           let tdind = b[i].querySelectorAll('td')
           if (tdind[1].querySelector('img')) {
-            arr[i][1] = `https://civil.pjud.cl/CIVILPORWEB/${
+            arr[i][1] = `https://oficinajudicialvirtual.pjud.cl/${
               tdind[1]
                 .querySelector('img')
                 .getAttribute('onClick')
@@ -149,7 +149,7 @@ const td = async (options, frame) => {
 const ss = async () => {
   const browser = await puppeteer.launch({ headless: false })
   const page = await browser.newPage()
-  await page.goto('https://civil.pjud.cl/CIVILPORWEB/', {
+  await page.goto('https://oficinajudicialvirtual.pjud.cl/', {
     // wait completed load
     waitUntil: 'load',
     // Remove the timeout
