@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 
 const CasesShema = new mongoose.Schema(
   {
+    // ========== CAMPOS EXISTENTES ==========
     rol: { type: String, trim: true },
     cover: { type: String, trim: true },
     debtor: { type: String, trim: true },
@@ -19,14 +20,6 @@ const CasesShema = new mongoose.Schema(
     court: { type: String, trim: true },
     movementsHistory: [
       {
-        /**
-         *  aki es string en vez de number porke hay cosas como esta en el indice
-         * 1
-         * 2
-         * [1E]
-         * [2A]
-         * 3
-         */
         invoice: { type: String, trim: true, default: 0 },
         document: [
           {
@@ -59,27 +52,49 @@ const CasesShema = new mongoose.Schema(
       }
     ],
     extLink: { type: String, trim: true },
-    status: {
-      type: String,
-      enum: ['ACTIVE', 'INACTIVE', 'CLOSED'],
-      default: 'ACTIVE'
+    status: { type: String, enum: ['ACTIVE', 'INACTIVE', 'CLOSED'], default: 'ACTIVE' },
+    visibility: { type: Boolean, default: false },
+    typeSearch: { type: String, enum: ['RESERVADA', 'UNIFICADA'], default: 'UNIFICADA' },
+    lastUpdate: { type: Date },
+
+    // ========== NUEVOS CAMPOS ==========
+    searchParams: {
+      competencia: { 
+        type: String, 
+        required: true,
+        enum: ['1', '2', '3', '4', '5', '6', '7']
+      },
+      corteId: { type: String, required: true },
+      tribunalId: { type: String, required: true },
+      libroTipo: { type: String, required: true },
+      rolNumber: { type: String, required: true },
+      year: { type: String, required: true },
+      fullRol: { type: String, required: true }
     },
-    visibility: {
-      type: Boolean,
-      default: false
-    },
-    typeSearch: {
-      type: String,
-      enum: ['RESERVADA', 'UNIFICADA'],
-      default: 'UNIFICADA'
-    },
-    lastUpdate: { type: Date }
+
+    scrapedData: {
+      lastScrapedAt: { type: Date, default: null },
+      lastScrapedBy: { type: String, default: 'scheduler', enum: ['scheduler', 'manual', 'auto'] },
+      status: { 
+        type: String, 
+        enum: ['pending', 'scraping', 'success', 'error', 'not_found'], 
+        default: 'pending' 
+      },
+      errorMessage: { type: String, default: null },
+      retryCount: { type: Number, default: 0 },
+      data: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null
+      }
+    }
   },
   { timestamps: true }
 )
 
-CasesShema.index({
-  'movementsHistory.$**': 'text'
-})
+// ========== ÍNDICES ==========
+CasesShema.index({ rol: 1 })
+CasesShema.index({ 'searchParams.fullRol': 1 })
+CasesShema.index({ 'scrapedData.status': 1, 'scrapedData.lastScrapedAt': 1 })
+CasesShema.index({ 'movementsHistory.$**': 'text' })
 
 module.exports = mongoose.model('Cases', CasesShema)

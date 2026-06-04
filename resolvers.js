@@ -1,25 +1,16 @@
 const { AuthenticationError } = require('apollo-server-express')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
-// const shortid = require('shortid')
-// const { createWriteStream, mkdir } = require('fs')
-// const random_useragent = require('random-useragent')
 const mongoose = require('mongoose')
-// mongoose.set('useFindAndModify', false)
-// const puppeteer = require('puppeteer')
 const puppeteer = require('puppeteer-extra')
 const StealthPlugin = require('puppeteer-extra-plugin-stealth')
 const { courtNameById, courtIdByName } = require('./utils/seedsjudge')
-// const { csu } = require('./utils/testcases')
-// const getFreeProxies = require('get-free-https-proxy')
 const { config } = require('./config/mail')
 const { abstractSendMail } = require('./utils/mail')
 const { GraphQLUpload } = require('graphql-upload')
 
-// const diff = require('deep-diff').diff
-// const observableDiff = require('deep-diff').observableDiff
-// const applyChange = require('deep-diff').applyChange
-const { td } = require('./utils/scrapper')
+// ✅ IMPORTAR DESDE SCRAPPER.JS
+const { scrapRawData, scrapeAndUpdateCase } = require('./utils/scrapper')
 const moment = require('moment')
 const { DateTime } = require('luxon')
 
@@ -28,7 +19,6 @@ const plugins = require('./utils/plugins')
 const {
   addNewCause
 } = require('./workers/mail-sender/templates/add-new-cause.tpl')
-const { scrapeUnified } = require('./utils/causes/unified-query/scrape-unified')
 
 puppeteer.use(StealthPlugin())
 
@@ -41,7 +31,6 @@ function sortByDate(list) {
   list.sort((a, b) => {
     const keyA = a.day
     const keyB = b.day
-    // Compare the 2 priorities
     if (keyA < keyB) return 1
     if (keyA > keyB) return -1
     return 0
@@ -53,33 +42,12 @@ async function gu(um, cu) {
   if (!cu) {
     return null
   }
-
   const user = await um.findOne({ email: cu.email }, { password: false })
   return user
 }
 
-async function scrapRawData({ typeSearch, rol, tribune }) {
-  console.log('Capture the details one civil cause initialized...')
-  try {
-    let scrapCause
-    if (typeSearch === 'RESERVADA') {
-      scrapCause = await cause.getCivilCauseDetail(rol)
-    } else {
-      scrapCause = await (0, scrapeUnified)({
-        court: '0',
-        tribune,
-        rol
-      })
-    }
-    return scrapCause
-  } catch (error) {
-    console.error(error)
-  }
-}
-
 module.exports = {
   Query: {
-    // Users
     getCurrentUser: async (_, args, { Users, currentUser }) =>
       gu(Users, currentUser),
     getUsers: async (_, args, { Users }) => {
@@ -92,8 +60,6 @@ module.exports = {
       const usersResult = await Users.find({}, { password: false }).sort({
         createdAt: 1
       })
-      // console.log('usersResult')
-      // console.log(usersResult)
       const usersInvResult = await InvolvedUsersCase.findOne(
         {
           case: caseId
@@ -115,7 +81,6 @@ module.exports = {
       const user = await Users.findOne({ _id: userId }, { password: false })
       return user
     },
-    // Case
     getCases: async (_, args, { Cases }) => {
       const cc = await Cases.find(
         {},
@@ -150,21 +115,15 @@ module.exports = {
         select: '_id name email avatar'
       })
       const user = await gu(Users, currentUser)
-      // const user = await Users.findOne({ email: currentUser.email }, { _id: 1 })
       const viewedUpdated = {
         caseBankruptcy: id,
         viewedBy: user._id
       }
-
       await CasesViewed.findOneAndUpdate(
         { ...viewedUpdated },
         { $set: { ...viewedUpdated } },
         { new: true, upsert: true }
       )
-      // cc.createAt = cc._id.getTimestamp()
-      // console.log('viewedUpdated')
-      // console.log('cc')
-      // console.log(cc)
       return cc
     },
     getUserUnreadMessages: async (_, { userId }, { Messages }) => {
@@ -172,8 +131,6 @@ module.exports = {
         to: userId,
         status: false
       }).populate('to', '-password')
-      // console.log('getUserUnreadMessages')
-      // console.log(userMessages)
       return userMessages
     },
     getUserMessages: async (_, { userId }, { Messages }) => {
@@ -181,16 +138,10 @@ module.exports = {
         'to',
         '-password'
       )
-      // console.log('getUserMessages')
-      // console.log(userMessages)
       return userMessages
     },
-    // Search
-    // searchMovements: async (_, { searchTerm, caseId }, { Cases }) => {
     searchMovements: async (_, { input: { searchTerm } }, { Cases }) => {
-      // if (searchTerm) {
       const searchResult = await Cases.find(
-        // mongoose.Types.ObjectId(caseId)
         { $text: { $search: `${searchTerm}` } },
         { score: { $meta: 'textScore' } }
       )
@@ -201,19 +152,8 @@ module.exports = {
       console.log('searchResult')
       console.log(searchResult)
       return searchResult
-      // }
     },
     searchUsers: async (_, { searchTerm }, { Users }) => {
-      // if (searchTerm) {
-      //     const searchResult = await Users.find(
-      //         { $text: { $search: searchTerm } },
-      //         { score: { $meta: 'textScore' } }
-      //     ).sort({
-      //         score: { $meta: 'textScore' },
-      //         joinDate: 'desc'
-      //     })
-      //     return searchResult
-      // }
       if (searchTerm) {
         const searchResult = await Users.find(
           {
@@ -285,8 +225,6 @@ module.exports = {
           }
         }
       ])
-      // const totalUsers = Users.countDocuments()
-      // return { checksws, totalChecks, totalUsers}
       return checksws
     },
     getChecksOfUsers: async (_, { id, month, year }, { Checks }) => {
@@ -380,13 +318,10 @@ module.exports = {
           year: i._id.year
         })
       })
-      // console.log(checksws)
-      const sanChecks = sortByDate(checksws)
       return checksws
     },
     getCasesInfo: async (_, args, { CasesViewed, Users, currentUser }) => {
       const user = await gu(Users, currentUser)
-      // const user = await Users.findOne({ email: currentUser.email }, { id: 1 })
       const docsColection = await CasesViewed.aggregate([
         {
           $project: {
@@ -402,7 +337,6 @@ module.exports = {
             as: 'caseBankruptcyFull'
           }
         },
-
         {
           $match: { viewedBy: new mongoose.Types.ObjectId(user._id) }
         },
@@ -417,8 +351,6 @@ module.exports = {
           $group: { _id: '$caseBankruptcyFull.status', count: { $sum: 1 } }
         }
       ])
-      // console.log('user ', user)
-      // console.log('docsColection ', docsColection)
       let rawArr = {}
       docsColection.forEach(e => (rawArr[e._id] = e.count))
       return rawArr
@@ -456,20 +388,12 @@ module.exports = {
           createdBy: e.createdBy
         }
       })
-      // console.log(activities)
       return activities
     },
     getActivitiesByDate: async (_, { days }, { Activity }) => {
       const dd = Date.now()
       const gte = DateTime.fromMillis(dd).toISODate()
       const lte = DateTime.fromMillis(dd).plus({ days }).toISODate()
-      // const gte = DateTime.fromMillis(dd).minus({ days }).toISODate()
-      // const lte = DateTime.fromMillis(dd).toISODate()
-
-      // console.log(days)
-      // console.log(lte)
-      // console.log(gte)
-
       const cDocsUpdate = await Activity.find(
         {
           $and: [
@@ -487,7 +411,6 @@ module.exports = {
         { path: 'caseId', select: '_id cover rol court' },
         { path: 'createdBy', select: '_id name' }
       ])
-
       const activities = cDocsUpdate.map(e => {
         const startTime = moment(new Date(Number(e.startTime)))
         const endTime = moment(new Date(Number(e.endTime)))
@@ -501,27 +424,11 @@ module.exports = {
           createdBy: e.createdBy
         }
       })
-      // console.log(activities.length)
       return activities
     }
   },
   Upload: GraphQLUpload,
   Mutation: {
-    // uploadFile: async (_, { file }, { File }) => {
-    //   // Creates an images folder in the root directory
-    //   mkdir('images', { recursive: true }, err => {
-    //     if (err) throw err
-    //   })
-    //   // Process upload
-    //   const upload = await processUpload(file)
-    //   // await File.create(upload);
-    //   console.log(upload)
-    //   return {
-    //     messageBody: 'El archivo fue cargado de manera satisfactoria',
-    //     messageType: 'is-primary',
-    //     messageImage: null
-    //   }
-    // },
     updateUser: async (
       _,
       { userId, name, username, service, card, role },
@@ -570,7 +477,6 @@ module.exports = {
       const checkUser = await Users.findById({ _id: userID })
       const isMatch = await checkUser.comparePassword(currentPassword)
       if (!isMatch) {
-        // throw new Error({ messageBody: 'La contraseña anterior es incorrecta', messageType: 'success', messageImage: null })
         throw new Error('La contraseña anterior es incorrecta')
       }
       await Users.findOneAndUpdate(
@@ -638,12 +544,12 @@ module.exports = {
           messageImage: null
         }
       } catch (error) {
-        console.log(er)
+        console.log(error)
       }
     },
     deleteActivity: async (_, { id }, { Activity }) => {
       try {
-        const asd = await Activity.findOneAndRemove({
+        await Activity.findOneAndRemove({
           _id: id
         })
         return {
@@ -652,7 +558,7 @@ module.exports = {
           messageImage: null
         }
       } catch (error) {
-        console.log(er)
+        console.log(error)
       }
     },
     addPostMessage: async (_, { messageBody, userId, postId }, { Posts }) => {
@@ -670,21 +576,6 @@ module.exports = {
       })
       return post.message[0]
     },
-    // addInvolvedUsers: async (_, { caseId }, { Cases, Users }) => {
-    //   const newMessage = {
-    //     messageBody,
-    //     messageUser: userId
-    //   }
-    //   const post = await Posts.findOneAndUpdate(
-    //     { _id: postId },
-    //     { $push: { message: { $each: [newMessage], $position: 0 } } },
-    //     { new: true }
-    //   ).populate({
-    //     path: 'message.messageUser',
-    //     model: 'Users'
-    //   })
-    //   return post.message[0]
-    // },
     signinUsers: async (_, { email, password }, { Users }) => {
       const user = await Users.findOne({ email })
       if (!user) {
@@ -718,121 +609,149 @@ module.exports = {
       { Users, Cases, InvolvedUsersCase, CasesReviews }
     ) => {
       try {
-        const cc = await Cases.findOne({
-          rol: `C-${input.rol}-${input.era}`,
-          court: courtNameById(input.court)
-        })
-        if (cc) {
+        // ========== CONSTRUCCIÓN DEL ROL COMPLETO ==========
+        const { 
+          libroTipo, 
+          rolNumber, 
+          year, 
+          competencia, 
+          corteId, 
+          tribunalId,
+          typeSearch = 'UNIFICADA',
+          createdBy,
+          involved = []
+        } = input;
+        
+        // Construir el rol completo
+        const fullRol = `${libroTipo}-${rolNumber}-${year}`;
+        
+        // ✅ OBTENER EL NOMBRE DEL TRIBUNAL DESDE EL SEED
+        const tribunalName = courtNameById(tribunalId);
+        
+        console.log('📋 Creando nueva causa:', {
+          fullRol,
+          competencia,
+          corteId,
+          tribunalId,
+          tribunalName
+        });
+        
+        // Verificar si la causa ya existe
+        const existingCase = await Cases.findOne({
+          rol: fullRol,
+          court: tribunalName
+        });
+        
+        if (existingCase) {
           return {
             messageBody: 'La causa existe en el sistema',
             messageType: 'is-danger',
             messageImage: null
+          };
+        }
+        
+        // ========== EJECUTAR SCRAPER ==========
+        let scrapData = null;
+        try {
+          console.log('🕷️ Ejecutando scraper para obtener datos...');
+          scrapData = await scrapRawData({
+            typeSearch,
+            rol: fullRol,
+            tribune: tribunalId,
+            competencia: competencia,
+            corteId: corteId
+          });
+          console.log('✅ Scraper completado exitosamente');
+        } catch (scraperError) {
+          console.error('⚠️ Error en scraper (continuando con causa vacía):', scraperError.message);
+        }
+        
+        // ========== PREPARAR DATOS PARA GUARDAR ==========
+        const caseData = {
+          ...(scrapData || {}),
+          rol: fullRol,
+          court: tribunalName,
+          createdBy: new mongoose.Types.ObjectId(createdBy),
+          typeSearch: typeSearch,
+          status: 'ACTIVE',
+          
+          // Parámetros de búsqueda
+          searchParams: {
+            competencia: competencia,
+            corteId: corteId,
+            tribunalId: tribunalId,
+            libroTipo: libroTipo,
+            rolNumber: rolNumber,
+            year: year,
+            fullRol: fullRol
+          },
+          
+          // Estado del scraping
+          scrapedData: {
+            lastScrapedAt: scrapData ? new Date() : null,
+            lastScrapedBy: 'manual',
+            status: scrapData ? 'success' : 'pending',
+            errorMessage: scrapData ? null : 'Scraping inicial falló, pendiente de reintento',
+            retryCount: 0,
+            data: scrapData || null
           }
-        }
-
-        const cParams = {
-          typeSearch: input.typeSearch,
-          rol: `C-${input.rol}-${input.era}`,
-          tribune: input.court
-        }
-
-        console.log('cParams ', cParams)
-
-        // const scrapData = await scrapRawData()
-        const scrapData = await scrapRawData(cParams)
-        scrapData.createdBy = new mongoose.Types.ObjectId(input.createdBy)
-        // console.log('input.createdBy')
-        // console.log(input.createdBy)
-        const ccr = await new Cases({
-          ...scrapData
-        }).save()
-
-        const userInvolved = input.involved.map(a => {
-          return {
+        };
+        
+        // Guardar la causa
+        const newCase = await new Cases(caseData).save();
+        console.log(`✅ Causa creada con ID: ${newCase._id}`);
+        
+        // ========== AGREGAR USUARIOS INVOLUCRADOS ==========
+        if (involved && involved.length > 0) {
+          const userInvolved = involved.map(a => ({
             status: 'COOPERADOR',
             notification: false,
-            userIn: a._id
-          }
-        })
-
-        // console.log('userInvolved')
-        // console.log(userInvolved)
-
-        const casesInvolved = {
-          case: ccr._id,
-          involved: userInvolved
+            userIn: new mongoose.Types.ObjectId(a._id)
+          }));
+          
+          await new InvolvedUsersCase({
+            case: newCase._id,
+            involved: userInvolved
+          }).save();
         }
-
-        // console.log('casesInvolved')
-        // console.log(casesInvolved)
-
-        // const involved = await new InvolvedUsersCase({
-        await new InvolvedUsersCase({
-          ...casesInvolved
-        }).save()
-
+        
+        // Crear registro de revisión
         await CasesReviews.findOneAndUpdate(
-          { case: ccr._id },
-          { $set: { case: ccr._id } },
+          { case: newCase._id },
+          { $set: { case: newCase._id } },
           { upsert: true }
-        )
-
-        // console.log('involved')
-        // console.log(involved)
-        // Para los permisos de usuarios denteo de la causa
-        // const cs = await CasesSettings.findOne({ _id: ccr._id })
-        // const settings = {
-        //   caseBankruptcy: ccr._id,
-        //   allowed: [
-        //     {
-        //       userAllow: input.createdBy,
-        //       permisions: 0
-        //     }
-        //   ]
-        // }
-
-        // if (!cs)
-        //   await new CasesSettings({
-        //     ...settings
-        //   }).save()
-
-        const users = await Users.find({}, 'email name')
-        for (let eIndex = 0; eIndex < users.length; eIndex++) {
-          let eCause = users[eIndex]._doc ? users[eIndex]._doc : users[eIndex]
-          if (eCause._id !== ccr.createdBy) {
-            // console.log('eCause ', eCause)
-            // console.log('ccr ', ccr)
-            let eCcr = ccr._doc ? ccr._doc : ccr
-            csa = {
-              name: eCause.name,
-              cause: { ...eCcr }
-            }
-
+        );
+        
+        // ========== ENVIAR NOTIFICACIONES POR EMAIL ==========
+        const users = await Users.find({}, 'email name');
+        for (const user of users) {
+          if (user._id.toString() !== newCase.createdBy.toString()) {
             const mailOptions = {
-              from: config.from, // sender address
-              to: eCause.email,
+              from: config.from,
+              to: user.email,
               subject: 'Nueva Causa Agregada',
-              html: await addNewCause(csa)
-            }
-
-            abstractSendMail(mailOptions)
-            // console.log('mail send to ', eCause.email)
+              html: await addNewCause({
+                name: user.name,
+                cause: newCase
+              })
+            };
+            abstractSendMail(mailOptions);
           }
         }
-
+        
         return {
-          messageBody: 'La causa se importo de manera satifastoria',
+          messageBody: 'La causa se importó de manera satisfactoria',
           messageType: 'is-primary',
           messageImage: null
-        }
+        };
+        
       } catch (error) {
-        console.log(error)
+        console.error('❌ Error en addCase:', error);
         return {
-          messageBody:
-            'El servidor no esta respondiendo bien, intente en unos minutos',
+          messageBody: 'El servidor no está respondiendo bien, intente en unos minutos',
           messageType: 'is-danger',
           messageImage: null
-        }
+        };
       }
     },
     updateCase: async (_, { input }, { Cases, CasesUpdated, CasesReviews }) => {
@@ -843,17 +762,10 @@ module.exports = {
           tribune: input.court
         }
 
-        // const scrapData = await scrapRawData()
         const scrapData = await scrapRawData(cParams)
-        // scrapData.createdBy = new mongoose.Types.ObjectId(input.createdBy)
-        // console.log('input.createdBy')
-        // console.log(input.createdBy)
-        // const ccr = await new CasesUpdated({
         await new CasesUpdated({
           ...scrapData
         }).save()
-
-        // console.log(scrapData)
 
         const cc = await Cases.findOne({
           rol: input.rol,
@@ -865,9 +777,6 @@ module.exports = {
           court: input.court
         })
 
-        // let arrMo = []
-        // let arrLi = []
-
         await CasesReviews.findOneAndUpdate(
           { case: cc._id },
           { $set: { case: cc._id } },
@@ -878,17 +787,6 @@ module.exports = {
           cc.movementsHistory.length < ccu.movementsHistory.length ||
           cc.litigants.length < ccu.litigants.length
         ) {
-          // ccu.movementsHistory.forEach((a, midx) => {
-          //   if (midx >= cc.movementsHistory.length) {
-          //     arrMo.push(a)
-          //   }
-          // })
-          // ccu.litigants.forEach((a, lidx) => {
-          //   if (lidx >= cc.litigants.length) {
-          //     arrLi.push(a)
-          //   }
-          // })
-
           const upArr = []
           Object.entries(ccu._doc).forEach(([key, val]) => {
             if (key !== '_id' && key !== '__v') {
@@ -896,10 +794,6 @@ module.exports = {
             }
           })
           const ccuo = Object.fromEntries(upArr)
-          // console.log('upArr')
-          // console.log(upArr)
-          // console.log('object2')
-          // console.log(object2)
 
           const upCaRe = await Cases.findOneAndUpdate(
             { rol: input.rol, court: input.court },
@@ -925,15 +819,6 @@ module.exports = {
           }
         }
 
-        // console.log('ccr')
-        // console.log(ccr)
-        // console.log('arr')
-        // console.log(arrMo)
-        // console.log(arrMo.length)
-        // console.log('arrLi')
-        // console.log(arrLi)
-        // console.log(arrLi.length)
-
         return {
           messageBody: 'La causa se actualizo de manera satifastoria',
           messageType: 'is-primary',
@@ -942,8 +827,7 @@ module.exports = {
       } catch (error) {
         console.log(error)
         return {
-          messageBody:
-            'El servidor no esta respondiendo bien, intente en unos minutos',
+          messageBody: 'El servidor no esta respondiendo bien, intente en unos minutos',
           messageType: 'is-danger',
           messageImage: null
         }
@@ -951,19 +835,19 @@ module.exports = {
     },
     addDdor: async (_, args, { Cases }) => {
       const cc = await Cases.find({})
-      // console.log(cc)
       let conta = 0
       cc.forEach(async e => {
         const dbt = e.litigants.find(
           i => i.participant === 'DDOR.' || i.participant === 'DDO.'
         )
-        const updbt = await Cases.findOneAndUpdate(
-          { _id: e._id },
-          { $set: { debtor: dbt.name } },
-          { new: true }
-        )
-        conta++
-        // console.log(conta)
+        if (dbt) {
+          await Cases.findOneAndUpdate(
+            { _id: e._id },
+            { $set: { debtor: dbt.name } },
+            { new: true }
+          )
+          conta++
+        }
       })
       return {
         messageBody: `Se encotraron y actualizaron ${conta} registros`,
@@ -982,7 +866,7 @@ module.exports = {
           { $set: { involved: input.invUsers } },
           { new: true, upsert: true }
         )
-        // console.log(updtInvUsers)
+        
         input.invUsers.forEach(async e => {
           const userCase = await Cases.findById(input.caseId, '_id createdBy')
           const userToSend = await Users.findById(
@@ -993,7 +877,6 @@ module.exports = {
             userCase.createdBy,
             'name'
           )
-          // console.log(userToSend)
           const po = updtInvUsers.involved.filter(
             a => a.userIn.toString() === e.userIn._id.toString()
           )
@@ -1013,102 +896,6 @@ module.exports = {
           await new Messages({
             ...message
           }).save()
-          // console.log(po)
-          // console.log(e)
-
-          // let mailOptions = {
-          //   from: config.from, // sender address
-          //   to: 'edar.blanco@gmail.com',
-          //   subject: 'E-legal Cases Info',
-          //   html: `<html>
-          //         <head>
-          //             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-          //             <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700,800" rel="stylesheet">
-          //             <link href="https://fonts.googleapis.com/css?family=Poppins:400,700,900" rel="stylesheet">
-          //             <title>{{subject}}</title>
-          //             <style media="screen">
-          //               *{
-          //                 box-sizing: border-box;
-          //                 margin: 0;
-          //                 padding: 0;
-          //               }
-          //               html, body{
-          //                 font-family: 'Open Sans', sans-serif;
-          //                 font-size: 1em;
-          //                 color: #4a4a4a;
-          //               }
-          //               .templates{
-          //                 width: 100%;
-          //                 height: 100%;
-          //                 padding: 100px 0;
-          //                 background: #fafafa;
-          //               }
-          //               .templates .templates-content{
-          //                 width: 900px;
-          //                 margin: 0 auto;
-          //                 box-sizing: border-box;
-          //                 background: white;
-          //                 box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-          //                 border-radius: 5px;
-          //                 overflow: hidden;
-          //               }
-          //               .templates .templates-content .templates-header{
-          //                 display: flex;
-          //                 justify-content: space-between;
-          //                 align-items: center;
-          //                 font-family: 'Poppins', sans-serif;
-          //                 background: -webkit-linear-gradient(#0083AE, #1970b9);
-          //                 padding: 30px;
-          //                 color: white;
-          //               }
-          //               .templates .templates-content .templates-header h2{
-          //                 font-family: 'Poppins', sans-serif;
-          //               }
-          //               .templates .templates-content .templates-header span{
-          //                 font-weight: bold;
-          //               }
-          //               .templates .templates-content .templates-body{
-          //                 padding: 30px;
-          //               }
-          //               .templates .templates-content .templates-body div{
-          //                 font-size: 1.2em;
-          //                 display: flex;
-          //                 margin-bottom: 25px;
-          //               }
-          //               .templates .templates-content .templates-body div p{
-          //                 font-weight: bold;
-          //                 margin-right: 10px;
-          //               }
-          //               .templates .templates-content .templates-body div span{
-          //                 text-align: justify;
-          //               }
-          //             </style>
-          //         </head>
-          //           <body>
-          //             <div class="templates">
-          //               <div class="templates-content">
-          //                 <div class="templates-header">
-          //                   <h2>E-legal</h2>
-          //                   <!-- <span>March 9, 2018 - 10:52 PM</span> -->
-          //                 </div>
-          //                 <div class="templates-body">
-          //                     <div>
-          //                       <p> Estimado: ${pps.name}</p>
-          //                     </div>
-          //                     <div>
-          //                       <p>¡Le queremos informar que ha sido añadido a una nueva causa!</p><br />
-          //                       <span>Le enviamos esta notificación para hacerle saber que el usuario <b>${userPropietary.name}</b> propietario de la causa <b>${updtInvUsers.rol}</b> del <b>${updtInvUsers.court}</b> lo agrego como <b>${pps.status}</b> a la misma.</span>
-          //                     </div>
-          //                 </div>
-          //               </div>
-          //             </div>
-          //           </body>
-          //         </html>
-          //       `
-          // }
-
-          // abstractSendMail(mailOptions)
-          // console.log(pps)
         })
         return {
           messageBody: `Se actualizaron los usuarios involucrados en la causa`,
@@ -1117,8 +904,7 @@ module.exports = {
         }
       } catch (error) {
         return {
-          messageBody:
-            'El servidor no esta respondiendo bien, intente en unos minutos',
+          messageBody: 'El servidor no esta respondiendo bien, intente en unos minutos',
           messageType: 'is-danger',
           messageImage: null
         }
@@ -1131,7 +917,6 @@ module.exports = {
           { $set: { visibility: visibility } },
           { new: true, upsert: true }
         )
-
         return {
           messageBody: `Se actualizaron los permisos de la causa`,
           messageType: 'is-success',
@@ -1139,8 +924,7 @@ module.exports = {
         }
       } catch (error) {
         return {
-          messageBody:
-            'El servidor no esta respondiendo bien, intente en unos minutos',
+          messageBody: 'El servidor no esta respondiendo bien, intente en unos minutos',
           messageType: 'is-danger',
           messageImage: null
         }
@@ -1154,19 +938,16 @@ module.exports = {
           { $set: { name } },
           { new: true }
         )
-
         return {
           priority: priority,
           message: {
             messageBody: `Se actualizó la prioridad`,
             messageType: 'is-success',
-            messageImage: null
-          }
+            messageImage: null          }
         }
       } catch (error) {
         return {
-          messageBody:
-            'El servidor no esta respondiendo bien, intente en unos minutos',
+          messageBody: 'El servidor no esta respondiendo bien, intente en unos minutos',
           messageType: 'is-danger',
           messageImage: null
         }
@@ -1181,16 +962,11 @@ module.exports = {
         let activity = await new Activity({
           ...input
         }).save()
-
         activity = await activity.populate([
           { path: 'priority' },
           { path: 'caseId', select: '_id cover rol court' },
           { path: 'createdBy', select: '_id name' }
         ])
-
-        // console.log('activity save')
-        // console.log(activity)
-
         return {
           activity: activity,
           message: {
@@ -1203,16 +979,13 @@ module.exports = {
         console.log('error')
         console.log(error)
         return {
-          messageBody:
-            'El servidor no esta respondiendo bien, intente en unos minutos',
+          messageBody: 'El servidor no esta respondiendo bien, intente en unos minutos',
           messageType: 'is-danger',
           messageImage: null
         }
       }
     },
     updateActivity: async (_, { input }, { Activity }) => {
-      // console.log('input')
-      // console.log(input)
       try {
         const { _id } = input
         const upInput = {
@@ -1227,16 +1000,11 @@ module.exports = {
           { $set: { ...upInput } },
           { new: true }
         )
-
-        activity = await upActivity.populate([
+        let activity = await upActivity.populate([
           { path: 'priority' },
           { path: 'caseId', select: '_id cover rol court' },
           { path: 'createdBy', select: '_id name' }
         ])
-
-        // console.log('activity update')
-        // console.log(activity)
-
         return {
           activity: activity,
           message: {
@@ -1251,8 +1019,7 @@ module.exports = {
         return {
           activity: null,
           message: {
-            messageBody:
-              'El servidor no esta respondiendo bien, intente en unos minutos',
+            messageBody: 'El servidor no esta respondiendo bien, intente en unos minutos',
             messageType: 'is-danger',
             messageImage: null
           }
@@ -1263,7 +1030,6 @@ module.exports = {
       try {
         const fileSystemService = new plugins.FileSystemService()
         const signedUrl = await fileSystemService.getSignedS3Url(input)
-
         return {
           url: signedUrl,
           message: null
@@ -1274,8 +1040,7 @@ module.exports = {
         return {
           url: null,
           message: {
-            messageBody:
-              'El servidor no esta respondiendo bien, intente en unos minutos',
+            messageBody: 'El servidor no esta respondiendo bien, intente en unos minutos',
             messageType: 'is-danger',
             messageImage: null
           }
