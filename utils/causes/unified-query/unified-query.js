@@ -175,7 +175,7 @@ class UnifiedQuery {
     async extractDocumentLinks() {
         try {
             // Esperar a que el modal esté completamente cargado
-            await this.scrape.waitForSelector("#modalDetalleCivil", 20000, true);
+            await this.scrape.waitForSelector("#modalDetalleCivil", 6000, true);
             
             const documentLinks = await this.page.evaluate(() => {
                 const links = [];
@@ -238,8 +238,8 @@ class UnifiedQuery {
                 // Ejecutar el script que abre el modal
                 await this.scrape.execute(anchor.script);
                 
-                // ========== NUEVO: Esperar a que el modal cargue completamente ==========
-                await this.scrape.waitForSelector("#modalDetalleCivil", 20000, true);
+                // ========== Esperar a que el modal cargue completamente ==========
+                await this.scrape.waitForSelector("#modalDetalleCivil", 6000, true);
                 
                 // Extraer datos principales de la causa
                 const { book, ...causeDetails } = await this.extractCauseDetails();

@@ -2,13 +2,43 @@
  * SCRAPPER UNIFICADO
  * 
  * Este archivo es el punto de entrada único para el scraping de causas.
- * Utiliza la clase UnifiedQuery que ya está probada y funcionando.
- * 
- * Ruta: causas-backend/utils/scrapper.js
+ * Utiliza la clase UnifiedQuery.
  */
 
 const { ScrapService } = require('./plugins/puppeteer.plugin');
 const { UnifiedQuery } = require('./causes/unified-query/unified-query');
+
+// Instancia única del navegador (Singleton)
+let globalScrapeInstance = null;
+let isInitializing = false;
+
+/**
+ * Obtiene o crea una instancia única del ScrapService
+ * @returns {Promise<ScrapService>}
+ */
+async function getScrapeInstance() {
+    // Si ya existe una instancia, la reutilizamos
+    if (globalScrapeInstance) {
+        return globalScrapeInstance;
+    }
+    
+    // Si está inicializando, esperamos
+    if (isInitializing) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return getScrapeInstance();
+    }
+    
+    isInitializing = true;
+    try {
+        console.log('📍 Creando instancia única del navegador...');
+        const scrape = new ScrapService();
+        await scrape.init();  // Solo una vez
+        globalScrapeInstance = scrape;
+        return globalScrapeInstance;
+    } finally {
+        isInitializing = false;
+    }
+}
 
 /**
  * Función principal de scraping
@@ -20,27 +50,28 @@ const { UnifiedQuery } = require('./causes/unified-query/unified-query');
  * @param {string} params.corteId - ID de la corte (ej: "90")
  * @returns {Promise<Object>} - Datos extraídos de la causa
  */
-async function scrapRawData({ typeSearch, rol, tribune, competencia, corteId }) {
+
+async function scrapRawData({ typeSearch, rol, tribune, competencia, corteId }, existingScrape = null) {
   console.log('='.repeat(60));
   console.log('INICIANDO SCRAPER UNIFICADO');
   console.log('='.repeat(60));
   console.log('Parámetros recibidos:');
-  console.log(`  - typeSearch: ${typeSearch}`);
   console.log(`  - rol: ${rol}`);
   console.log(`  - tribune (ID): ${tribune}`);
   console.log(`  - competencia: ${competencia}`);
   console.log(`  - corteId: ${corteId}`);
   console.log('='.repeat(60));
 
-  const scrape = new ScrapService();
-  const storage = null; // Para scraping no necesitamos S3
+  // Usar instancia existente o crear una nueva (solo una vez)
+  const scrape = existingScrape || await getScrapeInstance();
+  const storage = null;
 
   try {
     // Inicializar navegador y navegar
-    console.log('📍 Inicializando navegador...');
-    await scrape.init();
+    //console.log('📍 Inicializando navegador...');
+    //await scrape.init();
     
-    // Crear instancia de UnifiedQuery
+    // Crear instancia de UnifiedQuery xq ya esta iniciado
     const unifiedQuery = new UnifiedQuery(scrape, storage);
     
     // Configurar filtros para la búsqueda
@@ -73,7 +104,7 @@ async function scrapRawData({ typeSearch, rol, tribune, competencia, corteId }) 
     console.log(`   - Enlaces: ${result.documentLinks?.length || 0}`);
     
     // Cerrar navegador
-    await scrape.close();
+    //await scrape.close();
     
     return result;
     
@@ -89,6 +120,17 @@ async function scrapRawData({ typeSearch, rol, tribune, competencia, corteId }) 
     }
     
     throw error;
+  }
+}
+
+/**
+ * Función para cerrar el navegador (llamar al apagar el servidor)
+ */
+async function closeScrapeInstance() {
+  if (globalScrapeInstance) {
+      console.log('📍 Cerrando instancia del navegador...');
+      await globalScrapeInstance.close();
+      globalScrapeInstance = null;
   }
 }
 
@@ -110,14 +152,14 @@ async function scrapeAndUpdateCase(caseModel, caseId, searchParams, fullRol) {
       'scrapedData.lastScrapedAt': new Date()
     });
     
-    // Ejecutar scraper
+    // Ejecutar scraper y reutilizar instancia
     const scrapResult = await scrapRawData({
       typeSearch: 'UNIFICADA',
       rol: fullRol,
       tribune: searchParams.tribunalId,
       competencia: searchParams.competencia,
       corteId: searchParams.corteId
-    });
+    }, globalScrapeInstance);
     
     // Preparar datos para actualizar
     const updateData = {
@@ -164,5 +206,7 @@ async function scrapeAndUpdateCase(caseModel, caseId, searchParams, fullRol) {
 
 module.exports = {
   scrapRawData,
-  scrapeAndUpdateCase
+  scrapeAndUpdateCase,
+  closeScrapeInstance,
+  getScrapeInstance,
 };

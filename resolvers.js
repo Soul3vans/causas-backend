@@ -9,8 +9,8 @@ const { config } = require('./config/mail')
 const { abstractSendMail } = require('./utils/mail')
 const { GraphQLUpload } = require('graphql-upload')
 
-// ✅ IMPORTAR DESDE SCRAPPER.JS
-const { scrapRawData, scrapeAndUpdateCase } = require('./utils/scrapper')
+// ✅ IMPORTAR DESDE SCRAPPER.JS (incluyendo getScrapeInstance)
+const { scrapRawData, scrapeAndUpdateCase, closeScrapeInstance, getScrapeInstance } = require('./utils/scrapper')
 const moment = require('moment')
 const { DateTime } = require('luxon')
 
@@ -21,6 +21,20 @@ const {
 } = require('./workers/mail-sender/templates/add-new-cause.tpl')
 
 puppeteer.use(StealthPlugin())
+
+let globalScrape = null;
+
+/**
+ * Inicializa la instancia global del navegador (se llama una sola vez al iniciar el servidor)
+ * @returns {Promise<ScrapService>}
+ */
+async function initGlobalScrape() {
+    if (!globalScrape) {
+        console.log('🚀 Inicializando navegador global (solo una vez)...');
+        globalScrape = await getScrapeInstance();
+    }
+    return globalScrape;
+}
 
 const createToken = (user, secret, expiresIn) => {
   const { email, rol, name } = user
@@ -609,7 +623,7 @@ module.exports = {
       { Users, Cases, InvolvedUsersCase, CasesReviews }
     ) => {
       try {
-        // ========== CONSTRUCCIÓN DEL ROL COMPLETO ==========
+        
         const { 
           libroTipo, 
           rolNumber, 
@@ -625,7 +639,7 @@ module.exports = {
         // Construir el rol completo
         const fullRol = `${libroTipo}-${rolNumber}-${year}`;
         
-        // ✅ OBTENER EL NOMBRE DEL TRIBUNAL DESDE EL SEED
+        // Obtener el nombre del tribunal desde el seed
         const tribunalName = courtNameById(tribunalId);
         
         console.log('📋 Creando nueva causa:', {
@@ -650,6 +664,9 @@ module.exports = {
           };
         }
         
+        // ✅ OBTENER LA INSTANCIA GLOBAL DEL NAVEGADOR (solo una vez)
+        const scrapeInstance = await initGlobalScrape();
+        
         // ========== EJECUTAR SCRAPER ==========
         let scrapData = null;
         try {
@@ -660,7 +677,7 @@ module.exports = {
             tribune: tribunalId,
             competencia: competencia,
             corteId: corteId
-          });
+          }, scrapeInstance);  // ✅ PASAR LA INSTANCIA GLOBAL
           console.log('✅ Scraper completado exitosamente');
         } catch (scraperError) {
           console.error('⚠️ Error en scraper (continuando con causa vacía):', scraperError.message);
@@ -756,13 +773,17 @@ module.exports = {
     },
     updateCase: async (_, { input }, { Cases, CasesUpdated, CasesReviews }) => {
       try {
+        // ✅ OBTENER LA INSTANCIA GLOBAL DEL NAVEGADOR
+        const scrapeInstance = await initGlobalScrape();
+        
         const cParams = {
           typeSearch: input.typeSearch,
           rol: input.rol,
           tribune: input.court
         }
 
-        const scrapData = await scrapRawData(cParams)
+        // ✅ PASAR LA INSTANCIA GLOBAL
+        const scrapData = await scrapRawData(cParams, scrapeInstance);
         await new CasesUpdated({
           ...scrapData
         }).save()
@@ -1049,3 +1070,20 @@ module.exports = {
     }
   }
 }
+
+// ========== INICIALIZACIÓN DEL NAVEGADOR GLOBAL ==========
+// Iniciar el navegador cuando el servidor arranca
+initGlobalScrape().catch(console.error);
+
+// Cerrar el navegador cuando el proceso termina
+process.on('SIGINT', async () => {
+    console.log('🛑 Cerrando navegador...');
+    await closeScrapeInstance();
+    process.exit();
+});
+
+process.on('SIGTERM', async () => {
+    console.log('🛑 Cerrando navegador...');
+    await closeScrapeInstance();
+    process.exit();
+});

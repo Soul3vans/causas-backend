@@ -72,7 +72,7 @@ class HistoryScrape {
             guid: item.guid,
         })));
         if (this.folders.length === 0) {
-            console.log("Not contains folders in", this.cause);
+            console.log("No contiene carpetas", this.cause);
             return [];
         }
         await this.folderExtract();
@@ -81,14 +81,14 @@ class HistoryScrape {
         return persist.makeFilenames();
     }
     async folderExtract() {
-        console.log("Folders", this.folders.length);
+        console.log("Carpetas", this.folders.length);
         for (const folder of this.folders) {
             this.anexs.push(...(await this.rawDataFolder(this.page, folder)));
         }
     }
     async rawDataFolder(page, folder) {
         try {
-            console.log("Init evaluate folder in", folder.procedure, folder.descProcedure);
+            console.log("Inicializar evaluacion de carpeta en", folder.procedure, folder.descProcedure);
             await page.evaluate((script) => {
                 eval(script);
             }, folder.script);
@@ -115,7 +115,7 @@ class HistoryScrape {
                     };
                 });
             });
-            console.log("Finish evaluate folder in", folder.procedure, folder.descProcedure);
+            console.log("Finalizar evaluacion de carpeta en", folder.procedure, folder.descProcedure);
             console.table(result.map((item) => ({
                 reference: item.reference,
                 date: item.date,
