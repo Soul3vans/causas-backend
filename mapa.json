@@ -1,8 +1,8 @@
 {
   "projectName": "causas-concursales-server",
   "projectDescription": "Sistema de Gestión de Causas Concursales - Backend GraphQL con Express y MongoDB",
-  "version": "1.0.0",
-  "lastUpdated": "2026-05-31",
+  "version": "2.0.0",
+  "lastUpdated": "2026-06-04",
   
   "architecture": {
     "pattern": "GraphQL + Express",
@@ -52,7 +52,7 @@
   "directoryStructure": {
     "root": {
       "server.js": "Punto de entrada principal - Configuración de Apollo Server y Express",
-      "resolvers.js": "Todos los resolvers GraphQL (Queries y Mutations)",
+      "resolvers.js": "Todos los resolvers GraphQL (Queries y Mutations) - MODIFICADO: addCase actualizado para usar nuevos campos",
       "package.json": "Configuración del proyecto y dependencias",
       "apollo.config.js": "Configuración de Apollo Client/DevTools"
     },
@@ -72,7 +72,32 @@
     },
     "Cases": {
       "description": "Modelo de causas/procesos legales",
-      "purposes": ["Almacenar información de causas", "Historial de movimientos", "Datos de litigantes"]
+      "purposes": ["Almacenar información de causas", "Historial de movimientos", "Datos de litigantes"],
+      "newFields": {
+        "searchParams": {
+          "description": "Parámetros de búsqueda ingresados por el usuario",
+          "fields": {
+            "competencia": "ID de competencia (1:Corte Suprema, 2:Corte Apelaciones, 3:Civil, 4:Laboral, 5:Penal, 6:Cobranza, 7:Familia)",
+            "corteId": "ID numérico de la corte (ej: 90 para C.A. de Santiago)",
+            "tribunalId": "ID numérico del tribunal (ej: 273 para 15º Juzgado Civil)",
+            "libroTipo": "Libro/Tipo de la causa (C, V, E, A, F, I)",
+            "rolNumber": "Número de rol (ej: 21503)",
+            "year": "Año de la causa (ej: 2024)",
+            "fullRol": "Rol completo formateado (ej: C-21503-2024)"
+          }
+        },
+        "scrapedData": {
+          "description": "Datos controlados por el scraper - Estado y resultados de extracción",
+          "fields": {
+            "lastScrapedAt": "Fecha y hora de la última extracción",
+            "lastScrapedBy": "Origen de la extracción (scheduler/manual/auto)",
+            "status": "Estado del scraping (pending/scraping/success/error/not_found)",
+            "errorMessage": "Mensaje de error si el scraping falló",
+            "retryCount": "Número de reintentos realizados",
+            "data": "JSON completo con los datos extraídos (litigantes, movimientos, enlaces)"
+          }
+        }
+      }
     },
     "Activity": {
       "description": "Modelo de actividades/tareas",
@@ -177,7 +202,7 @@
         "deleteUser - Eliminar usuario"
       ],
       "cases": [
-        "addCase - Agregar nueva causa (con scraping)",
+        "addCase - Agregar nueva causa (con scraping automático) - MODIFICADO: Ahora recibe libroTipo, rolNumber, year, competencia, corteId, tribunalId",
         "updateCase - Actualizar causa existente",
         "deleteCase - Eliminar causa",
         "addDdor - Actualizar deudores en causas",
@@ -212,7 +237,8 @@
       },
       "dailyScraps": {
         "schedule": "00 04 * * * America/Santiago (4 AM diariamente)",
-        "purpose": "Actualización diaria de causas desde sistema de justicia"
+        "purpose": "Actualización diaria de causas desde sistema de justicia",
+        "integration": "Utiliza la función scrapeAndUpdateCase del scrapper unificado"
       },
       "casesUpdater": {
         "schedule": "30 06 * * * America/Santiago (6:30 AM diariamente)",
@@ -225,12 +251,50 @@
     "db": "MongoDatabase - Conexión a MongoDB",
     "plugins": "Plugins y configuraciones (FileSystemService para S3)",
     "mail": "Configuración de nodemailer para envío de emails",
-    "scrapper": "Web scraping de tribunales",
-    "causes": {
-      "getCivilCauseDetail": "Obtener detalles de causa civil del sistema judicial",
-      "scrapeUnified": "Scraping unificado de sistemas de justicia"
+    "scrapper": {
+      "description": "Módulo unificado de scraping - Punto de entrada principal",
+      "location": "utils/scrapper.js",
+      "functions": {
+        "scrapRawData": "Función principal que ejecuta el scraping completo de una causa",
+        "scrapeAndUpdateCase": "Función para actualizar una causa existente con nuevos datos"
+      }
     },
-    "seedsjudge": "Mapeo de tribunales (ID <-> Nombre)"
+    "causes": {
+      "getCivilCauseDetail": "Obtener detalles de causa civil del sistema judicial (legacy)",
+      "scrapeUnified": "Scraping unificado de sistemas de justicia - Integrado en scrapper.js",
+      "unifiedQuery": "Clase principal que maneja la navegación y extracción de datos"
+    },
+    "seedsjudge": {
+      "description": "Mapeo de tribunales (ID <-> Nombre)",
+      "functions": {
+        "courtNameById": "Convierte ID numérico a nombre del tribunal",
+        "courtIdByName": "Convierte nombre del tribunal a ID numérico"
+      }
+    }
+  },
+
+  "scrapingDetails": {
+    "targetUrl": "https://oficinajudicialvirtual.pjud.cl/indexN.php",
+    "searchType": "Búsqueda por RIT (Rol)",
+    "inputFields": {
+      "competencia": "ID de competencia (ej: 3 para Civil)",
+      "corteId": "ID de la corte (ej: 90 para C.A. de Santiago)",
+      "tribunalId": "ID del tribunal (ej: 273 para 15º Juzgado Civil)",
+      "libroTipo": "Libro/Tipo (ej: C)",
+      "rolNumber": "Número de rol (ej: 21503)",
+      "year": "Año (ej: 2024)"
+    },
+    "extractedData": {
+      "generalInfo": "Datos principales de la causa (rol, fecha ingreso, tribunal, estado, etapa)",
+      "litigants": "Lista completa de participantes (deudores, acreedores, abogados)",
+      "movementsHistory": "Historial de trámites y resoluciones",
+      "documentLinks": "Enlaces a documentos PDF con sus JWT preservados"
+    },
+    "antiDetection": {
+      "stealthPlugin": "puppeteer-extra-plugin-stealth",
+      "userAgent": "Rotación aleatoria de user agents",
+      "recaptcha": "Manejo automático de tokens reCAPTCHA v3"
+    }
   },
 
   "keyFeatures": [
@@ -242,10 +306,11 @@
     "Actividades y calendario integrado",
     "Sistema de prioridades",
     "Mensajería interna entre usuarios",
-    "Chequeos y inspecciones con seguimiento",
+    "Chequeos e inspecciones con seguimiento",
     "Almacenamiento en S3 con URLs firmadas",
     "Envío de emails y notificaciones",
-    "Auditoría de acceso a causas"
+    "Auditoría de acceso a causas",
+    "Extracción y preservación de enlaces a documentos con JWT"
   ],
 
   "authentication": {
@@ -265,10 +330,13 @@
       "MONGO_DB_NAME - Nombre de la base de datos",
       "SECRET - Clave para JWT",
       "CORS_ORIGIN_URI - Origen CORS permitido",
-      "PORT - Puerto del servidor (default: 4000)"
+      "PORT - Puerto del servidor (default: 4000)",
+      "RUT - RUT para autenticación en el sistema judicial",
+      "PASS - Contraseña para autenticación en el sistema judicial"
     ],
     "optional": [
-      "NODE_ENV - Ambiente (production/development)"
+      "NODE_ENV - Ambiente (production/development)",
+      "BROWSER_HEADLESS - Modo headless del navegador (true/false)"
     ]
   },
 
@@ -282,23 +350,27 @@
     "start": "node server.js",
     "server": "nodemon -e \"gql,js\" server.js (Recarga en cambios)",
     "client": "cd ../client && yarn serve (Inicia cliente)",
-    "dev": "Inicia servidor y cliente en paralelo"
+    "dev": "Inicia servidor y cliente en paralelo",
+    "test-scraper": "node scripts/test-scraper.js (Prueba independiente del scraper)"
   },
 
   "dataFlow": {
     "causeFetch": [
-      "1. Usuario solicita agregar causa",
-      "2. Sistema realiza scraping del sistema judicial",
-      "3. Datos se guardan en MongoDB",
-      "4. Se asignan usuarios involucrados",
-      "5. Se notifica a todos los usuarios"
+      "1. Usuario envía libroTipo, rolNumber, year, competencia, corteId, tribunalId",
+      "2. Sistema construye fullRol (formato: libroTipo-rolNumber-year)",
+      "3. Sistema obtiene tribunalName desde seedsjudge usando tribunalId",
+      "4. Sistema ejecuta scraper automáticamente con los parámetros",
+      "5. Scraper navega al portal judicial, completa formulario y extrae datos",
+      "6. Datos se guardan en MongoDB con los nuevos campos searchParams y scrapedData",
+      "7. Se asignan usuarios involucrados",
+      "8. Se notifica a todos los usuarios"
     ],
     "caseUpdate": [
-      "1. Cron job ejecuta cada 6:30 AM",
-      "2. Scraping de causas registradas",
-      "3. Comparación con datos previos",
-      "4. Si hay cambios, se actualiza la causa",
-      "5. Se notifica a usuarios involucrados"
+      "1. Cron job ejecuta dailyScraps a las 4:00 AM",
+      "2. Se buscan causas con scrapedData.status ≠ 'success' o con actualización antigua",
+      "3. Para cada causa, se ejecuta scrapeAndUpdateCase",
+      "4. El scraper actualiza los datos y cambia el estado a 'success'",
+      "5. Si hay cambios significativos, se notifica a usuarios involucrados"
     ],
     "authentication": [
       "1. Usuario envía email + password en signinUsers",
@@ -314,7 +386,8 @@
     "Agregaciones de MongoDB para consultas complejas",
     "Paginación en búsquedas (infiniteScrollPosts)",
     "Tareas programadas en segundo plano (no bloquean)",
-    "S3 presigned URLs para descargas seguras"
+    "S3 presigned URLs para descargas seguras",
+    "El scraper opera en modo headless en producción para optimizar recursos"
   ],
 
   "securityConsiderations": [
@@ -323,7 +396,8 @@
     "CORS configurado con variable de entorno",
     "Contraseñas no se retornan en queries",
     "Context-based authorization en resolvers",
-    "Scraping con stealth plugin (puppeteer)"
+    "Scraping con stealth plugin (puppeteer-extra)",
+    "Tokens reCAPTCHA v3 manejados automáticamente"
   ],
 
   "knownIssues": [
@@ -332,12 +406,29 @@
     "Variables de entorno en versionControl (.env expuesto)"
   ],
 
+  "recentChanges": {
+    "date": "2026-06-04",
+    "version": "2.0.0",
+    "changes": [
+      "Se añadió el campo searchParams al modelo Cases con todos los parámetros de búsqueda",
+      "Se añadió el campo scrapedData al modelo Cases para control de estado del scraping",
+      "Se unificó la lógica de scraping en utils/scrapper.js como punto de entrada único",
+      "Se actualizó el resolver addCase para usar los nuevos campos y ejecutar scraping automático",
+      "Se eliminó la función scrapRawData duplicada dentro de resolvers.js",
+      "Se implementó extracción de enlaces a documentos con preservación de JWT",
+      "Se añadió manejo automático de tokens reCAPTCHA v3",
+      "Se creó script de prueba test-scraper.js para validación independiente"
+    ]
+  },
+
   "nextSteps": [
     "Implementar validaciones más robustas en inputs",
     "Añadir tests unitarios y E2E",
     "Mejorar manejo de errores con tipos específicos",
     "Implementar caché (Redis)",
     "Documentación de GraphQL schema",
-    "Rate limiting en endpoints"
+    "Rate limiting en endpoints",
+    "Añadir soporte para otras competencias (Laboral, Penal, etc.)",
+    "Implementar cola de scraping para evitar sobrecarga del navegador"
   ]
 }
