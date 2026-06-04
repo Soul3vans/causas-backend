@@ -37,11 +37,11 @@ class UnifiedQuery {
         await this.applyFilter(filters);
         await this.extractAnchors();
         await this.collectDetails();
-        await this.collectDocuments();
+        // await this.collectDocuments(); //Por ahora no necesitamos descargar todos los documentos.
     }
 
     async init() {
-        console.log("Init unified query...");
+        console.log("Iniciando unified query...");
         return this.scrape.init();
     }
 
@@ -51,7 +51,7 @@ class UnifiedQuery {
             await this.scrape.simuleBodyAction(otherPage);
             console.log("Navigated to search by rit");
         } catch (error) {
-            console.error("Error navigating to civil causes tab:", error);
+            console.error("Error al navegar hacia causas civiles tab:", error);
             throw error;
         }
     }
@@ -64,7 +64,7 @@ class UnifiedQuery {
         const { court, tribune, rol, competencia = "3" } = options; // competencia por defecto "3" (Civil)
         
         try {
-            // ========== NUEVO: Asegurar tokens de reCAPTCHA antes de llenar el formulario ==========
+            // ========== Asegura tokens de reCAPTCHA antes de llenar el formulario ==========
             await this.scrape.ensureRecaptchaTokens();
             
             await this.page.waitForSelector("select#competencia", {
@@ -103,9 +103,9 @@ class UnifiedQuery {
                 }
             }, paramsRol);
             
-            console.log("Filter applied...");
+            console.log("Filtro aplicado...");
         } catch (error) {
-            console.error("Error apply filters:", error);
+            console.error("Error aplicando filtros:", error);
             throw error;
         }
     }
@@ -119,7 +119,7 @@ class UnifiedQuery {
         }, text);
         
         if (empty) {
-            console.log("No results found...!!!");
+            console.log("No se encontraron resultados...!!!");
             return process.exit();
         }
         
@@ -162,13 +162,13 @@ class UnifiedQuery {
                 admission: (0, date_calc_1.dateCalc)(causeDetails.admission),
             };
         } catch (error) {
-            console.error("Error extracting cause details:", error);
+            console.error("Error extrayendo detalles de la causa:", error);
             throw error;
         }
     }
 
     /**
-     * ========== NUEVO MÉTODO: Extraer todos los enlaces a documentos del modal ==========
+     * ========== Extraer todos los enlaces a documentos del modal ==========
      * Extrae los enlaces como HTML puro para preservar los JWT y acciones JavaScript
      * @returns {Promise<Array>} - Lista de enlaces con su HTML y metadatos
      */
@@ -217,10 +217,10 @@ class UnifiedQuery {
                 return links;
             });
             
-            console.log(`Extraídos ${documentLinks.length} enlaces a documentos desde el modal`);
+            console.log(`Extraídos ${documentLinks.length} enlaces a documentos desde el modal (Sin descargar)`);
             return documentLinks;
         } catch (error) {
-            console.error("Error extracting document links:", error);
+            console.error("Error extrayendo enlaces a documentoss:", error);
             return [];
         }
     }
@@ -228,12 +228,12 @@ class UnifiedQuery {
     async collectDetails() {
         try {
             if (this.anchors.length === 0) {
-                console.log("Process finish: There are no civil cases to download");
+                console.log("Proceso terminado: No hay causas para descargar");
                 return process.exit();
             }
             
             for (const [index, anchor] of this.anchors.entries()) {
-                console.log(`Processing cause ${index + 1}/${this.anchors.length}...`);
+                console.log(`Procesando causa ${index + 1}/${this.anchors.length}...`);
                 
                 // Ejecutar el script que abre el modal
                 await this.scrape.execute(anchor.script);
@@ -256,20 +256,20 @@ class UnifiedQuery {
                     book,
                 }));
                 
-                console.log(`Movements extracted: ${movements.length}`);
+                console.log(`Movimientos extraidos: ${movements.length}`);
                 
                 // Extraer litigantes
                 const litigants = await this.extractLitigants();
-                console.log(`Litigants extracted: ${litigants.length}`);
+                console.log(`Litigantes extraidos: ${litigants.length}`);
                 
-                // ========== NUEVO: Extraer enlaces a documentos ==========
+                // ========== Extraer enlaces a documentos ==========
                 const documentLinks = await this.extractDocumentLinks();
-                console.log(`Document links extracted: ${documentLinks.length}`);
+                console.log(`Enlaces a documentos extraidos: ${documentLinks.length}`);
                 
                 // Almacenar todos los datos extraídos
                 this.civils.push({
                     ...causeDetails,
-                    documentLinks,        // Añadir los enlaces a documentos
+                    documentLinks, 
                     extractedAt: new Date().toISOString(),
                     source: 'unified-query-scraper'
                 });
@@ -277,25 +277,26 @@ class UnifiedQuery {
                 this.histories.push(...movements);
                 this.litigants.push(...litigants);
                 
-                console.log(`Summary - Movements: ${movementsHistory.length}, Litigants: ${litigants.length}, Links: ${documentLinks.length}`);
+                console.log(`Summary - Movements: ${movementsHistory.length}, Litigantes: ${litigants.length}, Enlaces: ${documentLinks.length}`);
                 
                 // Cerrar el modal para continuar con la siguiente causa
                 await this.closeModal();
                 await (0, wait_1.wait)(2000);
             }
         } catch (error) {
-            console.error("Error collecting details:", error);
+            console.error("Error recopilando detalles:", error);
             throw error;
         }
     }
 
-    async collectDocuments() {
+    // Desmarcar para descargar todos los documentos
+    /**async collectDocuments() {
         const docAll = new document_all_helper_1.DocumentAllHelper(
             this.URLs.map((item) => this.evaluateDocument(item)), 
             "daily"
         );
         await docAll.documentationEvaluate();
-    }
+    }**/
 
     get URLs() {
         const documents = [];
@@ -316,7 +317,6 @@ class UnifiedQuery {
 
     /**
      * Obtiene el objeto completo de la causa civil con todos los datos extraídos
-     * MODIFICADO: Ahora incluye documentLinks en el resultado
      */
     getccivil() {
         const civilcause = this.civils[0];
@@ -360,7 +360,7 @@ class UnifiedQuery {
             
             return litigants;
         } catch (error) {
-            console.error("Error extracting litigants:", error);
+            console.error("Error extrayendo litigantes:", error);
             throw error;
         }
     }
@@ -373,7 +373,7 @@ class UnifiedQuery {
             this.annex.push(...annexDocs);
             return historyScrape.getmovementsHistories();
         } catch (error) {
-            console.error("Error extracting movements history:", error);
+            console.error("Error extrayendo el historial de movimientos:", error);
             throw error;
         }
     }
