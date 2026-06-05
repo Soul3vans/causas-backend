@@ -18,13 +18,19 @@ class ScrapService extends events_1.default {
     super(...arguments)
     this.browser = null
     this.page = null
+    this.isLoggedIn = false  // flag para saber si ya estamos logueados
   }
 
   getBrowser() {
     return this.browser
   }
 
-  async init(url = 'https://oficinajudicialvirtual.pjud.cl/home/index.php') {
+  /**
+   * Inicializa el navegador SIN hacer login automáticamente
+   * @param {string} url - URL a navegar
+   * @param {boolean} skipAuth - Si es true, no intenta hacer login (modo invitado)
+   */
+  async init(url = 'https://oficinajudicialvirtual.pjud.cl/home/index.php', skipAuth = true) {
     const customUA = (0, user_agent_1.generateRandomUA)()
 
     this.browser = await puppeteer_extra_1.default.launch({
@@ -55,9 +61,64 @@ class ScrapService extends events_1.default {
       Object.defineProperty(navigator, 'webdriver', { get: () => false })
     })
 
-    await this.pageGoto(url)
-    console.log(`Init scrap to: <${url}>`)
-    await this.login()
+    if (skipAuth) {
+
+      console.log('🔓 Accediendo como invitado a consulta de causas...')
+
+      // Primero, establecer las variables de sesión como invitado
+      await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
+        waitUntil: 'domcontentloaded',
+        timeout: 60000
+      })
+
+      // Establecer localStorage y sessionStorage como invitado
+      await this.page.evaluate(() => {
+        localStorage.setItem('InitSitioOld', '0');
+        localStorage.setItem('InitSitioNew', '1');
+        localStorage.setItem('logged-in', 'true');
+        sessionStorage.setItem('logged-in', 'true');
+      })
+
+      // Ahora ir a indexN.php (la página de búsqueda)
+      await this.page.goto('https://oficinajudicialvirtual.pjud.cl/indexN.php', {
+        waitUntil: 'domcontentloaded',
+        timeout: 60000
+      })
+      console.log('✅ Acceso como invitado completado, en página de búsqueda')
+    } else {
+      // Modo autenticado (para uso futuro)
+      await this.pageGoto(url)
+      await this.login()
+    }
+  }
+
+  
+  /**
+   * Inicia sesión con RUT y contraseña (solo cuando sea necesario)
+   */
+  async login() {
+    if (this.isLoggedIn) {
+      console.log('✅ Ya hay una sesión activa')
+      return
+    }
+    
+    console.log('🔐 Iniciando sesión...')
+    await this.page?.evaluate(() => {
+      eval('AutenticaCUnica();')
+    })
+    await this.timeout(4000)
+    await this.page?.waitForSelector('input#uname', { timeout: 0 })
+    await this.page?.waitForSelector('input[type="password"]', { timeout: 0 })
+    await this.page?.type('input#uname', env_plugin_1.envs.RUT)
+    await this.page?.type('input[type="password"]', env_plugin_1.envs.PASS)
+    await this.page?.click('button#login-submit')
+    await this.page?.waitForNavigation({
+      waitUntil: 'domcontentloaded',
+      timeout: 0
+    })
+    this.isLoggedIn = true
+    console.log('✅ Autenticación completada')
+    await this.timeout(2000)
   }
 
   async invalidLoadImages() {
@@ -113,39 +174,15 @@ class ScrapService extends events_1.default {
     return this.page
   }
 
-  async login() {
-    await this.page?.evaluate(() => {
-      eval('AutenticaCUnica();')
-    })
-    await this.timeout(4000)
-    await this.page?.waitForSelector('input#uname', { timeout: 0 })
-    await this.page?.waitForSelector('input[type="password"]', { timeout: 0 })
-    await this.page?.type('input#uname', env_plugin_1.envs.RUT)
-    await this.page?.type('input[type="password"]', env_plugin_1.envs.PASS)
-    await this.page?.click('button#login-submit')
-    await this.page?.waitForNavigation({
-      waitUntil: 'domcontentloaded',
-      timeout: 0
-    })
-    console.log('Authenticated')
-    await this.timeout(2000)
-  }
-
   /**
-   * ========== NUEVOS MÉTODOS PARA MANEJO DE reCAPTCHA v3 ==========
+   * ========== MÉTODOS PARA MANEJO DE reCAPTCHA v3 ==========
    */
 
-  /**
-   * Refresca los tokens de reCAPTCHA v3 ejecutando las funciones
-   * que ya existen en la página (recaptchacallbackritv3, etc.)
-   * @returns {Promise<boolean>} - True si se ejecutó correctamente
-   */
   async refreshRecaptchaTokens() {
     console.log('Refrescando tokens de reCAPTCHA...')
     
     try {
       const result = await this.page.evaluate(() => {
-        // Ejecutar las funciones de refresh que existen en la página
         if (typeof recaptchacallbackritv3 === 'function') {
           recaptchacallbackritv3()
         }
@@ -161,7 +198,6 @@ class ScrapService extends events_1.default {
         return true
       })
       
-      // Esperar a que los tokens se generen
       await this.timeout(3000)
       console.log('Tokens de reCAPTCHA refrescados')
       return result
@@ -171,11 +207,6 @@ class ScrapService extends events_1.default {
     }
   }
 
-  /**
-   * Verifica que los tokens de reCAPTCHA existan y tengan valor
-   * Si no existen, los refresca automáticamente
-   * @returns {Promise<boolean>} - True si los tokens son válidos
-   */
   async ensureRecaptchaTokens() {
     try {
       const hasTokens = await this.page.evaluate(() => {

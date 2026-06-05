@@ -32,7 +32,7 @@ async function getScrapeInstance() {
     try {
         console.log('📍 Creando instancia única del navegador...');
         const scrape = new ScrapService();
-        await scrape.init();  // Solo una vez
+        await scrape.init();
         globalScrapeInstance = scrape;
         return globalScrapeInstance;
     } finally {
@@ -135,6 +135,18 @@ async function closeScrapeInstance() {
 }
 
 /**
+ * Función para autenticarse manualmente
+ */
+async function authenticateScrape() {
+  const scrape = await getScrapeInstance();
+  if (!scrape.isLoggedIn) {
+      console.log('🔐 Autenticando navegador...');
+      await scrape.login();
+  }
+  return scrape;
+}
+
+/**
  * Función para actualizar una causa existente con nuevos datos del scraper
  * @param {Object} caseModel - Modelo Mongoose de Cases
  * @param {string} caseId - ID de la causa en MongoDB
@@ -209,4 +221,5 @@ module.exports = {
   scrapeAndUpdateCase,
   closeScrapeInstance,
   getScrapeInstance,
+  authenticateScrape,
 };

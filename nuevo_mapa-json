@@ -1,0 +1,457 @@
+{
+  "projectName": "causas-concursales-server",
+  "projectDescription": "Sistema de Gestión de Causas Concursales - Backend GraphQL con Express y MongoDB",
+  "version": "3.0.0",
+  "lastUpdated": "2026-06-05",
+  
+  "architecture": {
+    "pattern": "GraphQL + Express",
+    "database": "MongoDB",
+    "apiType": "GraphQL",
+    "language": "JavaScript/Node.js",
+    "typeSystem": "Mongoose ODM",
+    "authentication": "JWT (JSON Web Tokens)",
+    "packageManager": "Yarn 4.5.0"
+  },
+
+  "coreStack": {
+    "server": {
+      "express": "^4.21.1",
+      "apollo-server-express": "^2.13.0",
+      "graphql": "^15.9.0"
+    },
+    "database": {
+      "mongoose": "^7.0.3"
+    },
+    "authentication": {
+      "jsonwebtoken": "^8.5.1",
+      "bcrypt": "^5.0.1"
+    },
+    "utilities": {
+      "moment": "^2.29.3",
+      "luxon": "^2.3.1",
+      "md5": "^2.3.0",
+      "node-cron": "^3.0.3"
+    },
+    "scraping": {
+      "puppeteer": "^15.3.2",
+      "puppeteer-extra": "^3.3.4",
+      "puppeteer-extra-plugin-stealth": "^2.11.0",
+      "random-useragent": "^0.5.0"
+    },
+    "email": {
+      "nodemailer": "^6.7.2"
+    },
+    "uploads": {
+      "graphql-upload": "^13.0.0",
+      "@aws-sdk/client-s3": "^3.674.0",
+      "@aws-sdk/s3-request-presigner": "^3.674.0"
+    }
+  },
+
+  "directoryStructure": {
+    "root": {
+      "server.js": "Punto de entrada principal - Configuración de Apollo Server y Express",
+      "resolvers.js": "Resolvers GraphQL - MODIFICADO: addCase usa nuevos campos y scraper unificado",
+      "package.json": "Configuración del proyecto y dependencias",
+      "apollo.config.js": "Configuración de Apollo Client/DevTools"
+    },
+    "config/": "Configuraciones de aplicación",
+    "models/": "Modelos Mongoose - MODIFICADO: Cases.js con searchParams y scrapedData",
+    "gql/": "Definiciones GraphQL (TypeDefs)",
+    "utils/": "Utilidades y helpers - MODIFICADOS: scrapper.js, puppeteer.plugin.js, unified-query.js",
+    "workers/": "Jobs en segundo plano y tareas programadas",
+    "views/": "Vistas o templates",
+    "variables.env": "Variables de entorno (NO usar en producción)"
+  },
+
+  "models": {
+    "Users": {
+      "description": "Modelo de usuarios del sistema",
+      "purposes": ["Autenticación", "Gestión de permisos", "Relación con casos"]
+    },
+    "Cases": {
+      "description": "Modelo de causas/procesos legales",
+      "purposes": ["Almacenar información de causas", "Historial de movimientos", "Datos de litigantes"],
+      "newFields": {
+        "searchParams": {
+          "description": "Parámetros de búsqueda ingresados por el usuario",
+          "fields": {
+            "competencia": "ID de competencia (1:Corte Suprema, 2:Corte Apelaciones, 3:Civil, 4:Laboral, 5:Penal, 6:Cobranza, 7:Familia)",
+            "corteId": "ID numérico de la corte (ej: 90 para C.A. de Santiago)",
+            "tribunalId": "ID numérico del tribunal (ej: 273 para 15º Juzgado Civil)",
+            "libroTipo": "Libro/Tipo de la causa (C, V, E, A, F, I)",
+            "rolNumber": "Número de rol (ej: 21503)",
+            "year": "Año de la causa (ej: 2024)",
+            "fullRol": "Rol completo formateado (ej: C-21503-2024)"
+          }
+        },
+        "scrapedData": {
+          "description": "Datos controlados por el scraper - Estado y resultados de extracción",
+          "fields": {
+            "lastScrapedAt": "Fecha y hora de la última extracción",
+            "lastScrapedBy": "Origen de la extracción (scheduler/manual/auto)",
+            "status": "Estado del scraping (pending/scraping/success/error/not_found)",
+            "errorMessage": "Mensaje de error si el scraping falló",
+            "retryCount": "Número de reintentos realizados",
+            "data": "JSON completo con los datos extraídos (litigantes, movimientos, enlaces)"
+          }
+        }
+      }
+    },
+    "Activity": {
+      "description": "Modelo de actividades/tareas",
+      "purposes": ["Tareas programadas", "Calendario de actividades", "Seguimiento de procesos"]
+    },
+    "Posts": {
+      "description": "Modelo de publicaciones/foros",
+      "purposes": ["Comunicación entre usuarios", "Comentarios en casos"]
+    },
+    "Patients": {
+      "description": "Modelo de pacientes/deudores",
+      "purposes": ["Información de deudores en causas"]
+    },
+    "Checks": {
+      "description": "Modelo de inspecciones/verificaciones",
+      "purposes": ["Registro de chequeos periódicos", "Seguimiento de afectaciones"]
+    },
+    "File": {
+      "description": "Modelo de archivos",
+      "purposes": ["Gestión de documentos"]
+    },
+    "Messages": {
+      "description": "Modelo de mensajes entre usuarios",
+      "purposes": ["Notificaciones", "Comunicación interna"]
+    },
+    "InvolvedUsersCase": {
+      "description": "Modelo de relación entre usuarios y causas",
+      "purposes": ["Usuarios involucrados en cada causa", "Estados de participación"]
+    },
+    "CasesViewed": {
+      "description": "Modelo de seguimiento de causas vistas",
+      "purposes": ["Auditoría de acceso a causas"]
+    },
+    "CasesUpdated": {
+      "description": "Modelo temporal de actualizaciones de causas",
+      "purposes": ["Diferenciación de cambios en causas"]
+    },
+    "CasesReviews": {
+      "description": "Modelo de revisiones de causas",
+      "purposes": ["Control de cambios y auditoría"]
+    },
+    "CasesSettings": {
+      "description": "Modelo de configuración de causas",
+      "purposes": ["Permisos por usuario en causa"]
+    },
+    "Priority": {
+      "description": "Modelo de niveles de prioridad",
+      "purposes": ["Asignación de prioridades a actividades"]
+    }
+  },
+
+  "graphQLResolvers": {
+    "Query": {
+      "authentication": [
+        "getCurrentUser - Obtiene usuario actual autenticado",
+        "getUser - Obtiene usuario por ID"
+      ],
+      "userManagement": [
+        "getUsers - Lista todos los usuarios",
+        "getInvolvedUsers - Usuarios involucrados en una causa",
+        "searchUsers - Búsqueda de usuarios por texto"
+      ],
+      "cases": [
+        "getCases - Lista todas las causas",
+        "getCase - Obtiene causa específica por ID",
+        "getCaseViewed - Causas vistas por usuario actual",
+        "getCasesByUser - Causas creadas por usuario específico",
+        "getCasesInfo - Estadísticas de causas por estado (usuario)",
+        "getCasesInfoAdmin - Estadísticas de causas globales"
+      ],
+      "messages": [
+        "getUserMessages - Mensajes de usuario",
+        "getUserUnreadMessages - Mensajes no leídos"
+      ],
+      "search": [
+        "searchMovements - Búsqueda de movimientos en causas",
+        "infiniteScrollPosts - Carga paginada de publicaciones"
+      ],
+      "activities": [
+        "getActivities - Lista todas las actividades",
+        "getActivitiesByDate - Actividades en rango de fechas"
+      ],
+      "checks": [
+        "getChecksOfDate - Chequeos de fecha específica",
+        "getChecksOfUsers - Chequeos de usuario en período",
+        "getDateOfChecks - Fechas con chequeos disponibles"
+      ],
+      "priority": [
+        "getPriorities - Lista de prioridades"
+      ]
+    },
+    "Mutation": {
+      "authentication": [
+        "signinUsers - Login (email + password)",
+        "signupUsers - Registro de nuevo usuario"
+      ],
+      "userManagement": [
+        "updateUser - Actualizar datos básicos",
+        "updateUsers - Actualizar datos con validación",
+        "updateUserPassword - Cambiar contraseña (requiere actual)",
+        "updateUsersPassword - Cambiar contraseña sin verificación",
+        "deleteUser - Eliminar usuario"
+      ],
+      "cases": [
+        "addCase - Agrega nueva causa con scraping automático (recibe libroTipo, rolNumber, year, competencia, corteId, tribunalId)",
+        "updateCase - Actualiza causa existente",
+        "deleteCase - Elimina causa",
+        "addDdor - Actualiza deudores en causas",
+        "updateVisibilityCase - Cambia visibilidad/permisos"
+      ],
+      "caseUsers": [
+        "addInvUsers - Agrega usuarios a causa"
+      ],
+      "activities": [
+        "addActivity - Crea nueva actividad",
+        "updateActivity - Actualiza actividad",
+        "deleteActivity - Elimina actividad"
+      ],
+      "priority": [
+        "addPriority - Crea/actualiza prioridad"
+      ],
+      "posts": [
+        "addPostMessage - Añade comentario a publicación",
+        "deleteUserPost - Elimina publicación"
+      ],
+      "files": [
+        "getFileSignedS3Url - Obtiene URL firmada para S3"
+      ]
+    }
+  },
+
+  "workers": {
+    "mailSender": {
+      "activityReminder": {
+        "schedule": "*/30 * * * * (cada 30 minutos)",
+        "purpose": "Enviar recordatorios de actividades próximas"
+      },
+      "dailyScraps": {
+        "schedule": "00 04 * * * America/Santiago (4 AM diariamente)",
+        "purpose": "Actualización diaria de causas desde sistema de justicia",
+        "integration": "Utiliza scrapeAndUpdateCase del scrapper unificado"
+      },
+      "casesUpdater": {
+        "schedule": "30 06 * * * America/Santiago (6:30 AM diariamente)",
+        "purpose": "Procesar y notificar cambios en causas"
+      }
+    }
+  },
+
+  "utilities": {
+    "db": "MongoDatabase - Conexión a MongoDB",
+    "plugins": "Plugins y configuraciones (FileSystemService para S3)",
+    "mail": "Configuración de nodemailer para envío de emails",
+    "scrapper": {
+      "description": "Módulo unificado de scraping - Punto de entrada principal",
+      "location": "utils/scrapper.js",
+      "functions": {
+        "scrapRawData": "Función principal que ejecuta el scraping completo de una causa",
+        "scrapeAndUpdateCase": "Función para actualizar una causa existente con nuevos datos",
+        "getScrapeInstance": "Singleton - Obtiene/crea la única instancia del navegador",
+        "closeScrapeInstance": "Cierra la instancia del navegador",
+        "authenticateScrape": "Autentica el navegador (para uso futuro)"
+      },
+      "singletonPattern": "Se implementó Singleton para evitar múltiples instancias del navegador. La primera llamada crea el navegador, las siguientes lo reutilizan."
+    },
+    "causes": {
+      "getCivilCauseDetail": "Obtener detalles de causa civil del sistema judicial (legacy)",
+      "scrapeUnified": "Scraping unificado de sistemas de justicia - Integrado en scrapper.js",
+      "unifiedQuery": "Clase principal que maneja la navegación y extracción de datos"
+    },
+    "seedsjudge": {
+      "description": "Mapeo de tribunales (ID <-> Nombre)",
+      "functions": {
+        "courtNameById": "Convierte ID numérico a nombre del tribunal",
+        "courtIdByName": "Convierte nombre del tribunal a ID numérico"
+      }
+    }
+  },
+
+  "scrapingDetails": {
+    "targetUrl": "https://oficinajudicialvirtual.pjud.cl/home/index.php",
+    "flow": {
+      "step1": "Navegar a home/index.php como invitado",
+      "step2": "Establecer localStorage/sessionStorage como invitado",
+      "step3": "Hacer clic en 'Consulta causas' (accesoConsultaCausas())",
+      "step4": "Redirigir a indexN.php",
+      "step5": "Llenar formulario de búsqueda por RIT",
+      "step6": "Extraer JWT de la tabla de resultados",
+      "step7": "Abrir modal y extraer litigantes, movimientos y enlaces"
+    },
+    "inputFields": {
+      "competencia": "ID de competencia (ej: 3 para Civil)",
+      "corteId": "ID de la corte (ej: 90 para C.A. de Santiago)",
+      "tribunalId": "ID del tribunal (ej: 273 para 15º Juzgado Civil)",
+      "libroTipo": "Libro/Tipo (ej: C)",
+      "rolNumber": "Número de rol (ej: 21503)",
+      "year": "Año (ej: 2024)"
+    },
+    "extractedData": {
+      "generalInfo": "Datos principales de la causa (rol, fecha ingreso, tribunal, estado, etapa)",
+      "litigants": "Lista completa de participantes (deudores, acreedores, abogados)",
+      "movementsHistory": "Historial de trámites y resoluciones",
+      "documentLinks": "Enlaces a documentos PDF con sus JWT preservados (sin descargar)"
+    },
+    "antiDetection": {
+      "stealthPlugin": "puppeteer-extra-plugin-stealth",
+      "userAgent": "Rotación aleatoria de user agents",
+      "recaptcha": "Manejo automático de tokens reCAPTCHA v3"
+    },
+    "performance": {
+      "singleBrowserInstance": "Singleton - una sola instancia del navegador para todas las consultas",
+      "guestMode": "Acceso como invitado, sin necesidad de RUT/contraseña",
+      "noAutoDownload": "No se descargan documentos automáticamente, solo se extraen los enlaces"
+    }
+  },
+
+  "keyFeatures": [
+    "Gestión completa de causas legales",
+    "Web scraping automático de sistemas judiciales",
+    "Actualización automática de causas en segundo plano",
+    "Sistema de usuarios con roles",
+    "Involucrar múltiples usuarios por causa",
+    "Actividades y calendario integrado",
+    "Sistema de prioridades",
+    "Mensajería interna entre usuarios",
+    "Chequeos e inspecciones con seguimiento",
+    "Almacenamiento en S3 con URLs firmadas",
+    "Envío de emails y notificaciones",
+    "Auditoría de acceso a causas",
+    "Extracción y preservación de enlaces a documentos con JWT",
+    "Singleton pattern para una sola instancia del navegador",
+    "Acceso como invitado al sistema judicial"
+  ],
+
+  "authentication": {
+    "type": "JWT",
+    "secret": "Configurado en process.env.SECRET",
+    "tokenExpiry": "1 hora",
+    "headerName": "authorization",
+    "password": {
+      "hashing": "bcrypt",
+      "cost": "Default bcrypt"
+    }
+  },
+
+  "environment": {
+    "required": [
+      "MONGO_URI - URI de conexión MongoDB",
+      "MONGO_DB_NAME - Nombre de la base de datos",
+      "SECRET - Clave para JWT",
+      "CORS_ORIGIN_URI - Origen CORS permitido",
+      "PORT - Puerto del servidor (default: 4000)"
+    ],
+    "optional": [
+      "NODE_ENV - Ambiente (production/development)",
+      "BROWSER_HEADLESS - Modo headless del navegador (true/false)",
+      "RUT - RUT para autenticación (opcional, para modo autenticado futuro)",
+      "PASS - Contraseña para autenticación (opcional, para modo autenticado futuro)"
+    ]
+  },
+
+  "endpoints": {
+    "health": "GET / - Health check",
+    "graphql": "POST /graphql - Endpoint GraphQL (Apollo Server)",
+    "playground": "GET /graphql - GraphQL Playground (desarrollo)"
+  },
+
+  "developmentScripts": {
+    "start": "node server.js",
+    "server": "nodemon -e \"gql,js\" server.js (Recarga en cambios)",
+    "client": "cd ../client && yarn serve (Inicia cliente)",
+    "dev": "Inicia servidor y cliente en paralelo",
+    "test-scraper": "node scripts/test-scraper.js (Prueba independiente del scraper)"
+  },
+
+  "dataFlow": {
+    "causeFetch": [
+      "1. Usuario envía libroTipo, rolNumber, year, competencia, corteId, tribunalId",
+      "2. Sistema construye fullRol (formato: libroTipo-rolNumber-year)",
+      "3. Sistema obtiene tribunalName desde seedsjudge usando tribunalId",
+      "4. Sistema ejecuta scraper automáticamente en modo invitado",
+      "5. Scraper navega como invitado: home/index.php → clic Consulta causas → indexN.php",
+      "6. Scraper completa formulario, extrae JWT, abre modal y extrae datos",
+      "7. Datos se guardan en MongoDB con searchParams y scrapedData",
+      "8. Se asignan usuarios involucrados",
+      "9. Se notifica a todos los usuarios"
+    ],
+    "caseUpdate": [
+      "1. Cron job ejecuta dailyScraps a las 4:00 AM",
+      "2. Se buscan causas con scrapedData.status ≠ 'success' o con actualización antigua",
+      "3. Para cada causa, se ejecuta scrapeAndUpdateCase reutilizando la instancia del navegador",
+      "4. El scraper actualiza los datos y cambia el estado a 'success'",
+      "5. Si hay cambios significativos, se notifica a usuarios involucrados"
+    ],
+    "authentication": [
+      "1. Usuario envía email + password en signinUsers",
+      "2. Contraseña se compara con bcrypt",
+      "3. Se genera JWT con datos del usuario",
+      "4. JWT se retorna al cliente",
+      "5. Cliente incluye JWT en header Authorization"
+    ]
+  },
+
+  "performanceNotes": [
+    "MongoDB conectada con Mongoose ODM",
+    "Agregaciones de MongoDB para consultas complejas",
+    "Paginación en búsquedas (infiniteScrollPosts)",
+    "Tareas programadas en segundo plano (no bloquean)",
+    "S3 presigned URLs para descargas seguras",
+    "Singleton pattern: una sola instancia del navegador reutilizada",
+    "Acceso como invitado: sin necesidad de autenticación en cada scraping",
+    "No descarga automática de documentos: solo extrae enlaces"
+  ],
+
+  "securityConsiderations": [
+    "JWT para autenticación stateless",
+    "Bcrypt para hash de contraseñas",
+    "CORS configurado con variable de entorno",
+    "Contraseñas no se retornan en queries",
+    "Context-based authorization en resolvers",
+    "Scraping con stealth plugin (puppeteer-extra)",
+    "Tokens reCAPTCHA v3 manejados automáticamente",
+    "Singleton controlado para evitar múltiples instancias del navegador"
+  ],
+
+  "knownIssues": [
+    "Método findOneAndRemove deprecado (usar findOneAndDelete)",
+    "Algunos resolvers no tienen manejo completo de errores",
+    "Variables de entorno en versionControl (.env expuesto)"
+  ],
+
+  "recentChanges": {
+    "date": "2026-06-05",
+    "version": "3.0.0",
+    "changes": [
+      "Implementado Singleton pattern en scrapper.js para una sola instancia del navegador",
+      "Modificado puppeteer.plugin.js para acceder como invitado (sin login)",
+      "Corregido unified-query.js para navegar correctamente desde home/index.php",
+      "Eliminada la descarga automática de documentos (solo se extraen enlaces)",
+      "Reducido timeout de espera del modal de 20 a 10 segundos",
+      "Añadido manejo de redirección desde home/index.php a indexN.php",
+      "Mejorada la estabilidad del scraper con esperas y verificaciones"
+    ]
+  },
+
+  "nextSteps": [
+    "Implementar validaciones más robustas en inputs",
+    "Añadir tests unitarios y E2E",
+    "Mejorar manejo de errores con tipos específicos",
+    "Implementar caché (Redis)",
+    "Documentación de GraphQL schema",
+    "Rate limiting en endpoints",
+    "Añadir soporte para otras competencias (Laboral, Penal, etc.)",
+    "Implementar cola de scraping para evitar sobrecarga",
+    "Migrar lógica de autenticación para cuando se necesite modo autenticado"
+  ]
+}

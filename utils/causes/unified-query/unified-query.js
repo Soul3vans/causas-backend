@@ -31,40 +31,81 @@ class UnifiedQuery {
 
     async factory(filters) {
         this.rit = filters.rol;
-        await this.init();
+        console.log("✅ UnifiedQuery: Usando navegador ya inicializado");
         await (0, wait_1.wait)(1000);
         await this.goUnifiedQuery();
         await this.applyFilter(filters);
         await this.extractAnchors();
         await this.collectDetails();
-        // await this.collectDocuments(); //Por ahora no necesitamos descargar todos los documentos.
-    }
-
-    async init() {
-        console.log("Iniciando unified query...");
-        return this.scrape.init();
     }
 
     async goUnifiedQuery(otherPage) {
         try {
-            await this.scrape.clickElement('a[onclick="consultaUnificada();"]', 3500, otherPage);
-            await this.scrape.simuleBodyAction(otherPage);
-            console.log("Navigated to search by rit");
+            const currentUrl = await this.page.url();
+            console.log(`📍 URL actual: ${currentUrl}`);
+            
+            // Si estamos en la página de inicio (home/index.php)
+            if (currentUrl.includes('home/index.php')) {
+                console.log('🔍 En página de inicio, haciendo clic en "Consulta causas"...');
+                
+                // Esperar a que el botón esté presente (hasta 10 segundos)
+                await this.page.waitForSelector('button.dropbtn[onclick*="accesoConsultaCausas"]', { timeout: 4000 });
+                
+                // Hacer clic en el botón "Consulta causas"
+                await this.page.evaluate(() => {
+                    const btn = document.querySelector('button.dropbtn[onclick*="accesoConsultaCausas"]');
+                    if (btn) {
+                        btn.click();
+                    } else {
+                        // Fallback: buscar por el texto
+                        const buttons = Array.from(document.querySelectorAll('button.dropbtn'));
+                        const consultaBtn = buttons.find(b => b.textContent.includes('Consulta causas'));
+                        if (consultaBtn) consultaBtn.click();
+                    }
+                });
+                
+                // Esperar a que la redirección ocurra y la nueva página cargue
+                console.log('⏳ Esperando redirección a indexN.php...');
+                await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 8000 });
+                
+                // Esperar adicional 2 segundos para asegurar que la página cargue completamente
+                await this.timeout(2000);
+                
+                console.log('✅ Redirección completada, ahora en página de consulta');
+            }
+            
+            // Verificar que estamos en indexN.php
+            const newUrl = await this.page.url();
+            console.log(`📍 Nueva URL: ${newUrl}`);
+            
+            if (!newUrl.includes('indexN.php')) {
+                throw new Error(`No se pudo navegar a indexN.php. URL actual: ${newUrl}`);
+            }
+            
+            // Esperar a que el formulario esté listo
+            await this.page.waitForSelector('select#competencia', { timeout: 5000, visible: true });
+            
+            console.log("✅ Navegación completada, listo para buscar");
+            
         } catch (error) {
-            console.error("Error al navegar hacia causas civiles tab:", error);
+            console.error("Error en goUnifiedQuery:", error);
             throw error;
         }
     }
 
+    // Helper para timeout
+    timeout(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     /**
      * Aplica los filtros de búsqueda en el formulario de Búsqueda por RIT
-     * MODIFICADO: Ahora recibe competencia como parámetro y asegura tokens de reCAPTCHA
      */
     async applyFilter(options) {
-        const { court, tribune, rol, competencia = "3" } = options; // competencia por defecto "3" (Civil)
+        const { court, tribune, rol, competencia = "3" } = options;
         
         try {
-            // ========== Asegura tokens de reCAPTCHA antes de llenar el formulario ==========
+            // Asegurar tokens de reCAPTCHA antes de llenar el formulario
             await this.scrape.ensureRecaptchaTokens();
             
             await this.page.waitForSelector("select#competencia", {
@@ -72,26 +113,21 @@ class UnifiedQuery {
                 visible: true,
             });
             
-            // Seleccionar Competencia (ahora dinámico según el parámetro)
             await this.page.select("select#competencia", competencia);
             await (0, wait_1.wait)(500);
             
-            // Seleccionar Corte
             await this.page.click("select#conCorte", { delay: 1000 });
             await this.page.select("select#conCorte", court.toString());
             await (0, wait_1.wait)(500);
             
-            // Seleccionar Tribunal
             await this.page.click("select#conTribunal", { delay: 1000 });
             await this.page.select("select#conTribunal", tribune.toString());
             await (0, wait_1.wait)(500);
             
-            // Separar el rol completo (ej: "C-21503-2024") en tipo y parámetros
             const [type, ...paramsRol] = rol.split("-");
             await this.page.select("select#conTipoCausa", type);
             await (0, wait_1.wait)(1000);
             
-            // Llenar Rol, Año y hacer clic en Buscar
             await this.page.evaluate(([role, year]) => {
                 const rolInput = document.querySelector("input#conRolCausa");
                 const yearInput = document.querySelector("input#conEraCausa");
@@ -167,14 +203,8 @@ class UnifiedQuery {
         }
     }
 
-    /**
-     * ========== Extraer todos los enlaces a documentos del modal ==========
-     * Extrae los enlaces como HTML puro para preservar los JWT y acciones JavaScript
-     * @returns {Promise<Array>} - Lista de enlaces con su HTML y metadatos
-     */
     async extractDocumentLinks() {
         try {
-            // Esperar a que el modal esté completamente cargado
             await this.scrape.waitForSelector("#modalDetalleCivil", 6000, true);
             
             const documentLinks = await this.page.evaluate(() => {
@@ -182,8 +212,6 @@ class UnifiedQuery {
                 const modal = document.querySelector("#modalDetalleCivil");
                 if (!modal) return links;
                 
-                // Buscar todos los <a> dentro del modal que contengan acciones relevantes
-                // Incluye: anexos, documentos, georeferencias, certificados, ebooks, etc.
                 const anchors = modal.querySelectorAll(`
                     a[onclick*="anexo"], 
                     a[onclick*="detalle"], 
@@ -195,14 +223,13 @@ class UnifiedQuery {
                 `);
                 
                 anchors.forEach((anchor, idx) => {
-                    // Obtener el formulario padre si existe (para documentos que requieren form)
                     const parentForm = anchor.closest('form');
                     const formHtml = parentForm ? parentForm.outerHTML : null;
                     
                     links.push({
                         id: idx,
                         html: anchor.outerHTML,
-                        outerHtml: anchor.outerHTML, // Alias para compatibilidad
+                        outerHtml: anchor.outerHTML,
                         onclick: anchor.getAttribute('onclick') || '',
                         href: anchor.getAttribute('href') || '',
                         title: anchor.getAttribute('title') || '',
@@ -235,13 +262,9 @@ class UnifiedQuery {
             for (const [index, anchor] of this.anchors.entries()) {
                 console.log(`Procesando causa ${index + 1}/${this.anchors.length}...`);
                 
-                // Ejecutar el script que abre el modal
                 await this.scrape.execute(anchor.script);
-                
-                // ========== Esperar a que el modal cargue completamente ==========
                 await this.scrape.waitForSelector("#modalDetalleCivil", 6000, true);
                 
-                // Extraer datos principales de la causa
                 const { book, ...causeDetails } = await this.extractCauseDetails();
                 await (0, wait_1.wait)(1000);
                 
@@ -249,7 +272,6 @@ class UnifiedQuery {
                 console.log("Details: ");
                 console.table(causeDetails);
                 
-                // Extraer historial de movimientos (trámites)
                 const movementsHistory = await this.extractMovementsHistory(causeDetails.rol);
                 const movements = movementsHistory.map((item) => ({
                     ...item,
@@ -258,18 +280,15 @@ class UnifiedQuery {
                 
                 console.log(`Movimientos extraidos: ${movements.length}`);
                 
-                // Extraer litigantes
                 const litigants = await this.extractLitigants();
                 console.log(`Litigantes extraidos: ${litigants.length}`);
                 
-                // ========== Extraer enlaces a documentos ==========
                 const documentLinks = await this.extractDocumentLinks();
                 console.log(`Enlaces a documentos extraidos: ${documentLinks.length}`);
                 
-                // Almacenar todos los datos extraídos
                 this.civils.push({
                     ...causeDetails,
-                    documentLinks, 
+                    documentLinks,
                     extractedAt: new Date().toISOString(),
                     source: 'unified-query-scraper'
                 });
@@ -279,7 +298,6 @@ class UnifiedQuery {
                 
                 console.log(`Summary - Movements: ${movementsHistory.length}, Litigantes: ${litigants.length}, Enlaces: ${documentLinks.length}`);
                 
-                // Cerrar el modal para continuar con la siguiente causa
                 await this.closeModal();
                 await (0, wait_1.wait)(2000);
             }
@@ -288,15 +306,6 @@ class UnifiedQuery {
             throw error;
         }
     }
-
-    // Desmarcar para descargar todos los documentos
-    /**async collectDocuments() {
-        const docAll = new document_all_helper_1.DocumentAllHelper(
-            this.URLs.map((item) => this.evaluateDocument(item)), 
-            "daily"
-        );
-        await docAll.documentationEvaluate();
-    }**/
 
     get URLs() {
         const documents = [];
@@ -315,9 +324,6 @@ class UnifiedQuery {
         return documents;
     }
 
-    /**
-     * Obtiene el objeto completo de la causa civil con todos los datos extraídos
-     */
     getccivil() {
         const civilcause = this.civils[0];
         if (!civilcause) return null;
@@ -325,7 +331,7 @@ class UnifiedQuery {
         return {
             ...civilcause,
             litigants: this.litigants,
-            documentLinks: civilcause.documentLinks || [], // Incluir enlaces a documentos
+            documentLinks: civilcause.documentLinks || [],
             movementsHistory: this.histories.map(({ guid, document, ...history }) => ({
                 ...history,
                 document: document.map((_doc, index) => {
@@ -341,7 +347,6 @@ class UnifiedQuery {
 
     async extractLitigants() {
         try {
-            // Hacer clic en la pestaña de Litigantes
             await this.page.click('a[href="#litigantesCiv"]');
             await (0, wait_1.wait)(1500);
             
@@ -384,7 +389,6 @@ class UnifiedQuery {
             if (close) {
                 close.click();
             } else {
-                // Fallback: buscar cualquier botón de cierre
                 const anyClose = document.querySelector('#modalDetalleCivil .modal-footer button, #modalDetalleCivil [data-dismiss="modal"]');
                 anyClose?.click();
             }
