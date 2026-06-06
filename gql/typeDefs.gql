@@ -253,6 +253,15 @@ input ActivityUpdateInput {
 }
 
 input CaseInput {
+  # NUEVOS CAMPOS (obligatorios para scraping)
+  competencia: String!
+  corteId: String!
+  tribunalId: String!
+  libroTipo: String!
+  rolNumber: String!
+  year: String!
+  
+  # CAMPOS LEGACY (compatibilidad - se mantienen por si acaso)
   rol: String
   era: String
   court: String

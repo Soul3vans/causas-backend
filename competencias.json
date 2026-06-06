@@ -1,0 +1,1164 @@
+{
+  "fechaCaptura": "2026-06-06T03:26:14.961Z",
+  "url": "https://oficinajudicialvirtual.pjud.cl/indexN.php",
+  "competencias": [
+    {
+      "id": "1",
+      "nombre": "Corte Suprema",
+      "campos": {
+        "corte": {
+          "selector": "select#conCorte",
+          "nombre": "corte",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": false,
+          "opciones": [
+            {
+              "value": "0",
+              "text": "Todos",
+              "selected": true
+            },
+            {
+              "value": "10",
+              "text": "C.A. de Arica",
+              "selected": false
+            },
+            {
+              "value": "11",
+              "text": "C.A. de Iquique",
+              "selected": false
+            },
+            {
+              "value": "15",
+              "text": "C.A. de Antofagasta",
+              "selected": false
+            },
+            {
+              "value": "20",
+              "text": "C.A. de Copiapó",
+              "selected": false
+            },
+            {
+              "value": "25",
+              "text": "C.A. de La Serena",
+              "selected": false
+            },
+            {
+              "value": "30",
+              "text": "C.A. de Valparaíso",
+              "selected": false
+            },
+            {
+              "value": "35",
+              "text": "C.A. de Rancagua",
+              "selected": false
+            },
+            {
+              "value": "40",
+              "text": "C.A. de Talca",
+              "selected": false
+            },
+            {
+              "value": "45",
+              "text": "C.A. de Chillan",
+              "selected": false
+            },
+            {
+              "value": "46",
+              "text": "C.A. de Concepción",
+              "selected": false
+            },
+            {
+              "value": "50",
+              "text": "C.A. de Temuco",
+              "selected": false
+            },
+            {
+              "value": "55",
+              "text": "C.A. de Valdivia",
+              "selected": false
+            },
+            {
+              "value": "56",
+              "text": "C.A. de Puerto Montt",
+              "selected": false
+            },
+            {
+              "value": "60",
+              "text": "C.A. de Coyhaique",
+              "selected": false
+            },
+            {
+              "value": "61",
+              "text": "C.A. de Punta Arenas",
+              "selected": false
+            },
+            {
+              "value": "90",
+              "text": "C.A. de Santiago",
+              "selected": false
+            },
+            {
+              "value": "91",
+              "text": "C.A. de San Miguel",
+              "selected": false
+            }
+          ],
+          "totalOpciones": 18
+        },
+        "tribunal": {
+          "selector": "select#conTribunal",
+          "nombre": "tribunal",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": true,
+          "opciones": [
+            {
+              "value": "0",
+              "text": "Seleccione Tribunal...",
+              "selected": true
+            }
+          ],
+          "totalOpciones": 1
+        },
+        "tipoBusqueda": {
+          "selector": "select#conTipoBus",
+          "nombre": "tipoBusqueda",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": false,
+          "opciones": [
+            {
+              "value": "0",
+              "text": "Recurso Corte Suprema",
+              "selected": true
+            },
+            {
+              "value": "1",
+              "text": "Recurso Corte Apelaciones",
+              "selected": false
+            },
+            {
+              "value": "2",
+              "text": "Expediente de 1ª Instancia",
+              "selected": false
+            },
+            {
+              "value": "3",
+              "text": "Caratulado Recurso Corte Suprema",
+              "selected": false
+            }
+          ],
+          "totalOpciones": 4
+        },
+        "libroTipo": {
+          "selector": "select#conTipoCausa",
+          "nombre": "libroTipo",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": false,
+          "opciones": [],
+          "totalOpciones": 0
+        },
+        "rolAnio": {
+          "selector": "#rolConTipoCausa",
+          "nombre": "rolAnio",
+          "tipo": "seccion",
+          "visible": true
+        },
+        "ruc": {
+          "selector": "#rucConTipoCausa",
+          "nombre": "ruc",
+          "tipo": "seccion",
+          "visible": false
+        },
+        "rol": {
+          "selector": "input#conRolCausa",
+          "nombre": "rol",
+          "tipo": "input",
+          "visible": true,
+          "disabled": false
+        },
+        "anio": {
+          "selector": "input#conEraCausa",
+          "nombre": "anio",
+          "tipo": "input",
+          "visible": true,
+          "disabled": false
+        },
+        "caratulado": {
+          "selector": "input#conCaratulado",
+          "nombre": "caratulado",
+          "tipo": "input",
+          "visible": false,
+          "disabled": false
+        },
+        "radioTipoBusqueda": {
+          "tipo": "radio",
+          "opciones": [
+            {
+              "id": "radioRit",
+              "value": "1",
+              "texto": "Rol o Rit",
+              "checked": true
+            },
+            {
+              "id": "radioRuc",
+              "value": "2",
+              "texto": "Ruc",
+              "checked": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2",
+      "nombre": "Corte Apelaciones",
+      "campos": {
+        "corte": {
+          "selector": "select#conCorte",
+          "nombre": "corte",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": false,
+          "opciones": [
+            {
+              "value": "0",
+              "text": "Todos",
+              "selected": true
+            },
+            {
+              "value": "10",
+              "text": "C.A. de Arica",
+              "selected": false
+            },
+            {
+              "value": "11",
+              "text": "C.A. de Iquique",
+              "selected": false
+            },
+            {
+              "value": "15",
+              "text": "C.A. de Antofagasta",
+              "selected": false
+            },
+            {
+              "value": "20",
+              "text": "C.A. de Copiapó",
+              "selected": false
+            },
+            {
+              "value": "25",
+              "text": "C.A. de La Serena",
+              "selected": false
+            },
+            {
+              "value": "30",
+              "text": "C.A. de Valparaíso",
+              "selected": false
+            },
+            {
+              "value": "35",
+              "text": "C.A. de Rancagua",
+              "selected": false
+            },
+            {
+              "value": "40",
+              "text": "C.A. de Talca",
+              "selected": false
+            },
+            {
+              "value": "45",
+              "text": "C.A. de Chillan",
+              "selected": false
+            },
+            {
+              "value": "46",
+              "text": "C.A. de Concepción",
+              "selected": false
+            },
+            {
+              "value": "50",
+              "text": "C.A. de Temuco",
+              "selected": false
+            },
+            {
+              "value": "55",
+              "text": "C.A. de Valdivia",
+              "selected": false
+            },
+            {
+              "value": "56",
+              "text": "C.A. de Puerto Montt",
+              "selected": false
+            },
+            {
+              "value": "60",
+              "text": "C.A. de Coyhaique",
+              "selected": false
+            },
+            {
+              "value": "61",
+              "text": "C.A. de Punta Arenas",
+              "selected": false
+            },
+            {
+              "value": "90",
+              "text": "C.A. de Santiago",
+              "selected": false
+            },
+            {
+              "value": "91",
+              "text": "C.A. de San Miguel",
+              "selected": false
+            }
+          ],
+          "totalOpciones": 18
+        },
+        "tribunal": {
+          "selector": "select#conTribunal",
+          "nombre": "tribunal",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": true,
+          "opciones": [
+            {
+              "value": "0",
+              "text": "Seleccione Tribunal...",
+              "selected": true
+            }
+          ],
+          "totalOpciones": 1
+        },
+        "tipoBusquedaApelaciones": {
+          "selector": "select#conTipoBusApe",
+          "nombre": "tipoBusquedaApelaciones",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": false,
+          "opciones": [
+            {
+              "value": "0",
+              "text": "Recurso Corte Apelaciones",
+              "selected": true
+            },
+            {
+              "value": "1",
+              "text": "Expediente de 1ª Instancia",
+              "selected": false
+            }
+          ],
+          "totalOpciones": 2
+        },
+        "libroTipo": {
+          "selector": "select#conTipoCausa",
+          "nombre": "libroTipo",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": false,
+          "opciones": [],
+          "totalOpciones": 0
+        },
+        "rolAnio": {
+          "selector": "#rolConTipoCausa",
+          "nombre": "rolAnio",
+          "tipo": "seccion",
+          "visible": true
+        },
+        "ruc": {
+          "selector": "#rucConTipoCausa",
+          "nombre": "ruc",
+          "tipo": "seccion",
+          "visible": false
+        },
+        "rol": {
+          "selector": "input#conRolCausa",
+          "nombre": "rol",
+          "tipo": "input",
+          "visible": true,
+          "disabled": false
+        },
+        "anio": {
+          "selector": "input#conEraCausa",
+          "nombre": "anio",
+          "tipo": "input",
+          "visible": true,
+          "disabled": false
+        }
+      }
+    },
+    {
+      "id": "3",
+      "nombre": "Civil",
+      "campos": {
+        "corte": {
+          "selector": "select#conCorte",
+          "nombre": "corte",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": false,
+          "opciones": [
+            {
+              "value": "0",
+              "text": "Todos",
+              "selected": true
+            },
+            {
+              "value": "10",
+              "text": "C.A. de Arica",
+              "selected": false
+            },
+            {
+              "value": "11",
+              "text": "C.A. de Iquique",
+              "selected": false
+            },
+            {
+              "value": "15",
+              "text": "C.A. de Antofagasta",
+              "selected": false
+            },
+            {
+              "value": "20",
+              "text": "C.A. de Copiapó",
+              "selected": false
+            },
+            {
+              "value": "25",
+              "text": "C.A. de La Serena",
+              "selected": false
+            },
+            {
+              "value": "30",
+              "text": "C.A. de Valparaíso",
+              "selected": false
+            },
+            {
+              "value": "35",
+              "text": "C.A. de Rancagua",
+              "selected": false
+            },
+            {
+              "value": "40",
+              "text": "C.A. de Talca",
+              "selected": false
+            },
+            {
+              "value": "45",
+              "text": "C.A. de Chillan",
+              "selected": false
+            },
+            {
+              "value": "46",
+              "text": "C.A. de Concepción",
+              "selected": false
+            },
+            {
+              "value": "50",
+              "text": "C.A. de Temuco",
+              "selected": false
+            },
+            {
+              "value": "55",
+              "text": "C.A. de Valdivia",
+              "selected": false
+            },
+            {
+              "value": "56",
+              "text": "C.A. de Puerto Montt",
+              "selected": false
+            },
+            {
+              "value": "60",
+              "text": "C.A. de Coyhaique",
+              "selected": false
+            },
+            {
+              "value": "61",
+              "text": "C.A. de Punta Arenas",
+              "selected": false
+            },
+            {
+              "value": "90",
+              "text": "C.A. de Santiago",
+              "selected": false
+            },
+            {
+              "value": "91",
+              "text": "C.A. de San Miguel",
+              "selected": false
+            }
+          ],
+          "totalOpciones": 18
+        },
+        "tribunal": {
+          "selector": "select#conTribunal",
+          "nombre": "tribunal",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": true,
+          "opciones": [
+            {
+              "value": "0",
+              "text": "Todos",
+              "selected": true
+            }
+          ],
+          "totalOpciones": 1
+        },
+        "libroTipo": {
+          "selector": "select#conTipoCausa",
+          "nombre": "libroTipo",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": false,
+          "opciones": [
+            {
+              "value": "C",
+              "text": "C",
+              "selected": true
+            },
+            {
+              "value": "V",
+              "text": "V",
+              "selected": false
+            },
+            {
+              "value": "E",
+              "text": "E",
+              "selected": false
+            },
+            {
+              "value": "A",
+              "text": "A",
+              "selected": false
+            },
+            {
+              "value": "F",
+              "text": "F",
+              "selected": false
+            },
+            {
+              "value": "I",
+              "text": "I",
+              "selected": false
+            }
+          ],
+          "totalOpciones": 6
+        },
+        "rolAnio": {
+          "selector": "#rolConTipoCausa",
+          "nombre": "rolAnio",
+          "tipo": "seccion",
+          "visible": true
+        },
+        "ruc": {
+          "selector": "#rucConTipoCausa",
+          "nombre": "ruc",
+          "tipo": "seccion",
+          "visible": false
+        },
+        "rol": {
+          "selector": "input#conRolCausa",
+          "nombre": "rol",
+          "tipo": "input",
+          "visible": true,
+          "disabled": false
+        },
+        "anio": {
+          "selector": "input#conEraCausa",
+          "nombre": "anio",
+          "tipo": "input",
+          "visible": true,
+          "disabled": false
+        }
+      }
+    },
+    {
+      "id": "4",
+      "nombre": "Laboral",
+      "campos": {
+        "corte": {
+          "selector": "select#conCorte",
+          "nombre": "corte",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": false,
+          "opciones": [
+            {
+              "value": "0",
+              "text": "Todos",
+              "selected": true
+            },
+            {
+              "value": "10",
+              "text": "C.A. de Arica",
+              "selected": false
+            },
+            {
+              "value": "11",
+              "text": "C.A. de Iquique",
+              "selected": false
+            },
+            {
+              "value": "15",
+              "text": "C.A. de Antofagasta",
+              "selected": false
+            },
+            {
+              "value": "20",
+              "text": "C.A. de Copiapó",
+              "selected": false
+            },
+            {
+              "value": "25",
+              "text": "C.A. de La Serena",
+              "selected": false
+            },
+            {
+              "value": "30",
+              "text": "C.A. de Valparaíso",
+              "selected": false
+            },
+            {
+              "value": "35",
+              "text": "C.A. de Rancagua",
+              "selected": false
+            },
+            {
+              "value": "40",
+              "text": "C.A. de Talca",
+              "selected": false
+            },
+            {
+              "value": "45",
+              "text": "C.A. de Chillan",
+              "selected": false
+            },
+            {
+              "value": "46",
+              "text": "C.A. de Concepción",
+              "selected": false
+            },
+            {
+              "value": "50",
+              "text": "C.A. de Temuco",
+              "selected": false
+            },
+            {
+              "value": "55",
+              "text": "C.A. de Valdivia",
+              "selected": false
+            },
+            {
+              "value": "56",
+              "text": "C.A. de Puerto Montt",
+              "selected": false
+            },
+            {
+              "value": "60",
+              "text": "C.A. de Coyhaique",
+              "selected": false
+            },
+            {
+              "value": "61",
+              "text": "C.A. de Punta Arenas",
+              "selected": false
+            },
+            {
+              "value": "90",
+              "text": "C.A. de Santiago",
+              "selected": false
+            },
+            {
+              "value": "91",
+              "text": "C.A. de San Miguel",
+              "selected": false
+            }
+          ],
+          "totalOpciones": 18
+        },
+        "tribunal": {
+          "selector": "select#conTribunal",
+          "nombre": "tribunal",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": true,
+          "opciones": [
+            {
+              "value": "0",
+              "text": "Todos",
+              "selected": true
+            }
+          ],
+          "totalOpciones": 1
+        },
+        "libroTipo": {
+          "selector": "select#conTipoCausa",
+          "nombre": "libroTipo",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": false,
+          "opciones": [
+            {
+              "value": "O",
+              "text": "O",
+              "selected": true
+            },
+            {
+              "value": "T",
+              "text": "T",
+              "selected": false
+            },
+            {
+              "value": "M",
+              "text": "M",
+              "selected": false
+            },
+            {
+              "value": "E",
+              "text": "E",
+              "selected": false
+            },
+            {
+              "value": "S",
+              "text": "S",
+              "selected": false
+            },
+            {
+              "value": "U",
+              "text": "U",
+              "selected": false
+            },
+            {
+              "value": "V",
+              "text": "V",
+              "selected": false
+            },
+            {
+              "value": "I",
+              "text": "I",
+              "selected": false
+            }
+          ],
+          "totalOpciones": 8
+        },
+        "rolAnio": {
+          "selector": "#rolConTipoCausa",
+          "nombre": "rolAnio",
+          "tipo": "seccion",
+          "visible": true
+        },
+        "ruc": {
+          "selector": "#rucConTipoCausa",
+          "nombre": "ruc",
+          "tipo": "seccion",
+          "visible": false
+        },
+        "rol": {
+          "selector": "input#conRolCausa",
+          "nombre": "rol",
+          "tipo": "input",
+          "visible": true,
+          "disabled": false
+        },
+        "anio": {
+          "selector": "input#conEraCausa",
+          "nombre": "anio",
+          "tipo": "input",
+          "visible": true,
+          "disabled": false
+        }
+      }
+    },
+    {
+      "id": "5",
+      "nombre": "Penal",
+      "campos": {
+        "corte": {
+          "selector": "select#conCorte",
+          "nombre": "corte",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": false,
+          "opciones": [
+            {
+              "value": "0",
+              "text": "Todos",
+              "selected": true
+            },
+            {
+              "value": "10",
+              "text": "C.A. de Arica",
+              "selected": false
+            },
+            {
+              "value": "11",
+              "text": "C.A. de Iquique",
+              "selected": false
+            },
+            {
+              "value": "15",
+              "text": "C.A. de Antofagasta",
+              "selected": false
+            },
+            {
+              "value": "20",
+              "text": "C.A. de Copiapó",
+              "selected": false
+            },
+            {
+              "value": "25",
+              "text": "C.A. de La Serena",
+              "selected": false
+            },
+            {
+              "value": "30",
+              "text": "C.A. de Valparaíso",
+              "selected": false
+            },
+            {
+              "value": "35",
+              "text": "C.A. de Rancagua",
+              "selected": false
+            },
+            {
+              "value": "40",
+              "text": "C.A. de Talca",
+              "selected": false
+            },
+            {
+              "value": "45",
+              "text": "C.A. de Chillan",
+              "selected": false
+            },
+            {
+              "value": "46",
+              "text": "C.A. de Concepción",
+              "selected": false
+            },
+            {
+              "value": "50",
+              "text": "C.A. de Temuco",
+              "selected": false
+            },
+            {
+              "value": "55",
+              "text": "C.A. de Valdivia",
+              "selected": false
+            },
+            {
+              "value": "56",
+              "text": "C.A. de Puerto Montt",
+              "selected": false
+            },
+            {
+              "value": "60",
+              "text": "C.A. de Coyhaique",
+              "selected": false
+            },
+            {
+              "value": "61",
+              "text": "C.A. de Punta Arenas",
+              "selected": false
+            },
+            {
+              "value": "90",
+              "text": "C.A. de Santiago",
+              "selected": false
+            },
+            {
+              "value": "91",
+              "text": "C.A. de San Miguel",
+              "selected": false
+            }
+          ],
+          "totalOpciones": 18
+        },
+        "tribunal": {
+          "selector": "select#conTribunal",
+          "nombre": "tribunal",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": true,
+          "opciones": [
+            {
+              "value": "0",
+              "text": "Todos",
+              "selected": true
+            }
+          ],
+          "totalOpciones": 1
+        },
+        "libroTipo": {
+          "selector": "select#conTipoCausa",
+          "nombre": "libroTipoPenal",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": false,
+          "opciones": [
+            {
+              "value": "1",
+              "text": "Ordinaria",
+              "selected": true
+            },
+            {
+              "value": "2",
+              "text": "Exhorto",
+              "selected": false
+            },
+            {
+              "value": "3",
+              "text": "Administrativa",
+              "selected": false
+            },
+            {
+              "value": "4",
+              "text": "Extradición",
+              "selected": false
+            },
+            {
+              "value": "5",
+              "text": "Militar",
+              "selected": false
+            }
+          ],
+          "totalOpciones": 5
+        },
+        "rolAnio": {
+          "selector": "#rolConTipoCausa",
+          "nombre": "rolAnio",
+          "tipo": "seccion",
+          "visible": true
+        },
+        "ruc": {
+          "selector": "#rucConTipoCausa",
+          "nombre": "ruc",
+          "tipo": "seccion",
+          "visible": false
+        },
+        "tipoBusquedaPenal": {
+          "selector": "#busRitPenalTipo",
+          "nombre": "tipoBusquedaPenal",
+          "tipo": "seccion",
+          "visible": true
+        },
+        "rol": {
+          "selector": "input#conRolCausa",
+          "nombre": "rol",
+          "tipo": "input",
+          "visible": true,
+          "disabled": false
+        },
+        "anio": {
+          "selector": "input#conEraCausa",
+          "nombre": "anio",
+          "tipo": "input",
+          "visible": true,
+          "disabled": false
+        },
+        "radioTipoBusqueda": {
+          "tipo": "radio",
+          "opciones": [
+            {
+              "id": "radioRitPenal",
+              "value": "1",
+              "texto": "Rol o Rit",
+              "checked": true
+            },
+            {
+              "id": "radioRucPenal",
+              "value": "2",
+              "texto": "Ruc",
+              "checked": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "6",
+      "nombre": "Cobranza",
+      "campos": {
+        "corte": {
+          "selector": "select#conCorte",
+          "nombre": "corte",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": false,
+          "opciones": [
+            {
+              "value": "0",
+              "text": "Todos",
+              "selected": true
+            },
+            {
+              "value": "10",
+              "text": "C.A. de Arica",
+              "selected": false
+            },
+            {
+              "value": "11",
+              "text": "C.A. de Iquique",
+              "selected": false
+            },
+            {
+              "value": "15",
+              "text": "C.A. de Antofagasta",
+              "selected": false
+            },
+            {
+              "value": "20",
+              "text": "C.A. de Copiapó",
+              "selected": false
+            },
+            {
+              "value": "25",
+              "text": "C.A. de La Serena",
+              "selected": false
+            },
+            {
+              "value": "30",
+              "text": "C.A. de Valparaíso",
+              "selected": false
+            },
+            {
+              "value": "35",
+              "text": "C.A. de Rancagua",
+              "selected": false
+            },
+            {
+              "value": "40",
+              "text": "C.A. de Talca",
+              "selected": false
+            },
+            {
+              "value": "45",
+              "text": "C.A. de Chillan",
+              "selected": false
+            },
+            {
+              "value": "46",
+              "text": "C.A. de Concepción",
+              "selected": false
+            },
+            {
+              "value": "50",
+              "text": "C.A. de Temuco",
+              "selected": false
+            },
+            {
+              "value": "55",
+              "text": "C.A. de Valdivia",
+              "selected": false
+            },
+            {
+              "value": "56",
+              "text": "C.A. de Puerto Montt",
+              "selected": false
+            },
+            {
+              "value": "60",
+              "text": "C.A. de Coyhaique",
+              "selected": false
+            },
+            {
+              "value": "61",
+              "text": "C.A. de Punta Arenas",
+              "selected": false
+            },
+            {
+              "value": "90",
+              "text": "C.A. de Santiago",
+              "selected": false
+            },
+            {
+              "value": "91",
+              "text": "C.A. de San Miguel",
+              "selected": false
+            }
+          ],
+          "totalOpciones": 18
+        },
+        "tribunal": {
+          "selector": "select#conTribunal",
+          "nombre": "tribunal",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": true,
+          "opciones": [
+            {
+              "value": "0",
+              "text": "Todos",
+              "selected": true
+            }
+          ],
+          "totalOpciones": 1
+        },
+        "libroTipo": {
+          "selector": "select#conTipoCausa",
+          "nombre": "libroTipo",
+          "tipo": "select",
+          "tieneOpcionesDinamicas": false,
+          "opciones": [
+            {
+              "value": "A",
+              "text": "A",
+              "selected": true
+            },
+            {
+              "value": "C",
+              "text": "C",
+              "selected": false
+            },
+            {
+              "value": "D",
+              "text": "D",
+              "selected": false
+            },
+            {
+              "value": "E",
+              "text": "E",
+              "selected": false
+            },
+            {
+              "value": "J",
+              "text": "J",
+              "selected": false
+            },
+            {
+              "value": "L",
+              "text": "L",
+              "selected": false
+            },
+            {
+              "value": "P",
+              "text": "P",
+              "selected": false
+            },
+            {
+              "value": "R",
+              "text": "R",
+              "selected": false
+            }
+          ],
+          "totalOpciones": 8
+        },
+        "rolAnio": {
+          "selector": "#rolConTipoCausa",
+          "nombre": "rolAnio",
+          "tipo": "seccion",
+          "visible": true
+        },
+        "ruc": {
+          "selector": "#rucConTipoCausa",
+          "nombre": "ruc",
+          "tipo": "seccion",
+          "visible": false
+        },
+        "rol": {
+          "selector": "input#conRolCausa",
+          "nombre": "rol",
+          "tipo": "input",
+          "visible": true,
+          "disabled": false
+        },
+        "anio": {
+          "selector": "input#conEraCausa",
+          "nombre": "anio",
+          "tipo": "input",
+          "visible": true,
+          "disabled": false
+        }
+      }
+    },
+    {
+      "id": "7",
+      "nombre": "Familia",
+      "reservada": true,
+      "mensaje": "Las causas de familia son reservadas"
+    }
+  ]
+}
