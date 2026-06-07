@@ -18,7 +18,7 @@ class ScrapService extends events_1.default {
     super(...arguments)
     this.browser = null
     this.page = null
-    this.isLoggedIn = false  // flag para saber si ya estamos logueados
+    this.isLoggedIn = false
   }
 
   getBrowser() {
@@ -26,27 +26,49 @@ class ScrapService extends events_1.default {
   }
 
   /**
-   * Inicializa el navegador SIN hacer login automáticamente
-   * @param {string} url - URL a navegar
-   * @param {boolean} skipAuth - Si es true, no intenta hacer login (modo invitado)
+   * Obtiene la ruta del ejecutable de Chrome/Chromium según el entorno
    */
+  getExecutablePath() {
+    // En producción (Render, Linux), usamos Chromium de Puppeteer
+    if (process.env.NODE_ENV === 'production') {
+      console.log('🔧 Modo producción: usando Chromium de Puppeteer');
+      return undefined; // Puppeteer usará su Chromium por defecto
+    }
+    
+    // En desarrollo (Windows), usamos Chrome instalado
+    console.log('🔧 Modo desarrollo: usando Chrome instalado');
+    return 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe';
+  }
+
   async init(url = 'https://oficinajudicialvirtual.pjud.cl/home/index.php', skipAuth = true) {
     const customUA = (0, user_agent_1.generateRandomUA)()
 
-    this.browser = await puppeteer_extra_1.default.launch({
+    const launchOptions = {
       headless: env_plugin_1.envs.BROWSER_HEADLESS,
       defaultViewport: null,
       slowMo: 400,
-      executablePath: 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu'
       ]
-    })
+    };
+    
+    // Solo agregar executablePath en desarrollo (Windows)
+    const executablePath = this.getExecutablePath();
+    if (executablePath) {
+      launchOptions.executablePath = executablePath;
+    }
+    
+    console.log('🚀 Lanzando navegador con opciones:', {
+      headless: launchOptions.headless,
+      args: launchOptions.args,
+      executablePath: executablePath || 'default (Chromium de Puppeteer)'
+    });
 
-    this.page = await this.browser.newPage()
+    this.browser = await puppeteer_extra_1.default.launch(launchOptions);
+    this.page = await this.browser.newPage();
 
     await this.page.setExtraHTTPHeaders({
       'user-agent': `${customUA}`,
@@ -56,46 +78,37 @@ class ScrapService extends events_1.default {
       'accept-language': 'en-US,en;q=0.9,en;q=0.8'
     })
 
-    // Modificar navigator.webdriver antes de cargar la página
     await this.page.evaluateOnNewDocument(() => {
       Object.defineProperty(navigator, 'webdriver', { get: () => false })
     })
 
     if (skipAuth) {
-
       console.log('🔓 Accediendo como invitado a consulta de causas...')
-
-      // Primero, establecer las variables de sesión como invitado
+      
       await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
         waitUntil: 'domcontentloaded',
         timeout: 60000
       })
-
-      // Establecer localStorage y sessionStorage como invitado
+      
       await this.page.evaluate(() => {
         localStorage.setItem('InitSitioOld', '0');
         localStorage.setItem('InitSitioNew', '1');
         localStorage.setItem('logged-in', 'true');
         sessionStorage.setItem('logged-in', 'true');
       })
-
-      // Ahora ir a indexN.php (la página de búsqueda)
+      
       await this.page.goto('https://oficinajudicialvirtual.pjud.cl/indexN.php', {
         waitUntil: 'domcontentloaded',
         timeout: 60000
       })
+      
       console.log('✅ Acceso como invitado completado, en página de búsqueda')
     } else {
-      // Modo autenticado (para uso futuro)
       await this.pageGoto(url)
       await this.login()
     }
   }
 
-  
-  /**
-   * Inicia sesión con RUT y contraseña (solo cuando sea necesario)
-   */
   async login() {
     if (this.isLoggedIn) {
       console.log('✅ Ya hay una sesión activa')
@@ -173,10 +186,6 @@ class ScrapService extends events_1.default {
     if (!this.page) throw new Error('Undefined page property')
     return this.page
   }
-
-  /**
-   * ========== MÉTODOS PARA MANEJO DE reCAPTCHA v3 ==========
-   */
 
   async refreshRecaptchaTokens() {
     console.log('Refrescando tokens de reCAPTCHA...')
