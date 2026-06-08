@@ -776,34 +776,69 @@ module.exports = {
         // ✅ OBTENER LA INSTANCIA GLOBAL DEL NAVEGADOR
         const scrapeInstance = await initGlobalScrape();
         
-        const cParams = {
-          typeSearch: input.typeSearch,
+        // Buscar la causa existente para obtener los parámetros de búsqueda
+        const existingCase = await Cases.findOne({
           rol: input.rol,
-          tribune: input.court
+          court: input.court
+        });
+        
+        if (!existingCase) {
+          return {
+            messageBody: 'No se encontró la causa para actualizar',
+            messageType: 'is-danger',
+            messageImage: null
+          };
         }
-
+        
+        // Obtener los IDs desde searchParams (guardados al crear la causa)
+        const tribunalId = existingCase.searchParams?.tribunalId;
+        const competencia = existingCase.searchParams?.competencia;
+        const corteId = existingCase.searchParams?.corteId;
+        
+        if (!tribunalId || !competencia || !corteId) {
+          console.warn('⚠️ La causa no tiene searchParams completos, no se puede actualizar');
+          return {
+            messageBody: 'No se pueden actualizar los datos porque faltan parámetros de búsqueda',
+            messageType: 'is-warning',
+            messageImage: null
+          };
+        }
+        
+        // Construir parámetros para el scraper con los IDs correctos
+        const cParams = {
+          typeSearch: input.typeSearch || existingCase.typeSearch,
+          rol: input.rol,
+          tribune: tribunalId,      // ✅ Ahora es el ID numérico, no el nombre
+          competencia: competencia,  // ✅ ID de competencia
+          corteId: corteId           // ✅ ID de corte
+        }
+    
+        console.log('🔄 Actualizando causa con parámetros:', cParams);
+    
         // ✅ PASAR LA INSTANCIA GLOBAL
         const scrapData = await scrapRawData(cParams, scrapeInstance);
         await new CasesUpdated({
-          ...scrapData
+          ...scrapData,
+          rol: input.rol,
+          court: input.court
         }).save()
-
+    
         const cc = await Cases.findOne({
           rol: input.rol,
           court: input.court
         })
-
+    
         const ccu = await CasesUpdated.findOne({
           rol: input.rol,
           court: input.court
         })
-
+    
         await CasesReviews.findOneAndUpdate(
           { case: cc._id },
           { $set: { case: cc._id } },
           { new: true, upsert: true }
         )
-
+    
         if (
           cc.movementsHistory.length < ccu.movementsHistory.length ||
           cc.litigants.length < ccu.litigants.length
@@ -815,19 +850,31 @@ module.exports = {
             }
           })
           const ccuo = Object.fromEntries(upArr)
-
+    
           const upCaRe = await Cases.findOneAndUpdate(
             { rol: input.rol, court: input.court },
             { $set: { ...ccuo } },
             { new: true }
           )
-
+    
           if (upCaRe) {
             await CasesUpdated.findOneAndDelete({
               rol: input.rol,
               court: input.court
             })
           }
+          
+          // Actualizar el estado del scraping a success
+          await Cases.findOneAndUpdate(
+            { rol: input.rol, court: input.court },
+            { 
+              $set: { 
+                'scrapedData.status': 'success',
+                'scrapedData.lastScrapedAt': new Date(),
+                'scrapedData.data': scrapData
+              } 
+            }
+          )
         } else {
           await CasesUpdated.findOneAndDelete({
             rol: input.rol,
@@ -839,16 +886,16 @@ module.exports = {
             messageImage: null
           }
         }
-
+    
         return {
-          messageBody: 'La causa se actualizo de manera satifastoria',
+          messageBody: 'La causa se actualizó de manera satisfactoria',
           messageType: 'is-primary',
           messageImage: null
         }
       } catch (error) {
         console.log(error)
         return {
-          messageBody: 'El servidor no esta respondiendo bien, intente en unos minutos',
+          messageBody: 'El servidor no está respondiendo bien, intente en unos minutos',
           messageType: 'is-danger',
           messageImage: null
         }

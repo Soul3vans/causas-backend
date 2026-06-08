@@ -232,15 +232,32 @@ const judge = [
   { value: 1403, label: '2º Juzgado de Letras de San Bernardo Ex 3°' }
 ]
 
+// Función mejorada para obtener ID desde nombre (con soporte para múltiples formatos)
+const courtIdByName = (name) => {
+  // Primero intentar búsqueda directa
+  let res = judge.filter(i => i.label === name)
+  if (res.length > 0) return res[0].value
+  
+  // Si no, intentar búsqueda parcial (para casos como "15º Juzgado Civil de Santiago" vs "15º Juzgado Civil de Santiago")
+  res = judge.filter(i => i.label.toLowerCase() === name.toLowerCase())
+  if (res.length > 0) return res[0].value
+  
+  // Si aún no, intentar buscar por número de juzgado (ej: "15º")
+  const match = name.match(/(\d+)[º°]/)
+  if (match) {
+    const number = parseInt(match[1])
+    res = judge.filter(i => i.label.includes(`${number}º`))
+    if (res.length > 0) return res[0].value
+  }
+  
+  console.warn(`⚠️ No se encontró ID para el tribunal: ${name}`)
+  return null
+}
+
 module.exports = {
   courtNameById: id => {
     const res = judge.filter(i => i.value === parseInt(id))
-    console.log(id)
-    return res[0].label
+    return res[0]?.label || ''
   },
-  courtIdByName: id => {
-    const res = judge.filter(i => i.label === id)
-    console.log(id)
-    return res[0].value
-  }
+  courtIdByName: courtIdByName  // ← Función mejorada
 }

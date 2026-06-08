@@ -82,8 +82,24 @@ class UnifiedQuery {
                 throw new Error(`No se pudo navegar a indexN.php. URL actual: ${newUrl}`);
             }
             
-            // Esperar a que el formulario esté listo
-            await this.page.waitForSelector('select#competencia', { timeout: 15000, visible: true });
+            // Aumentar timeout y agregar reintentos
+            let retries = 3;
+            let selectorFound = false;
+            while (retries > 0 && !selectorFound) {
+            try {
+                await this.page.waitForSelector('select#competencia', { timeout: 30000, visible: true });
+                selectorFound = true;
+                console.log('✅ Selector select#competencia encontrado');
+            } catch (err) {
+                retries--;
+                console.log(`⚠️ Intento fallido, quedan ${retries} reintentos...`);
+                if (retries === 0) throw err;
+                await this.timeout(5000);
+                // Recargar la página si es necesario
+                await this.page.reload({ waitUntil: 'domcontentloaded' });
+                await this.timeout(3000);
+            }
+            }
             
             console.log("✅ Navegación completada, listo para buscar");
             
@@ -102,49 +118,56 @@ class UnifiedQuery {
      * Aplica los filtros de búsqueda en el formulario de Búsqueda por RIT
      */
     async applyFilter(options) {
-        const { court, tribune, rol, competencia = "3" } = options;
+        const { court, tribune, rol, competencia = "3", corteId } = options;
         
         try {
-            // Asegurar tokens de reCAPTCHA antes de llenar el formulario
-            await this.scrape.ensureRecaptchaTokens();
-            
-            await this.page.waitForSelector("select#competencia", {
-                timeout: 0,
-                visible: true,
-            });
-            
-            await this.page.select("select#competencia", competencia);
-            await (0, wait_1.wait)(500);
-            
-            await this.page.click("select#conCorte", { delay: 1000 });
-            await this.page.select("select#conCorte", court.toString());
-            await (0, wait_1.wait)(500);
-            
-            await this.page.click("select#conTribunal", { delay: 1000 });
-            await this.page.select("select#conTribunal", tribune.toString());
-            await (0, wait_1.wait)(500);
-            
-            const [type, ...paramsRol] = rol.split("-");
-            await this.page.select("select#conTipoCausa", type);
-            await (0, wait_1.wait)(1000);
-            
-            await this.page.evaluate(([role, year]) => {
-                const rolInput = document.querySelector("input#conRolCausa");
-                const yearInput = document.querySelector("input#conEraCausa");
-                const searchBtn = document.querySelector("button#btnConConsulta");
-                if (rolInput && yearInput) {
-                    rolInput.value = role;
-                    yearInput.value = year;
-                    searchBtn?.click();
-                }
-            }, paramsRol);
-            
-            console.log("Filtro aplicado...");
+          // Asegurar tokens de reCAPTCHA antes de llenar el formulario
+          await this.scrape.ensureRecaptchaTokens();
+          
+          // Usar competencia y corteId correctos
+          const competenciaValue = competencia || "3";
+          const corteValue = corteId || court || "90";
+          const tribuneValue = tribune;
+          
+          console.log(`🔍 Aplicando filtros - Competencia: ${competenciaValue}, Corte: ${corteValue}, Tribunal: ${tribuneValue}`);
+          
+          await this.page.waitForSelector("select#competencia", {
+            timeout: 30000,
+            visible: true,
+          });
+          
+          await this.page.select("select#competencia", competenciaValue);
+          await (0, wait_1.wait)(500);
+          
+          await this.page.click("select#conCorte", { delay: 1000 });
+          await this.page.select("select#conCorte", corteValue.toString());
+          await (0, wait_1.wait)(500);
+          
+          await this.page.click("select#conTribunal", { delay: 1000 });
+          await this.page.select("select#conTribunal", tribuneValue.toString());
+          await (0, wait_1.wait)(500);
+          
+          const [type, ...paramsRol] = rol.split("-");
+          await this.page.select("select#conTipoCausa", type);
+          await (0, wait_1.wait)(1000);
+          
+          await this.page.evaluate(([role, year]) => {
+            const rolInput = document.querySelector("input#conRolCausa");
+            const yearInput = document.querySelector("input#conEraCausa");
+            const searchBtn = document.querySelector("button#btnConConsulta");
+            if (rolInput && yearInput) {
+              rolInput.value = role;
+              yearInput.value = year;
+              searchBtn?.click();
+            }
+          }, paramsRol);
+          
+          console.log("✅ Filtro aplicado correctamente");
         } catch (error) {
-            console.error("Error aplicando filtros:", error);
-            throw error;
+          console.error("Error aplicando filtros:", error);
+          throw error;
         }
-    }
+    }     
 
     async extractAnchors() {
         await this.scrape.waitForSelector("tbody#verDetalle", 1500);
