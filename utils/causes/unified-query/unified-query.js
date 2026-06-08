@@ -83,7 +83,7 @@ class UnifiedQuery {
             }
             
             // Esperar a que el formulario esté listo
-            await this.page.waitForSelector('select#competencia', { timeout: 5000, visible: true });
+            await this.page.waitForSelector('select#competencia', { timeout: 15000, visible: true });
             
             console.log("✅ Navegación completada, listo para buscar");
             
