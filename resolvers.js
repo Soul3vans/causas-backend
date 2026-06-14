@@ -9,8 +9,14 @@ const { config } = require('./config/mail')
 const { abstractSendMail } = require('./utils/mail')
 const { GraphQLUpload } = require('graphql-upload')
 
-// ✅ IMPORTAR DESDE SCRAPPER.JS (incluyendo getScrapeInstance)
-const { scrapRawData, scrapeAndUpdateCase, closeScrapeInstance, getScrapeInstance } = require('./utils/scrapper')
+// Importar desde scrapper.js
+const { scrapRawData, scrapMultipleCauses, scrapeAndUpdateCase, updateMultipleCases, closeScrapeInstance, getScrapeInstance } = require('./utils/scrapper')
+const { scrapRawDataAuth, keepSessionAlive, closeAuthScrapeInstance, isSessionAlive } = require('./utils/scrapper-auth')
+
+// Importar utilidades de comparación (NUEVO)
+const { hasCaseChanged, sortMovementsByDate, getNewMovements } = require('./utils/compareCaseData')
+
+const logger = require('./utils/logger')
 const moment = require('moment')
 const { DateTime } = require('luxon')
 
@@ -20,9 +26,13 @@ const {
   addNewCause
 } = require('./workers/mail-sender/templates/add-new-cause.tpl')
 
+// Nueva plantilla para actualizaciones
+const { caseUpdated } = require('./workers/mail-sender/templates/update-case.tpl')
+
 puppeteer.use(StealthPlugin())
 
 let globalScrape = null;
+let useAuthScraper = false; // Cambiar a true para usar modo autenticado
 
 /**
  * Inicializa la instancia global del navegador (se llama una sola vez al iniciar el servidor)
@@ -30,8 +40,15 @@ let globalScrape = null;
  */
 async function initGlobalScrape() {
     if (!globalScrape) {
+        logger.info('🚀 Inicializando navegador global (solo una vez)...');
         console.log('🚀 Inicializando navegador global (solo una vez)...');
-        globalScrape = await getScrapeInstance();
+        
+        if (useAuthScraper) {
+            const { getAuthScrapeInstance } = require('./utils/scrapper-auth');
+            globalScrape = await getAuthScrapeInstance();
+        } else {
+            globalScrape = await getScrapeInstance();
+        }
     }
     return globalScrape;
 }
@@ -60,24 +77,206 @@ async function gu(um, cu) {
   return user
 }
 
-module.exports = {
+/**
+ * Envía notificación por email a usuarios involucrados cuando hay cambios en una causa
+ * @param {Object} Users - Modelo de Users
+ * @param {Object} caseData - Datos de la causa actualizada
+ * @param {Object} changes - Resumen de cambios (de hasCaseChanged)
+ */
+async function sendUpdateNotification(Users, caseData, changes) {
+  try {
+    // Buscar usuarios involucrados en la causa
+    const InvolvedUsersCase = require('./models/InvolvedUsersCase');
+    const involvedUsersDoc = await InvolvedUsersCase.findOne({ case: caseData._id }).populate('involved.userIn');
+    
+    const usersToNotify = involvedUsersDoc?.involved?.map(i => i.userIn) || [];
+    const ownerId = caseData.createdBy?.toString();
+    
+    // Agregar al dueño de la causa si no está en la lista
+    if (ownerId && !usersToNotify.some(u => u._id.toString() === ownerId)) {
+      const owner = await Users.findById(ownerId);
+      if (owner) usersToNotify.push(owner);
+    }
+    
+    // Construir resumen de cambios para el email
+    let changesHtml = '<ul>';
+    if (changes.newMovementsCount > 0) {
+      changesHtml += `<li><strong>${changes.newMovementsCount}</strong> nuevo(s) movimiento(s)</li>`;
+    }
+    if (changes.litigantsChanged) {
+      changesHtml += '<li>Cambios en la lista de litigantes</li>';
+    }
+    if (changes.mainFieldsChanged.length > 0) {
+      changesHtml += `<li>Campos actualizados: ${changes.mainFieldsChanged.join(', ')}</li>`;
+    }
+    changesHtml += '</ul>';
+    
+    for (const user of usersToNotify) {
+      if (user && user.email) {
+        const mailOptions = {
+          from: config.from,
+          to: user.email,
+          subject: `Actualización de Causa: ${caseData.rol}`,
+          html: await caseUpdated({
+            name: user.name,
+            cause: caseData,
+            changes: changesHtml
+          })
+        };
+        abstractSendMail(mailOptions);
+      }
+    }
+    
+    logger.info(`Notificaciones enviadas para causa ${caseData.rol} a ${usersToNotify.length} usuarios`);
+    
+  } catch (error) {
+    logger.error('Error enviando notificaciones de actualización:', error);
+  }
+}
+
+/**
+ * ACTUALIZA UNA CAUSA EXISTENTE SOLO SI HAY CAMBIOS (MEJORADA)
+ * @param {string} caseId - ID de la causa en MongoDB
+ * @param {string} fullRol - Rol completo (ej: "C-21503-2024")
+ * @param {Object} searchParams - Parámetros de búsqueda
+ * @param {Object} models - Modelos de Mongoose
+ * @returns {Promise<Object>} - Resultado de la actualización
+ */
+async function updateCaseIfNeeded(caseId, fullRol, searchParams, models) {
+  const { Cases, Users } = models;
+  
+  const existingCase = await Cases.findById(caseId);
+  
+  if (!existingCase) {
+    logger.warn(`Causa no encontrada: ${caseId}`);
+    return { success: false, error: 'Causa no encontrada' };
+  }
+  
+  logger.info(`🔄 Actualizando causa ${fullRol}...`);
+  
+  try {
+    // Actualizar estado a 'scraping'
+    await Cases.findByIdAndUpdate(caseId, {
+      'scrapedData.status': 'scraping',
+      'scrapedData.lastScrapedAt': new Date(),
+      'scrapedData.lastScrapedBy': 'scheduler'
+    });
+    
+    // Ejecutar scraper
+    let scrapResult;
+    if (useAuthScraper) {
+      scrapResult = await scrapRawDataAuth({
+        rol: fullRol,
+        tribune: searchParams.tribunalId,
+        competencia: searchParams.competencia,
+        corteId: searchParams.corteId
+      });
+    } else {
+      scrapResult = await scrapRawData({
+        typeSearch: 'UNIFICADA',
+        rol: fullRol,
+        tribune: searchParams.tribunalId,
+        competencia: searchParams.competencia,
+        corteId: searchParams.corteId
+      }, globalScrape);
+    }
+    
+    // Comparar y obtener cambios usando la nueva función hasCaseChanged
+    const changes = hasCaseChanged(existingCase, scrapResult);
+    
+    if (!changes.hasChanges) {
+      logger.info(`📭 No hay cambios nuevos para causa ${fullRol}`);
+      await Cases.findByIdAndUpdate(caseId, {
+        'scrapedData.status': 'success',
+        'scrapedData.lastScrapedAt': new Date(),
+        'scrapedData.data': scrapResult,
+        'scrapedData.errorMessage': null
+      });
+      return { success: true, updated: false, reason: 'no_changes', data: existingCase };
+    }
+    
+    // Preparar datos de actualización
+    const updateData = {
+      'scrapedData.status': 'success',
+      'scrapedData.lastScrapedAt': new Date(),
+      'scrapedData.data': scrapResult,
+      'scrapedData.errorMessage': null,
+      'scrapedData.retryCount': 0
+    };
+    
+    // Agregar SOLO movimientos nuevos al inicio del array
+    if (changes.newMovementsCount > 0) {
+      const newMovementsSorted = sortMovementsByDate(changes.newMovements);
+      updateData['$push'] = {
+        movementsHistory: { $each: newMovementsSorted, $position: 0 }
+      };
+      logger.info(`➕ Agregando ${changes.newMovementsCount} movimientos nuevos`);
+    }
+    
+    // Actualizar litigantes si cambiaron
+    if (changes.litigantsChanged) {
+      updateData.litigants = scrapResult.litigants;
+      logger.info(`👥 Litigantes actualizados`);
+    }
+    
+    // Actualizar campos principales que cambiaron
+    for (const field of changes.mainFieldsChanged) {
+      if (scrapResult[field] !== undefined) {
+        updateData[field] = scrapResult[field];
+        logger.debug(`📝 Campo ${field} actualizado`);
+      }
+    }
+    
+    // Ejecutar actualización
+    await Cases.findByIdAndUpdate(caseId, { $set: updateData });
+    
+    // Obtener la causa actualizada para notificaciones
+    const updatedCase = await Cases.findById(caseId);
+    
+    // Enviar notificaciones
+    await sendUpdateNotification(Users, updatedCase, changes);
+    
+    // Mantener sesión viva si se usa autenticación
+    if (useAuthScraper) {
+      await keepSessionAlive();
+    }
+    
+    logger.info(`✅ Causa ${fullRol} actualizada correctamente con ${changes.newMovementsCount} nuevos movimientos`);
+    
+    return { 
+      success: true, 
+      updated: true, 
+      newMovements: changes.newMovementsCount,
+      litigantsChanged: changes.litigantsChanged,
+      mainFieldsChanged: changes.mainFieldsChanged,
+      data: updatedCase
+    };
+    
+  } catch (error) {
+    logger.error(`❌ Error actualizando causa ${fullRol}`, { error: error.message, stack: error.stack });
+    
+    await Cases.findByIdAndUpdate(caseId, {
+      'scrapedData.status': 'error',
+      'scrapedData.errorMessage': error.message,
+      'scrapedData.retryCount': (existingCase.scrapedData?.retryCount || 0) + 1
+    });
+    
+    return { success: false, error: error.message };
+  }
+}
+
+// ========== CONSTRUIR EL OBJETO RESOLVERS ==========
+const resolvers = {
   Query: {
-    getCurrentUser: async (_, args, { Users, currentUser }) =>
-      gu(Users, currentUser),
+    getCurrentUser: async (_, args, { Users, currentUser }) => gu(Users, currentUser),
     getUsers: async (_, args, { Users }) => {
-      const usersResult = await Users.find({}, { password: false }).sort({
-        createdAt: 1
-      })
+      const usersResult = await Users.find({}, { password: false }).sort({ createdAt: 1 })
       return usersResult
     },
     getInvolvedUsers: async (_, { caseId }, { Users, InvolvedUsersCase }) => {
-      const usersResult = await Users.find({}, { password: false }).sort({
-        createdAt: 1
-      })
+      const usersResult = await Users.find({}, { password: false }).sort({ createdAt: 1 })
       const usersInvResult = await InvolvedUsersCase.findOne(
-        {
-          case: caseId
-        },
+        { case: caseId },
         'involved'
       ).populate('involved.userIn', '-password')
       let userInvArray = []
@@ -441,13 +640,11 @@ module.exports = {
       return activities
     }
   },
+  
   Upload: GraphQLUpload,
+  
   Mutation: {
-    updateUser: async (
-      _,
-      { userId, name, username, service, card, role },
-      { Users }
-    ) => {
+    updateUser: async (_, { userId, name, username, service, card, role }, { Users }) => {
       const checkUser = await Users.findOne({ $or: [{ username }, { card }] })
       if (checkUser && checkUser._id.toString() !== userId.toString()) {
         throw new Error('El usuario o la tarjeta estan en uso')
@@ -482,11 +679,7 @@ module.exports = {
         messageImage: null
       }
     },
-    updateUserPassword: async (
-      _,
-      { params: { userId, currentPassword, password } },
-      { Users }
-    ) => {
+    updateUserPassword: async (_, { params: { userId, currentPassword, password } }, { Users }) => {
       const userID = new mongoose.Types.ObjectId(userId)
       const checkUser = await Users.findById({ _id: userID })
       const isMatch = await checkUser.comparePassword(currentPassword)
@@ -504,11 +697,7 @@ module.exports = {
         messageImage: null
       }
     },
-    updateUsersPassword: async (
-      _,
-      { input: { userId, password } },
-      { Users }
-    ) => {
+    updateUsersPassword: async (_, { input: { userId, password } }, { Users }) => {
       const userID = new mongoose.Types.ObjectId(userId)
       await Users.findOneAndUpdate(
         { _id: userID },
@@ -537,11 +726,7 @@ module.exports = {
         messageImage: null
       }
     },
-    deleteCase: async (
-      _,
-      { caseId },
-      { Cases, InvolvedUsersCase, CasesViewed }
-    ) => {
+    deleteCase: async (_, { caseId }, { Cases, InvolvedUsersCase, CasesViewed }) => {
       try {
         await Cases.findOneAndRemove({
           _id: caseId
@@ -617,13 +802,151 @@ module.exports = {
         messageImage: null
       }
     },
+    
+    /**
+     * ADD CASE - MODIFICADO para soportar múltiples causas
+     * Ahora puede recibir un array de causas o una sola
+     */
     addCase: async (
       _,
-      { input },
+      { input, causes },
       { Users, Cases, InvolvedUsersCase, CasesReviews }
     ) => {
       try {
+        const causesToProcess = causes || [input];
         
+        if (!causesToProcess || causesToProcess.length === 0) {
+          return {
+            messageBody: 'No se proporcionaron causas para agregar',
+            messageType: 'is-danger',
+            messageImage: null
+          };
+        }
+        
+        // Para batch, usar el nuevo scrapMultipleCauses
+        if (causesToProcess.length > 1) {
+          logger.info(`📋 Procesando lote de ${causesToProcess.length} causas...`);
+          
+          const scraperCauses = causesToProcess.map(c => ({
+            fullRol: `${c.libroTipo}-${c.rolNumber}-${c.year}`,
+            tribunalId: c.tribunalId,
+            competencia: c.competencia,
+            corteId: c.corteId,
+            libroTipo: c.libroTipo,
+            rolNumber: c.rolNumber,
+            year: c.year,
+            typeSearch: c.typeSearch || 'UNIFICADA'
+          }));
+          
+          const scrapResults = await scrapMultipleCauses(scraperCauses, {
+            continueOnError: true,
+            delayBetweenCauses: 2000
+          });
+          
+          const savedResults = [];
+          for (let i = 0; i < scrapResults.length; i++) {
+            const scrapResult = scrapResults[i];
+            const causeInput = causesToProcess[i];
+            
+            if (scrapResult.status === 'success' && scrapResult.data) {
+              const tribunalName = courtNameById(causeInput.tribunalId);
+              const fullRol = `${causeInput.libroTipo}-${causeInput.rolNumber}-${causeInput.year}`;
+              
+              const existingCase = await Cases.findOne({
+                rol: fullRol,
+                court: tribunalName
+              });
+              
+              if (existingCase) {
+                savedResults.push({ rol: fullRol, status: 'already_exists' });
+                continue;
+              }
+              
+              const caseData = {
+                ...scrapResult.data,
+                rol: fullRol,
+                court: tribunalName,
+                createdBy: new mongoose.Types.ObjectId(causeInput.createdBy),
+                typeSearch: causeInput.typeSearch || 'UNIFICADA',
+                status: 'ACTIVE',
+                searchParams: {
+                  competencia: causeInput.competencia,
+                  corteId: causeInput.corteId,
+                  tribunalId: causeInput.tribunalId,
+                  libroTipo: causeInput.libroTipo,
+                  rolNumber: causeInput.rolNumber,
+                  year: causeInput.year,
+                  fullRol: fullRol
+                },
+                scrapedData: {
+                  lastScrapedAt: new Date(),
+                  lastScrapedBy: 'manual',
+                  status: 'success',
+                  errorMessage: null,
+                  retryCount: 0,
+                  data: scrapResult.data
+                }
+              };
+              
+              const newCase = await new Cases(caseData).save();
+              
+              if (causeInput.involved && causeInput.involved.length > 0) {
+                const userInvolved = causeInput.involved.map(a => ({
+                  status: 'COOPERADOR',
+                  notification: false,
+                  userIn: new mongoose.Types.ObjectId(a._id)
+                }));
+                await new InvolvedUsersCase({
+                  case: newCase._id,
+                  involved: userInvolved
+                }).save();
+              }
+              
+              await CasesReviews.findOneAndUpdate(
+                { case: newCase._id },
+                { $set: { case: newCase._id } },
+                { upsert: true }
+              );
+              
+              savedResults.push({ rol: fullRol, status: 'success', id: newCase._id });
+              
+            } else {
+              savedResults.push({ 
+                rol: `${causeInput.libroTipo}-${causeInput.rolNumber}-${causeInput.year}`, 
+                status: 'error', 
+                error: scrapResult.error 
+              });
+            }
+          }
+          
+          const users = await Users.find({}, 'email name');
+          const successfulCases = savedResults.filter(r => r.status === 'success');
+          
+          for (const user of users) {
+            for (const savedCase of successfulCases) {
+              const mailOptions = {
+                from: config.from,
+                to: user.email,
+                subject: 'Nuevas Causas Agregadas',
+                html: `<h3>Se agregaron ${successfulCases.length} nuevas causas al sistema</h3>
+                       <p>Las siguientes causas fueron importadas:</p>
+                       <ul>${successfulCases.map(c => `<li>${c.rol}</li>`).join('')}</ul>`
+              };
+              abstractSendMail(mailOptions);
+            }
+          }
+          
+          const successCount = savedResults.filter(r => r.status === 'success').length;
+          
+          return {
+            messageBody: `Se procesaron ${causesToProcess.length} causas. Éxitos: ${successCount}, Fallos: ${causesToProcess.length - successCount}`,
+            messageType: successCount > 0 ? 'is-primary' : 'is-danger',
+            messageImage: null,
+            results: savedResults
+          };
+        }
+        
+        // === PROCESAMIENTO INDIVIDUAL ===
         const { 
           libroTipo, 
           rolNumber, 
@@ -636,21 +959,11 @@ module.exports = {
           involved = []
         } = input;
         
-        // Construir el rol completo
         const fullRol = `${libroTipo}-${rolNumber}-${year}`;
-        
-        // Obtener el nombre del tribunal desde el seed
         const tribunalName = courtNameById(tribunalId);
         
-        console.log('📋 Creando nueva causa:', {
-          fullRol,
-          competencia,
-          corteId,
-          tribunalId,
-          tribunalName
-        });
+        logger.info('📋 Creando nueva causa:', { fullRol, competencia, corteId, tribunalId, tribunalName });
         
-        // Verificar si la causa ya existe
         const existingCase = await Cases.findOne({
           rol: fullRol,
           court: tribunalName
@@ -664,26 +977,34 @@ module.exports = {
           };
         }
         
-        // ✅ OBTENER LA INSTANCIA GLOBAL DEL NAVEGADOR (solo una vez)
         const scrapeInstance = await initGlobalScrape();
         
-        // ========== EJECUTAR SCRAPER ==========
         let scrapData = null;
         try {
-          console.log('🕷️ Ejecutando scraper para obtener datos...');
-          scrapData = await scrapRawData({
-            typeSearch,
-            rol: fullRol,
-            tribune: tribunalId,
-            competencia: competencia,
-            corteId: corteId
-          }, scrapeInstance);  // ✅ PASAR LA INSTANCIA GLOBAL
-          console.log('✅ Scraper completado exitosamente');
+          logger.info('🕷️ Ejecutando scraper para obtener datos...');
+          
+          if (useAuthScraper) {
+            scrapData = await scrapRawDataAuth({
+              rol: fullRol,
+              tribune: tribunalId,
+              competencia: competencia,
+              corteId: corteId
+            });
+          } else {
+            scrapData = await scrapRawData({
+              typeSearch,
+              rol: fullRol,
+              tribune: tribunalId,
+              competencia: competencia,
+              corteId: corteId
+            }, scrapeInstance);
+          }
+          
+          logger.info('✅ Scraper completado exitosamente');
         } catch (scraperError) {
-          console.error('⚠️ Error en scraper (continuando con causa vacía):', scraperError.message);
+          logger.error('⚠️ Error en scraper (continuando con causa vacía):', { error: scraperError.message });
         }
         
-        // ========== PREPARAR DATOS PARA GUARDAR ==========
         const caseData = {
           ...(scrapData || {}),
           rol: fullRol,
@@ -691,8 +1012,6 @@ module.exports = {
           createdBy: new mongoose.Types.ObjectId(createdBy),
           typeSearch: typeSearch,
           status: 'ACTIVE',
-          
-          // Parámetros de búsqueda
           searchParams: {
             competencia: competencia,
             corteId: corteId,
@@ -702,8 +1021,6 @@ module.exports = {
             year: year,
             fullRol: fullRol
           },
-          
-          // Estado del scraping
           scrapedData: {
             lastScrapedAt: scrapData ? new Date() : null,
             lastScrapedBy: 'manual',
@@ -714,32 +1031,26 @@ module.exports = {
           }
         };
         
-        // Guardar la causa
         const newCase = await new Cases(caseData).save();
-        console.log(`✅ Causa creada con ID: ${newCase._id}`);
         
-        // ========== AGREGAR USUARIOS INVOLUCRADOS ==========
         if (involved && involved.length > 0) {
           const userInvolved = involved.map(a => ({
             status: 'COOPERADOR',
             notification: false,
             userIn: new mongoose.Types.ObjectId(a._id)
           }));
-          
           await new InvolvedUsersCase({
             case: newCase._id,
             involved: userInvolved
           }).save();
         }
         
-        // Crear registro de revisión
         await CasesReviews.findOneAndUpdate(
           { case: newCase._id },
           { $set: { case: newCase._id } },
           { upsert: true }
         );
         
-        // ========== ENVIAR NOTIFICACIONES POR EMAIL ==========
         const users = await Users.find({}, 'email name');
         for (const user of users) {
           if (user._id.toString() !== newCase.createdBy.toString()) {
@@ -763,7 +1074,7 @@ module.exports = {
         };
         
       } catch (error) {
-        console.error('❌ Error en addCase:', error);
+        logger.error('❌ Error en addCase:', { error: error.message, stack: error.stack });
         return {
           messageBody: 'El servidor no está respondiendo bien, intente en unos minutos',
           messageType: 'is-danger',
@@ -771,12 +1082,211 @@ module.exports = {
         };
       }
     },
+    
+    /**
+     * NUEVA MUTATION: Actualizar múltiples causas existentes
+     */
+    updateMultipleCases: async (
+      _,
+      { cases },
+      { Cases, Users }
+    ) => {
+      try {
+        if (!cases || cases.length === 0) {
+          return {
+            messageBody: 'No se proporcionaron causas para actualizar',
+            messageType: 'is-danger',
+            messageImage: null
+          };
+        }
+        
+        logger.info(`🔄 Actualizando lote de ${cases.length} causas...`);
+        
+        const results = [];
+        
+        for (const caseItem of cases) {
+          const { caseId, fullRol, searchParams } = caseItem;
+          
+          const existingCase = await Cases.findById(caseId);
+          if (!existingCase) {
+            results.push({ caseId, fullRol, status: 'not_found', error: 'Causa no encontrada' });
+            continue;
+          }
+          
+          const updateResult = await updateCaseIfNeeded(caseId, fullRol, searchParams, { Cases, Users });
+          
+          results.push({
+            caseId,
+            fullRol,
+            status: updateResult.success ? 'success' : 'error',
+            updated: updateResult.updated,
+            newMovements: updateResult.newMovements || 0,
+            error: updateResult.error
+          });
+        }
+        
+        const successCount = results.filter(r => r.status === 'success').length;
+        
+        return {
+          messageBody: `Se procesaron ${cases.length} causas. Éxitos: ${successCount}, Fallos: ${cases.length - successCount}`,
+          messageType: successCount > 0 ? 'is-primary' : 'is-danger',
+          messageImage: null,
+          results
+        };
+        
+      } catch (error) {
+        logger.error('❌ Error en updateMultipleCases:', error);
+        return {
+          messageBody: 'Error actualizando múltiples causas',
+          messageType: 'is-danger',
+          messageImage: null
+        };
+      }
+    },
+    
+    /**
+     * NUEVA MUTATION: Scraping batch de nuevas causas
+     */
+    scrapeMultipleNewCases: async (
+      _,
+      { causes, createdBy },
+      { Cases, Users, InvolvedUsersCase, CasesReviews }
+    ) => {
+      try {
+        if (!causes || causes.length === 0) {
+          return {
+            messageBody: 'No se proporcionaron causas para procesar',
+            messageType: 'is-danger',
+            messageImage: null
+          };
+        }
+        
+        const scraperCauses = causes.map(c => ({
+          fullRol: `${c.libroTipo}-${c.rolNumber}-${c.year}`,
+          tribunalId: c.tribunalId,
+          competencia: c.competencia,
+          corteId: c.corteId,
+          libroTipo: c.libroTipo,
+          rolNumber: c.rolNumber,
+          year: c.year,
+          typeSearch: c.typeSearch || 'UNIFICADA'
+        }));
+        
+        const scrapResults = await scrapMultipleCauses(scraperCauses, {
+          continueOnError: true,
+          delayBetweenCauses: 2000
+        });
+        
+        const savedCases = [];
+        
+        for (let i = 0; i < scrapResults.length; i++) {
+          const scrapResult = scrapResults[i];
+          const causeInput = causes[i];
+          
+          if (scrapResult.status === 'success' && scrapResult.data) {
+            const tribunalName = courtNameById(causeInput.tribunalId);
+            const fullRol = `${causeInput.libroTipo}-${causeInput.rolNumber}-${causeInput.year}`;
+            
+            const existing = await Cases.findOne({ rol: fullRol });
+            if (existing) {
+              savedCases.push({ rol: fullRol, status: 'already_exists', id: existing._id });
+              continue;
+            }
+            
+            const caseData = {
+              ...scrapResult.data,
+              rol: fullRol,
+              court: tribunalName,
+              createdBy: new mongoose.Types.ObjectId(createdBy),
+              typeSearch: causeInput.typeSearch || 'UNIFICADA',
+              status: 'ACTIVE',
+              searchParams: {
+                competencia: causeInput.competencia,
+                corteId: causeInput.corteId,
+                tribunalId: causeInput.tribunalId,
+                libroTipo: causeInput.libroTipo,
+                rolNumber: causeInput.rolNumber,
+                year: causeInput.year,
+                fullRol: fullRol
+              },
+              scrapedData: {
+                lastScrapedAt: new Date(),
+                lastScrapedBy: 'manual',
+                status: 'success',
+                errorMessage: null,
+                retryCount: 0,
+                data: scrapResult.data
+              }
+            };
+            
+            const newCase = await new Cases(caseData).save();
+            
+            if (causeInput.involved && causeInput.involved.length > 0) {
+              const userInvolved = causeInput.involved.map(a => ({
+                status: 'COOPERADOR',
+                notification: false,
+                userIn: new mongoose.Types.ObjectId(a._id)
+              }));
+              await new InvolvedUsersCase({
+                case: newCase._id,
+                involved: userInvolved
+              }).save();
+            }
+            
+            await CasesReviews.findOneAndUpdate(
+              { case: newCase._id },
+              { $set: { case: newCase._id } },
+              { upsert: true }
+            );
+            
+            savedCases.push({ rol: fullRol, status: 'success', id: newCase._id });
+          } else {
+            savedCases.push({
+              rol: `${causeInput.libroTipo}-${causeInput.rolNumber}-${causeInput.year}`,
+              status: 'error',
+              error: scrapResult.error
+            });
+          }
+        }
+        
+        const successCount = savedCases.filter(s => s.status === 'success').length;
+        
+        const users = await Users.find({}, 'email name');
+        for (const user of users) {
+          if (user._id.toString() !== createdBy) {
+            const mailOptions = {
+              from: config.from,
+              to: user.email,
+              subject: `Nuevas Causas Agregadas (${successCount})`,
+              html: `<h3>Se agregaron ${successCount} nuevas causas al sistema</h3>
+                     <p>Las siguientes causas fueron importadas:</p>
+                     <ul>${savedCases.filter(s => s.status === 'success').map(c => `<li>${c.rol}</li>`).join('')}</ul>`
+            };
+            abstractSendMail(mailOptions);
+          }
+        }
+        
+        return {
+          messageBody: `Se procesaron ${causes.length} causas. Éxitos: ${successCount}`,
+          messageType: successCount > 0 ? 'is-primary' : 'is-danger',
+          messageImage: null,
+          results: savedCases
+        };
+        
+      } catch (error) {
+        logger.error('❌ Error en scrapeMultipleNewCases:', error);
+        return {
+          messageBody: 'Error procesando múltiples causas',
+          messageType: 'is-danger',
+          messageImage: null
+        };
+      }
+    },
+    
     updateCase: async (_, { input }, { Cases, CasesUpdated, CasesReviews }) => {
       try {
-        // ✅ OBTENER LA INSTANCIA GLOBAL DEL NAVEGADOR
         const scrapeInstance = await initGlobalScrape();
         
-        // Buscar la causa existente para obtener los parámetros de búsqueda
         const existingCase = await Cases.findOne({
           rol: input.rol,
           court: input.court
@@ -790,13 +1300,12 @@ module.exports = {
           };
         }
         
-        // Obtener los IDs desde searchParams (guardados al crear la causa)
         const tribunalId = existingCase.searchParams?.tribunalId;
         const competencia = existingCase.searchParams?.competencia;
         const corteId = existingCase.searchParams?.corteId;
         
         if (!tribunalId || !competencia || !corteId) {
-          console.warn('⚠️ La causa no tiene searchParams completos, no se puede actualizar');
+          logger.warn('⚠️ La causa no tiene searchParams completos, no se puede actualizar');
           return {
             messageBody: 'No se pueden actualizar los datos porque faltan parámetros de búsqueda',
             messageType: 'is-warning',
@@ -804,19 +1313,26 @@ module.exports = {
           };
         }
         
-        // Construir parámetros para el scraper con los IDs correctos
-        const cParams = {
-          typeSearch: input.typeSearch || existingCase.typeSearch,
-          rol: input.rol,
-          tribune: tribunalId,      // ✅ Ahora es el ID numérico, no el nombre
-          competencia: competencia,  // ✅ ID de competencia
-          corteId: corteId           // ✅ ID de corte
+        logger.info('🔄 Actualizando causa con parámetros:', { rol: input.rol, tribune: tribunalId, competencia, corteId });
+    
+        let scrapData;
+        if (useAuthScraper) {
+          scrapData = await scrapRawDataAuth({
+            rol: input.rol,
+            tribune: tribunalId,
+            competencia: competencia,
+            corteId: corteId
+          });
+        } else {
+          scrapData = await scrapRawData({
+            typeSearch: input.typeSearch || existingCase.typeSearch,
+            rol: input.rol,
+            tribune: tribunalId,
+            competencia: competencia,
+            corteId: corteId
+          }, scrapeInstance);
         }
-    
-        console.log('🔄 Actualizando causa con parámetros:', cParams);
-    
-        // ✅ PASAR LA INSTANCIA GLOBAL
-        const scrapData = await scrapRawData(cParams, scrapeInstance);
+        
         await new CasesUpdated({
           ...scrapData,
           rol: input.rol,
@@ -864,7 +1380,6 @@ module.exports = {
             })
           }
           
-          // Actualizar el estado del scraping a success
           await Cases.findOneAndUpdate(
             { rol: input.rol, court: input.court },
             { 
@@ -875,6 +1390,10 @@ module.exports = {
               } 
             }
           )
+          
+          if (useAuthScraper) {
+            await keepSessionAlive();
+          }
         } else {
           await CasesUpdated.findOneAndDelete({
             rol: input.rol,
@@ -893,6 +1412,7 @@ module.exports = {
           messageImage: null
         }
       } catch (error) {
+        logger.error('❌ Error en updateCase:', { error: error.message, stack: error.stack });
         console.log(error)
         return {
           messageBody: 'El servidor no está respondiendo bien, intente en unos minutos',
@@ -901,6 +1421,7 @@ module.exports = {
         }
       }
     },
+    
     addDdor: async (_, args, { Cases }) => {
       const cc = await Cases.find({})
       let conta = 0
@@ -923,11 +1444,8 @@ module.exports = {
         messageImage: null
       }
     },
-    addInvUsers: async (
-      _,
-      { input },
-      { InvolvedUsersCase, Users, Cases, Messages }
-    ) => {
+    
+    addInvUsers: async (_, { input }, { InvolvedUsersCase, Users, Cases, Messages }) => {
       try {
         const updtInvUsers = await InvolvedUsersCase.findOneAndUpdate(
           { case: input.caseId },
@@ -978,6 +1496,7 @@ module.exports = {
         }
       }
     },
+    
     updateVisibilityCase: async (_, { id, visibility }, { Cases }) => {
       try {
         await Cases.findOneAndUpdate(
@@ -998,6 +1517,7 @@ module.exports = {
         }
       }
     },
+    
     addPriority: async (_, { input }, { Priority }) => {
       try {
         const { id, name } = input
@@ -1021,6 +1541,7 @@ module.exports = {
         }
       }
     },
+    
     addActivity: async (_, { input }, { Activity }) => {
       try {
         const { id, priority, caseId } = input
@@ -1053,6 +1574,7 @@ module.exports = {
         }
       }
     },
+    
     updateActivity: async (_, { input }, { Activity }) => {
       try {
         const { _id } = input
@@ -1094,6 +1616,7 @@ module.exports = {
         }
       }
     },
+    
     getFileSignedS3Url: async (_, { input }, __) => {
       try {
         const fileSystemService = new plugins.FileSystemService()
@@ -1118,19 +1641,32 @@ module.exports = {
   }
 }
 
+// ========== EXPORTAR ==========
+module.exports = resolvers
+
+// Exportar la función auxiliar por separado (no es un resolver GraphQL)
+//module.exports.updateCaseIfNeeded = updateCaseIfNeeded
+
 // ========== INICIALIZACIÓN DEL NAVEGADOR GLOBAL ==========
-// Iniciar el navegador cuando el servidor arranca
 initGlobalScrape().catch(console.error);
 
-// Cerrar el navegador cuando el proceso termina
+// Cerrar navegador cuando el proceso termina
 process.on('SIGINT', async () => {
-    console.log('🛑 Cerrando navegador...');
-    await closeScrapeInstance();
+    logger.info('🛑 Cerrando navegador...');
+    if (useAuthScraper) {
+      await closeAuthScrapeInstance();
+    } else {
+      await closeScrapeInstance();
+    }
     process.exit();
 });
 
 process.on('SIGTERM', async () => {
-    console.log('🛑 Cerrando navegador...');
-    await closeScrapeInstance();
+    logger.info('🛑 Cerrando navegador...');
+    if (useAuthScraper) {
+      await closeAuthScrapeInstance();
+    } else {
+      await closeScrapeInstance();
+    }
     process.exit();
 });

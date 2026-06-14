@@ -1,0 +1,17 @@
+{
+  "testMetadata": {
+    "executedAt": "2026-06-14T07:04:14.111Z",
+    "searchParams": {
+      "court": "90",
+      "tribune": "273",
+      "rol": "C-21503-2024",
+      "competencia": "3",
+      "testDate": "2026-06-14T07:04:14.111Z",
+      "description": "Prueba de scraping con autenticación Clave Única"
+    },
+    "success": false,
+    "error": "waiting for selector `tbody#verDetalle, .alert-danger, .alert-warning` failed: timeout 30000ms exceeded",
+    "authMethod": "ClaveUnica"
+  },
+  "extractedData": null
+}

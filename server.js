@@ -1,12 +1,14 @@
 const express = require('express')
 const { ApolloServer, AuthenticationError } = require('apollo-server-express')
 const cors = require('cors')
+const morgan = require('morgan')
 const { MongoDatabase } = require('./utils/db')
 const { envs } = require('./utils/plugins')
 const fs = require('fs')
 const path = require('path')
 const jwt = require('jsonwebtoken')
 const cron = require('node-cron')
+const logger = require('./utils/logger')
 const typeDefsFilePath = path.join(__dirname, 'gql/typeDefs.gql')
 const typeDefs = fs.readFileSync(typeDefsFilePath, 'utf-8')
 const resolvers = require('./resolvers')
@@ -54,6 +56,15 @@ cron.schedule('00 04 * * *', () => dailyScraps(), { timezone: 'America/Santiago'
 cron.schedule('30 06 * * *', () => casesUpdater(), { timezone: 'America/Santiago' })
 
 const app = express()
+
+// ========== MORGAN MIDDLEWARE ==========
+// Configurar Morgan para usar Winston (logs de HTTP requests)
+app.use(morgan('combined', {
+  stream: {
+    write: (message) => logger.info(message.trim())
+  }
+}))
+logger.info('📝 Morgan HTTP logging configurado con Winston')
 
 const corsOptions = {
   credentials: true,
@@ -106,10 +117,12 @@ async function startServer() {
   try {
     // 1. Iniciar Apollo Server
     await server.start()
+    logger.info('✅ Apollo Server iniciado')
     console.log('✅ Apollo Server iniciado')
 
     // 2. Aplicar middleware a Express
     server.applyMiddleware({ app, cors: corsOptions })
+    logger.info('✅ Middleware de Apollo aplicado')
     console.log('✅ Middleware de Apollo aplicado')
 
     // 3. Rutas adicionales
@@ -134,8 +147,11 @@ async function startServer() {
       console.log(`🚀 Servidor corriendo en http://${HOST}:${PORT}`)
       console.log(`📡 GraphQL endpoint: http://${HOST}:${PORT}${server.graphqlPath}`)
       console.log(`✅ Health check: http://${HOST}:${PORT}/health`)
+      logger.info(`🚀 Servidor iniciado en http://${HOST}:${PORT}`)
+      logger.info(`📡 GraphQL endpoint: http://${HOST}:${PORT}${server.graphqlPath}`)
     })
   } catch (error) {
+    logger.error('❌ Error al iniciar el servidor:', { error: error.message, stack: error.stack })
     console.error('❌ Error al iniciar el servidor:', error)
     process.exit(1)
   }

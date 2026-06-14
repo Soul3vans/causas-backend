@@ -19,8 +19,8 @@ const fs = require('fs');
 const path = require('path');
 
 // Importar las clases necesarias - AJUSTAR LAS RUTAS SEGÚN TU ESTRUCTURA
-const { ScrapService } = require('./utils/plugins/puppeteer.plugin');
-const { UnifiedQuery } = require('./utils/causes/unified-query/unified-query');
+const { ScrapService } = require('../utils/plugins/puppeteer.plugin');
+const { UnifiedQuery } = require('../utils/causes/unified-query/unified-query');
 
 // Configuración de la causa de prueba
 const TEST_CONFIG = {

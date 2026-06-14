@@ -3,14 +3,29 @@
  * 
  * Este archivo es el punto de entrada único para el scraping de causas.
  * Utiliza la clase UnifiedQuery.
+ * 
+ * Funciones principales:
+ * - scrapRawData: Consulta una sola causa (modo invitado)
+ * - scrapMultipleCauses: Consulta múltiples causas (NUEVO)
+ * - scrapeAndUpdateCase: Actualiza una causa existente
+ * - updateMultipleCases: Actualiza múltiples causas existentes (NUEVO)
  */
 
 const { ScrapService } = require('./plugins/puppeteer.plugin');
 const { UnifiedQuery } = require('./causes/unified-query/unified-query');
+const logger = require('./logger');
 
 // Instancia única del navegador (Singleton)
 let globalScrapeInstance = null;
 let isInitializing = false;
+
+// Configuración de reintentos
+const DEFAULT_RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelay: 2000,      // 2 segundos
+  maxDelay: 30000,      // 30 segundos
+  backoffMultiplier: 2
+};
 
 /**
  * Obtiene o crea una instancia única del ScrapService
@@ -41,25 +56,78 @@ async function getScrapeInstance() {
 }
 
 /**
- * Función principal de scraping
+ * Calcula el tiempo de espera para reintentos (backoff exponencial)
+ * @param {number} attempt - Número de intento (1-indexed)
+ * @param {Object} config - Configuración de reintentos
+ * @returns {number} - Tiempo de espera en milisegundos
+ */
+function calculateBackoffDelay(attempt, config = DEFAULT_RETRY_CONFIG) {
+  const { baseDelay, maxDelay, backoffMultiplier } = config;
+  const delay = baseDelay * Math.pow(backoffMultiplier, attempt - 1);
+  return Math.min(delay, maxDelay);
+}
+
+/**
+ * Ejecuta una función con reintentos y rotación de IP
+ * @param {Function} fn - Función asíncrona a ejecutar
+ * @param {Object} options - Opciones de reintento
+ * @param {number} options.maxRetries - Máximo de reintentos
+ * @param {string} options.context - Contexto para logs
+ * @returns {Promise<any>} - Resultado de la función
+ */
+async function withRetryAndIpRotation(fn, options = {}) {
+  const { maxRetries = DEFAULT_RETRY_CONFIG.maxRetries, context = 'unknown' } = options;
+  let lastError = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 [${context}] Intento ${attempt}/${maxRetries}`);
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      console.error(`❌ [${context}] Error en intento ${attempt}:`, error.message);
+      
+      // Verificar si el error es por bloqueo de IP
+      const isBlockError = error.message?.toLowerCase().includes('block') ||
+                          error.message?.toLowerCase().includes('timeout') ||
+                          error.message?.toLowerCase().includes('403') ||
+                          error.message?.toLowerCase().includes('429');
+      
+      if (isBlockError && globalScrapeInstance) {
+        console.log(`⚠️ [${context}] Posible bloqueo detectado, rotando IP...`);
+        await globalScrapeInstance.rotateIp();
+        // Re-inicializar después de rotar IP
+        await globalScrapeInstance.init();
+      }
+      
+      if (attempt < maxRetries) {
+        const delay = calculateBackoffDelay(attempt);
+        console.log(`⏳ [${context}] Esperando ${delay}ms antes de reintentar...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
+/**
+ * Función principal de scraping para UNA sola causa
  * @param {Object} params - Parámetros de búsqueda
  * @param {string} params.typeSearch - Tipo de búsqueda ('RESERVADA' o 'UNIFICADA')
  * @param {string} params.rol - Rol completo (ej: "C-21503-2024")
  * @param {string} params.tribune - ID del tribunal (ej: "273")
  * @param {string} params.competencia - ID de competencia (ej: "3" para Civil)
  * @param {string} params.corteId - ID de la corte (ej: "90")
+ * @param {Object} existingScrape - Instancia existente del navegador (opcional)
  * @returns {Promise<Object>} - Datos extraídos de la causa
  */
-
 async function scrapRawData({ typeSearch, rol, tribune, competencia, corteId }, existingScrape = null) {
   console.log('='.repeat(60));
-  console.log('INICIANDO SCRAPER UNIFICADO');
+  console.log('INICIANDO SCRAPER UNIFICADO - UNA CAUSA');
   console.log('='.repeat(60));
-  console.log('Parámetros recibidos:');
-  console.log(`  - rol: ${rol}`);
-  console.log(`  - tribune (ID): ${tribune}`);
-  console.log(`  - competencia: ${competencia}`);
-  console.log(`  - corteId: ${corteId}`);
+  console.log(`📋 Causa: ${rol}`);
+  console.log(`🏛️ Tribunal ID: ${tribune}, Competencia: ${competencia}, Corte: ${corteId}`);
   console.log('='.repeat(60));
 
   // Usar instancia existente o crear una nueva (solo una vez)
@@ -67,35 +135,27 @@ async function scrapRawData({ typeSearch, rol, tribune, competencia, corteId }, 
   const storage = null;
 
   try {
-    // Inicializar navegador y navegar
-    //console.log('📍 Inicializando navegador...');
-    //await scrape.init();
-    
-    // Crear instancia de UnifiedQuery xq ya esta iniciado
+    // Crear instancia de UnifiedQuery
     const unifiedQuery = new UnifiedQuery(scrape, storage);
     
     // Configurar filtros para la búsqueda
     const filters = {
-      court: corteId || '90',      // ID de la corte (default: C.A. de Santiago)
-      tribune: tribune,             // ID del tribunal
-      rol: rol,                     // Rol completo ej: "C-21503-2024"
-      competencia: competencia || '3'  // Competencia (default: Civil)
+      court: corteId || '90',
+      tribune: tribune,
+      rol: rol,
+      competencia: competencia || '3'
     };
     
-    console.log('🔍 Aplicando filtros de búsqueda...');
-    console.log(`   - Corte ID: ${filters.court}`);
-    console.log(`   - Tribunal ID: ${filters.tribune}`);
-    console.log(`   - Rol: ${filters.rol}`);
-    console.log(`   - Competencia: ${filters.competencia}`);
+    console.log('🔍 Ejecutando búsqueda...');
     
     // Ejecutar el query unificado (todo el flujo de scraping)
-    await unifiedQuery.factory(filters);
+    await unifiedQuery.factory(filters, { autoCloseModal: true, maxResults: 1 });
     
     // Obtener el resultado
     const result = unifiedQuery.getccivil();
     
     if (!result) {
-      throw new Error('No se obtuvieron resultados del scraper');
+      throw new Error('No se obtuvieron resultados del scraper para la causa: ' + rol);
     }
     
     console.log('✅ Scraping completado exitosamente');
@@ -103,51 +163,134 @@ async function scrapRawData({ typeSearch, rol, tribune, competencia, corteId }, 
     console.log(`   - Movimientos: ${result.movementsHistory?.length || 0}`);
     console.log(`   - Enlaces: ${result.documentLinks?.length || 0}`);
     
-    // Cerrar navegador
-    //await scrape.close();
-    
     return result;
     
   } catch (error) {
     console.error('❌ Error en el scraper:', error.message);
-    console.error('Stack trace:', error.stack);
-    
-    // Asegurar que el navegador se cierre incluso en error
-    try {
-      await scrape.close();
-    } catch (closeError) {
-      console.error('Error cerrando navegador:', closeError);
-    }
-    
+    logger.error('Error en scrapRawData', { error: error.message, stack: error.stack, rol });
     throw error;
   }
 }
 
 /**
- * Función para cerrar el navegador (llamar al apagar el servidor)
+ * SCRAPING MÚLTIPLES CAUSAS (NUEVO)
+ * Procesa un array de causas con una sola instancia del navegador
+ * @param {Array} causes - Array de objetos con parámetros de búsqueda
+ * @param {Object} options - Opciones adicionales
+ * @returns {Promise<Array>} - Array de resultados (ordenados en el mismo orden que la entrada)
  */
-async function closeScrapeInstance() {
-  if (globalScrapeInstance) {
-      console.log('📍 Cerrando instancia del navegador...');
-      await globalScrapeInstance.close();
-      globalScrapeInstance = null;
+async function scrapMultipleCauses(causes, options = {}) {
+  const { 
+    continueOnError = true,
+    delayBetweenCauses = 2000,  // 2 segundos entre causas
+    clearFormBetweenCauses = true
+  } = options;
+  
+  console.log('='.repeat(60));
+  console.log('INICIANDO SCRAPER MÚLTIPLES CAUSAS');
+  console.log('='.repeat(60));
+  console.log(`📋 Total de causas a procesar: ${causes.length}`);
+  console.log('='.repeat(60));
+  
+  const results = [];
+  let scrapeInstance = null;
+  
+  try {
+    // Inicializar navegador UNA SOLA VEZ
+    console.log('🚀 Inicializando navegador (una sola vez para todas las causas)...');
+    scrapeInstance = await getScrapeInstance();
+    
+    // Procesar cada causa
+    for (let i = 0; i < causes.length; i++) {
+      const cause = causes[i];
+      const currentIndex = i + 1;
+      
+      console.log(`\n${'─'.repeat(50)}`);
+      console.log(`📌 Procesando causa ${currentIndex}/${causes.length}: ${cause.rol || cause.fullRol || 'desconocida'}`);
+      console.log(`${'─'.repeat(50)}`);
+      
+      const startTime = Date.now();
+      let result = {
+        index: currentIndex,
+        originalData: cause,
+        status: 'pending',
+        data: null,
+        error: null,
+        elapsedMs: 0
+      };
+      
+      try {
+        // Ejecutar scraping con reintentos
+        const scrapResult = await withRetryAndIpRotation(
+          async () => {
+            return await scrapRawData({
+              typeSearch: cause.typeSearch || 'UNIFICADA',
+              rol: cause.fullRol || `${cause.libroTipo}-${cause.rolNumber}-${cause.year}`,
+              tribune: cause.tribunalId || cause.tribune,
+              competencia: cause.competencia || '3',
+              corteId: cause.corteId || cause.court || '90'
+            }, scrapeInstance);
+          },
+          { context: `Causa ${currentIndex}`, maxRetries: options.maxRetriesPerCause || 3 }
+        );
+        
+        result.status = 'success';
+        result.data = scrapResult;
+        console.log(`✅ Causa ${currentIndex} completada exitosamente en ${Date.now() - startTime}ms`);
+        
+      } catch (error) {
+        result.status = 'error';
+        result.error = error.message;
+        console.error(`❌ Causa ${currentIndex} falló:`, error.message);
+        
+        if (!continueOnError) {
+          throw new Error(`Deteniendo en causa ${currentIndex} por error: ${error.message}`);
+        }
+      }
+      
+      result.elapsedMs = Date.now() - startTime;
+      results.push(result);
+      
+      // Limpiar formulario para la próxima causa (si hay más)
+      if (clearFormBetweenCauses && i < causes.length - 1 && result.status === 'success') {
+        console.log('🧹 Limpiando formulario para siguiente causa...');
+        try {
+          await scrapeInstance.clearForm();
+        } catch (clearError) {
+          console.warn('⚠️ Error limpiando formulario:', clearError.message);
+        }
+      }
+      
+      // Esperar entre causas (evitar sobrecarga)
+      if (i < causes.length - 1) {
+        console.log(`⏳ Esperando ${delayBetweenCauses}ms antes de siguiente causa...`);
+        await new Promise(resolve => setTimeout(resolve, delayBetweenCauses));
+      }
+    }
+    
+    // Resumen final
+    const successCount = results.filter(r => r.status === 'success').length;
+    const errorCount = results.filter(r => r.status === 'error').length;
+    
+    console.log('\n' + '='.repeat(60));
+    console.log('📊 RESUMEN DE SCRAPING MÚLTIPLES CAUSAS');
+    console.log('='.repeat(60));
+    console.log(`✅ Exitosas: ${successCount}`);
+    console.log(`❌ Fallidas: ${errorCount}`);
+    console.log(`📋 Total: ${causes.length}`);
+    console.log('='.repeat(60));
+    
+    return results;
+    
+  } catch (error) {
+    console.error('❌ Error fatal en scrapMultipleCauses:', error.message);
+    logger.error('Error fatal en scrapMultipleCauses', { error: error.message, stack: error.stack });
+    throw error;
   }
 }
 
 /**
- * Función para autenticarse manualmente
- */
-async function authenticateScrape() {
-  const scrape = await getScrapeInstance();
-  if (!scrape.isLoggedIn) {
-      console.log('🔐 Autenticando navegador...');
-      await scrape.login();
-  }
-  return scrape;
-}
-
-/**
- * Función para actualizar una causa existente con nuevos datos del scraper
+ * Actualiza una causa existente con nuevos datos del scraper
  * @param {Object} caseModel - Modelo Mongoose de Cases
  * @param {string} caseId - ID de la causa en MongoDB
  * @param {Object} searchParams - Parámetros de búsqueda
@@ -204,22 +347,146 @@ async function scrapeAndUpdateCase(caseModel, caseId, searchParams, fullRol) {
     
   } catch (error) {
     console.error(`❌ Error actualizando causa ${fullRol}:`, error.message);
+    logger.error('Error en scrapeAndUpdateCase', { error: error.message, stack: error.stack, fullRol });
     
     // Actualizar estado de error
+    const existingCase = await caseModel.findById(caseId);
     await caseModel.findByIdAndUpdate(caseId, {
       'scrapedData.status': 'error',
       'scrapedData.errorMessage': error.message,
-      'scrapedData.retryCount': (await caseModel.findById(caseId))?.scrapedData?.retryCount + 1 || 1
+      'scrapedData.retryCount': (existingCase?.scrapedData?.retryCount || 0) + 1
     });
     
     return { success: false, error: error.message };
   }
 }
 
+/**
+ * ACTUALIZA MÚLTIPLES CAUSAS EXISTENTES (NUEVO)
+ * @param {Object} caseModel - Modelo Mongoose de Cases
+ * @param {Array} casesToUpdate - Array de objetos con caseId y parámetros
+ * @param {Object} options - Opciones adicionales
+ * @returns {Promise<Array>} - Array de resultados
+ */
+async function updateMultipleCases(caseModel, casesToUpdate, options = {}) {
+  const { continueOnError = true, delayBetweenUpdates = 2000 } = options;
+  
+  console.log('='.repeat(60));
+  console.log('INICIANDO ACTUALIZACIÓN MÚLTIPLE DE CAUSAS');
+  console.log('='.repeat(60));
+  console.log(`📋 Total de causas a actualizar: ${casesToUpdate.length}`);
+  console.log('='.repeat(60));
+  
+  const results = [];
+  
+  try {
+    // Asegurar que el navegador esté inicializado
+    await getScrapeInstance();
+    
+    for (let i = 0; i < casesToUpdate.length; i++) {
+      const { caseId, searchParams, fullRol } = casesToUpdate[i];
+      const currentIndex = i + 1;
+      
+      console.log(`\n📌 Actualizando causa ${currentIndex}/${casesToUpdate.length}: ${fullRol}`);
+      
+      const startTime = Date.now();
+      let result = {
+        index: currentIndex,
+        caseId,
+        fullRol,
+        status: 'pending',
+        updated: false,
+        error: null,
+        elapsedMs: 0
+      };
+      
+      try {
+        const updateResult = await withRetryAndIpRotation(
+          async () => {
+            return await scrapeAndUpdateCase(caseModel, caseId, searchParams, fullRol);
+          },
+          { context: `Actualización ${currentIndex}`, maxRetries: options.maxRetriesPerCase || 2 }
+        );
+        
+        result.status = updateResult.success ? 'success' : 'error';
+        result.updated = updateResult.success;
+        result.error = updateResult.error;
+        
+        if (updateResult.success) {
+          console.log(`✅ Causa ${currentIndex} actualizada exitosamente`);
+        } else {
+          console.error(`❌ Causa ${currentIndex} falló:`, updateResult.error);
+        }
+        
+      } catch (error) {
+        result.status = 'error';
+        result.error = error.message;
+        console.error(`❌ Causa ${currentIndex} falló:`, error.message);
+        
+        if (!continueOnError) {
+          throw error;
+        }
+      }
+      
+      result.elapsedMs = Date.now() - startTime;
+      results.push(result);
+      
+      // Esperar entre actualizaciones
+      if (i < casesToUpdate.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, delayBetweenUpdates));
+      }
+    }
+    
+    // Resumen
+    const successCount = results.filter(r => r.status === 'success').length;
+    const errorCount = results.filter(r => r.status === 'error').length;
+    
+    console.log('\n' + '='.repeat(60));
+    console.log('📊 RESUMEN DE ACTUALIZACIÓN MÚLTIPLE');
+    console.log('='.repeat(60));
+    console.log(`✅ Exitosas: ${successCount}`);
+    console.log(`❌ Fallidas: ${errorCount}`);
+    console.log('='.repeat(60));
+    
+    return results;
+    
+  } catch (error) {
+    console.error('❌ Error fatal en updateMultipleCases:', error.message);
+    logger.error('Error fatal en updateMultipleCases', { error: error.message, stack: error.stack });
+    throw error;
+  }
+}
+
+/**
+ * Función para cerrar el navegador (llamar al apagar el servidor)
+ */
+async function closeScrapeInstance() {
+  if (globalScrapeInstance) {
+      console.log('📍 Cerrando instancia del navegador...');
+      await globalScrapeInstance.close();
+      globalScrapeInstance = null;
+  }
+}
+
+/**
+ * Función para autenticarse manualmente
+ */
+async function authenticateScrape() {
+  const scrape = await getScrapeInstance();
+  if (!scrape.isLoggedIn) {
+      console.log('🔐 Autenticando navegador...');
+      await scrape.login();
+  }
+  return scrape;
+}
+
 module.exports = {
   scrapRawData,
+  scrapMultipleCauses,
   scrapeAndUpdateCase,
+  updateMultipleCases,
   closeScrapeInstance,
   getScrapeInstance,
   authenticateScrape,
+  withRetryAndIpRotation    // Exportado para uso externo
 };

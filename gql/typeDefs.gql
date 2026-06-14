@@ -193,12 +193,6 @@ type Priority {
   color: String
 }
 
-#type Priority {
-#  _id: String
-#  title: String
-#  color: String
-#}
-
 type PriorityResult {
   priority: Priority
   message: Message
@@ -213,6 +207,68 @@ type SignedUrlResult {
   url: String
   message: Message
 }
+
+# ========== NUEVOS TIPOS PARA MÚLTIPLES CAUSAS ==========
+
+input SearchParamsInput {
+  competencia: String!
+  corteId: String!
+  tribunalId: String!
+  libroTipo: String!
+  rolNumber: String!
+  year: String!
+  fullRol: String!
+}
+
+input UpdateMultipleCaseInput {
+  caseId: ID!
+  fullRol: String!
+  searchParams: SearchParamsInput!
+}
+
+input NewCauseBatchInput {
+  libroTipo: String!
+  rolNumber: String!
+  year: String!
+  competencia: String!
+  corteId: String!
+  tribunalId: String!
+  typeSearch: String
+  createdBy: ID
+  involved: [InvUserInput]
+}
+
+type UpdateMultipleCaseResult {
+  caseId: ID!
+  fullRol: String!
+  status: String!
+  updated: Boolean
+  newMovements: Int
+  error: String
+}
+
+type BatchCaseResult {
+  rol: String!
+  status: String!
+  id: ID
+  error: String
+}
+
+type UpdateMultipleCasesResponse {
+  messageBody: String!
+  messageType: String!
+  messageImage: String
+  results: [UpdateMultipleCaseResult!]
+}
+
+type ScrapeMultipleNewCasesResponse {
+  messageBody: String!
+  messageType: String!
+  messageImage: String
+  results: [BatchCaseResult!]
+}
+
+# ========== INPUTS EXISTENTES ==========
 
 input UsersInput {
   userId: ID
@@ -306,6 +362,8 @@ input SignedUrlInput {
   cause: String
 }
 
+# ========== QUERY ==========
+
 type Query {
   getCases: [Cases]
   getCaseViewed: [CasesViewed]
@@ -334,11 +392,13 @@ type Query {
   getActivitiesByDate(days: Int!): [Activity]!
 }
 
+# ========== MUTATION ==========
+
 type Mutation {
+  # Mutations existentes
   addCase(input: CaseInput!): Message!
   updateCase(input: UpCaseInput!): Message!
   deleteCase(caseId: ID!): Message!
-  # updateCases(): Message!
 
   deleteActivity(id: ID!): Message!
 
@@ -364,5 +424,11 @@ type Mutation {
 
   getFileSignedS3Url(input: SignedUrlInput!): SignedUrlResult!
 
-  # uploadFile(file: Upload!): File
+  # ========== NUEVAS MUTATIONS ==========
+  
+  # Actualizar múltiples causas existentes
+  updateMultipleCases(cases: [UpdateMultipleCaseInput!]!): UpdateMultipleCasesResponse!
+  
+  # Scraping batch de nuevas causas
+  scrapeMultipleNewCases(causes: [NewCauseBatchInput!]!, createdBy: ID!): ScrapeMultipleNewCasesResponse!
 }

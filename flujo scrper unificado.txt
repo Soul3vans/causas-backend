@@ -1,0 +1,40 @@
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                              BACKEND (resolvers.js)                                  │
+│                                                                                     │
+│   addCase (individual)  │  updateCase (individual)  │  updateMultipleCases (batch) │
+│                                                                                     │
+└─────────────────────────────────────────┬───────────────────────────────────────────┘
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                           SCRAPPER UNIFICADO (scrapper.js)                           │
+│                                                                                     │
+│   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────────────────┐│
+│   │ scrapRawData    │  │ scrapRawData    │  │ scrapMultipleCauses (NUEVO)         ││
+│   │ (invitado)      │  │ Auth (autent.)  │  │ - Recibe array de causas            ││
+│   │                 │  │                 │  │ - Una sola instancia navegador       ││
+│   └────────┬────────┘  └────────┬────────┘  │ - Procesa una por una               ││
+│            │                    │            │ - Cierra modal entre causas         ││
+│            └──────────┬─────────┘            │ - Limpia formulario con botón       ││
+│                       │                      └─────────────────────────────────────┘│
+│                       ▼                                                             │
+│            ┌─────────────────────┐                                                  │
+│            │   UnifiedQuery      │                                                  │
+│            │   (unified-query.js)│                                                  │
+│            └─────────────────────┘                                                  │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                           PUPPETEER PLUGIN (puppeteer.plugin.js)                    │
+│                                                                                     │
+│   ScrapService class:                                                               │
+│   - init() - Navegación inicial + storage                                          │
+│   - login() - Autenticación Clave Única                                            │
+│   - ensureRecaptchaTokens() - Manejo de reCAPTCHA                                   │
+│   - closeModal() - Cierra modal Detalle Causa                                       │
+│   - clearForm() - Clic en botón Limpiar                                             │
+│   - isBlocked() - Detecta bloqueo de IP (403, 429, timeout, reCAPTCHA infinito)    │
+│   - rotateIp() - Cambia IP (Tor o release/renew)                                    │
+│   - close() - Cierra navegador                                                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘

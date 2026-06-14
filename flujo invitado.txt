@@ -1,0 +1,221 @@
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                                    INICIO                                           │
+│                         Recibir array de causas desde backend                        │
+└─────────────────────────────────────────┬───────────────────────────────────────────┘
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                         🔷 INICIAR NAVEGADOR (UNA SOLA VEZ)                         │
+│                                                                                     │
+│   Parámetros:                                                                       │
+│   • headless: false (modo visible)                                                  │
+│   • slowMo: 200-400ms                                                               │
+│   • args: anti-detección (--disable-blink-features=AutomationControlled, etc.)     │
+│   • executablePath: Chrome del sistema (si existe)                                  │
+│   • user-agent: generateRandomUA()                                                  │
+└─────────────────────────────────────────┬───────────────────────────────────────────┘
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                         🔷 NAVEGAR A home/index.php                                  │
+│                                                                                     │
+│   await page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {       │
+│       waitUntil: 'networkidle2',                                                    │
+│       timeout: 60000                                                                │
+│   })                                                                                │
+│   await timeout(10000)  ← Espera inicial para carga completa                        │
+└─────────────────────────────────────────┬───────────────────────────────────────────┘
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                    🔷 ESTABLECER localStorage Y sessionStorage                      │
+│                                                                                     │
+│   localStorage.setItem('InitSitioOld', '0');                                        │
+│   localStorage.setItem('InitSitioNew', '1');                                        │
+│   localStorage.setItem('logged-in', 'true');                                        │
+│   localStorage.setItem('acceso-invitado', 'true');                                  │
+│   sessionStorage.setItem('logged-in', 'true');                                      │
+│   sessionStorage.setItem('acceso-invitado', 'true');                                │
+└─────────────────────────────────────────┬───────────────────────────────────────────┘
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│              🔷 HACER CLIC EN "Consulta causas" (botón dropbtn)                     │
+│                                                                                     │
+│   Selector: button.dropbtn[onclick*="accesoConsultaCausas"]                         │
+│   Fallback: button.dropbtn (filtrar por texto "Consulta causas")                    │
+│   await timeout(2000) después del clic                                              │
+└─────────────────────────────────────────┬───────────────────────────────────────────┘
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                    🔷 ESPERAR REDIRECCIÓN A indexN.php                               │
+│                                                                                     │
+│   await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 })   │
+│   await timeout(2000) adicional                                                     │
+└─────────────────────────────────────────┬───────────────────────────────────────────┘
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                    🔶 VERIFICAR BLOQUEO DE IP                                        │
+│                                                                                     │
+│   ¿La página muestra error 403/429? ¿Timeout? ¿reCAPTCHA infinito?                 │
+└─────────────────────────────────────────┬───────────────────────────────────────────┘
+                                          │
+                    ┌─────────────────────┴─────────────────────┐
+                    │                                           │
+                    ▼                                           ▼
+    ┌───────────────────────────────┐           ┌─────────────────────────────────────┐
+    │  🟢 SIN BLOQUEO               │           │  ⚠️ BLOQUEO DETECTADO                │
+    │  Continuar                    │           │  → Activar rotación de IP           │
+    └───────────────┬───────────────┘           │  → Reiniciar navegador              │
+                    │                           │  → Reintentar (máx 3)              │
+                    │                           └─────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                    🔷 BUCLE PRINCIPAL - PROCESAR CADA CAUSA                          │
+│                                                                                     │
+│   Para cada causa en el array:                                                      │
+└─────────────────────────────────────────┬───────────────────────────────────────────┘
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  ┌───────────────────────────────────────────────────────────────────────────────┐  │
+│  │  🔷 APLICAR FILTROS DE BÚSQUEDA                                                │  │
+│  │                                                                                │  │
+│  │  • Esperar select#competencia (timeout 30000ms)                                │  │
+│  │  • Seleccionar competencia (ej: "3" para Civil)                                │  │
+│  │  • Seleccionar corte (select#conCorte)                                        │  │
+│  │  • Seleccionar tribunal (select#conTribunal)                                   │  │
+│  │  • Seleccionar libro/tipo (select#conTipoCausa)                               │  │
+│  │  • Ingresar rol (input#conRolCausa)                                           │  │
+│  │  • Ingresar año (input#conEraCausa)                                           │  │
+│  │  • Hacer clic en button#btnConConsulta                                        │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                          │                                          │
+│                                          ▼                                          │
+│  ┌───────────────────────────────────────────────────────────────────────────────┐  │
+│  │  🔶 ESPERAR RESULTADOS                                                         │  │
+│  │                                                                                │  │
+│  │  await page.waitForSelector('tbody#verDetalle, .alert-danger, .alert-warning',│  │
+│  │                            { timeout: 30000 })                                 │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                          │                                          │
+│                    ┌─────────────────────┴─────────────────────┐                   │
+│                    │                                           │                   │
+│                    ▼                                           ▼                   │
+│  ┌───────────────────────────────┐           ┌─────────────────────────────────┐   │
+│  │  📭 SIN RESULTADOS            │           │  📋 CON RESULTADOS               │   │
+│  │                               │           │                                 │   │
+│  │  Verificar si el texto        │           │  Obtener primera fila:          │   │
+│  │  "No se han encontrado        │           │  document.querySelector(        │   │
+│  │  resultados" aparece          │           │    'tbody#verDetalle>tr')       │   │
+│  │                               │           │                                 │   │
+│  │  → Marcar causa como          │           │  Extraer onclick del <a>        │   │
+│  │    "not_found"                │           │                                 │   │
+│  │  → Pasar a siguiente causa    │           │  → Continuar                    │   │
+│  └───────────────┬───────────────┘           └───────────────┬─────────────────┘   │
+│                  │                                           │                      │
+│                  │                                           ▼                      │
+│                  │                       ┌─────────────────────────────────────┐   │
+│                  │                       │  🔷 EJECUTAR SCRIPT onclick          │   │
+│                  │                       │                                     │   │
+│                  │                       │  await page.evaluate(script)        │   │
+│                  │                       │  await timeout(1000)                │   │
+│                  │                       └───────────────┬─────────────────────┘   │
+│                  │                                       │                          │
+│                  │                                       ▼                          │
+│                  │                       ┌─────────────────────────────────────┐   │
+│                  │                       │  🔷 ESPERAR MODAL                    │   │
+│                  │                       │                                     │   │
+│                  │                       │  await page.waitForSelector(        │   │
+│                  │                       │    '#modalDetalleCivil',            │   │
+│                  │                       │    { timeout: 10000, visible: true })│   │
+│                  │                       └───────────────┬─────────────────────┘   │
+│                  │                                       │                          │
+│                  │                                       ▼                          │
+│                  │                       ┌─────────────────────────────────────┐   │
+│                  │                       │  🔷 EXTRAER DATOS GENERALES          │   │
+│                  │                       │                                     │   │
+│                  │                       │  Rol, admisión, carátula,           │   │
+│                  │                       │  estado, etapa, tribunal, etc.      │   │
+│                  │                       └───────────────┬─────────────────────┘   │
+│                  │                                       │                          │
+│                  │                                       ▼                          │
+│                  │                       ┌─────────────────────────────────────┐   │
+│                  │                       │  🔷 EXTRAER LITIGANTES               │   │
+│                  │                       │                                     │   │
+│                  │                       │  await page.click(                   │   │
+│                  │                       │    'a[href="#litigantesCiv"]')      │   │
+│                  │                       │  await timeout(1500)                │   │
+│                  │                       │  Extraer tabla de litigantes        │   │
+│                  │                       └───────────────┬─────────────────────┘   │
+│                  │                                       │                          │
+│                  │                                       ▼                          │
+│                  │                       ┌─────────────────────────────────────┐   │
+│                  │                       │  🔷 EXTRAER MOVIMIENTOS              │   │
+│                  │                       │                                     │   │
+│                  │                       │  HistoryScrape.start()              │   │
+│                  │                       │  Obtener array de movimientos       │   │
+│                  │                       └───────────────┬─────────────────────┘   │
+│                  │                                       │                          │
+│                  │                                       ▼                          │
+│                  │                       ┌─────────────────────────────────────┐   │
+│                  │                       │  🔷 EXTRAER ENLACES DOCUMENTOS       │   │
+│                  │                       │                                     │   │
+│                  │                       │  Extraer href/onclick de:           │   │
+│                  │                       │  a[onclick*="anexo"],               │   │
+│                  │                       │  a[onclick*="detalle"], etc.        │   │
+│                  │                       │  NO descargar documentos            │   │
+│                  │                       └───────────────┬─────────────────────┘   │
+│                  │                                       │                          │
+│                  │                                       ▼                          │
+│                  │                       ┌─────────────────────────────────────┐   │
+│                  │                       │  🔷 CERRAR MODAL                     │   │
+│                  │                       │                                     │   │
+│                  │                       │  Opción 1: button.close             │   │
+│                  │                       │  Opción 2: [data-dismiss="modal"]   │   │
+│                  │                       │  Opción 3: .modal-header button.close│   │
+│                  │                       │                                     │   │
+│                  │                       │  await timeout(1500) estabilización │   │
+│                  │                       └───────────────┬─────────────────────┘   │
+│                  │                                       │                          │
+│                  ▼                                       ▼                          │
+│  ┌───────────────────────────────────────────────────────────────────────────────┐  │
+│  │  🔷 LIMPIAR FORMULARIO PARA PRÓXIMA CAUSA                                      │  │
+│  │                                                                                │  │
+│  │  • Hacer clic en button#btnConLimpiar (onclick="limpia();")                   │  │
+│  │  • await timeout(1000)                                                         │  │
+│  │  • El formulario queda limpio para la siguiente iteración                     │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                          │                                          │
+│                                          ▼                                          │
+│  ┌───────────────────────────────────────────────────────────────────────────────┐  │
+│  │  🔶 ¿MÁS CAUSAS EN EL ARRAY?                                                   │  │
+│  │                                                                                │  │
+│  │  Si SÍ: continuar con siguiente causa                                          │  │
+│  │  Si NO: salir del bucle                                                        │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                     │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                              🔷 CERRAR NAVEGADOR                                     │
+│                                                                                     │
+│   await browser.close()                                                             │
+│   Se liberan todos los recursos                                                      │
+└─────────────────────────────────────────┬───────────────────────────────────────────┘
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                                    FINAL                                             │
+│                                                                                     │
+│   Retornar array con resultados de todas las causas:                                │
+│   [                                                                                 │
+│     { causa: {...}, status: 'success', newMovements: 3, litigantsChanged: false }, │
+│     { causa: {...}, status: 'not_found' },                                          │
+│     { causa: {...}, status: 'error', error: '...' }                                 │
+│   ]                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────────┘

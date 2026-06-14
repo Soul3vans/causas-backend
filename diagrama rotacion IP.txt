@@ -1,0 +1,54 @@
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                         DETECCIÓN DE BLOQUEO EN CUALQUIER PASO                       │
+│                                                                                     │
+│   Se detecta bloqueo cuando:                                                        │
+│   • Status code 403 o 429                                                           │
+│   • Timeout en waitForSelector (más de 30 segundos sin respuesta)                   │
+│   • reCAPTCHA que nunca se resuelve (más de 2 minutos)                              │
+│   • Texto "acceso denegado" o "bloqueado" en la página                              │
+└─────────────────────────────────────────┬───────────────────────────────────────────┘
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                         ⚠️ INICIAR ROTACIÓN DE IP                                    │
+│                                                                                     │
+│   Intentos disponibles (en orden de preferencia):                                   │
+└─────────────────────────────────────────┬───────────────────────────────────────────┘
+                                          │
+                                          ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  ┌───────────────────────────────────────────────────────────────────────────────┐  │
+│  │  🔷 INTENTO 1: TOR (The Onion Router) - RECOMENDADO                            │  │
+│  │                                                                                │  │
+│  │  Requisitos: Tor instalado en el sistema                                       │  │
+│  │  • Windows: https://www.torproject.org/download/                              │  │
+│  │  • Linux: sudo apt install tor (o similar)                                     │  │
+│  │  • macOS: brew install tor                                                     │  │
+│  │                                                                                │  │
+│  │  Configuración:                                                                │  │
+│  │  • Iniciar Tor como servicio (tor --run)                                       │  │
+│  │  • Conectar Puppeteer a través de proxy SOCKS5: localhost:9050                │  │
+│  │  • Cada nueva conexión usa una IP de salida diferente                          │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                          │                                          │
+│                                          ▼                                          │
+│  ┌───────────────────────────────────────────────────────────────────────────────┐  │
+│  │  🔷 INTENTO 2: RELEASE/RENEW DHCP (si Tor no disponible)                       │  │
+│  │                                                                                │  │
+│  │  Windows: ipconfig /release && ipconfig /renew                                 │  │
+│  │  Linux:   sudo dhclient -r && sudo dhclient                                    │  │
+│  │  macOS:   sudo ipconfig set en0 DHCP                                           │  │
+│  │                                                                                │  │
+│  │  Nota: No siempre cambia la IP pública (depende del ISP)                      │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                          │                                          │
+│                                          ▼                                          │
+│  ┌───────────────────────────────────────────────────────────────────────────────┐  │
+│  │  🔷 INTENTO 3: NOTIFICAR AL USUARIO (fallback final)                           │  │
+│  │                                                                                │  │
+│  │  • Detener el scraping                                                         │  │
+│  │  • Mostrar mensaje: "IP bloqueada - Cambie manualmente su IP y presione Enter" │  │
+│  │  • Esperar confirmación del usuario                                            │  │
+│  │  • Reiniciar navegador y reintentar                                            │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────────┘

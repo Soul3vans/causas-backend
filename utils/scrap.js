@@ -150,7 +150,7 @@ const td = async (options, frame) => {
 
 // export default ss = async () => {
 const ss = async () => {
-  const browser = await puppeteer.launch({ headless: false })
+  const browser = await puppeteer.launch({ headless: true }) //estaba false
   const page = await browser.newPage()
   await page.goto('https://oficinajudicialvirtual.pjud.cl/', {
     // wait completed load

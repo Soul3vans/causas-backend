@@ -1,0 +1,16 @@
+{
+  "testMetadata": {
+    "executedAt": "2026-06-10T04:41:55.089Z",
+    "searchParams": {
+      "court": "90",
+      "tribune": "273",
+      "rol": "C-21503-2024",
+      "competencia": "3",
+      "testDate": "2026-06-10T04:41:55.089Z",
+      "description": "Prueba de scraping para causa C-21503-2024 del 15º Juzgado Civil de Santiago"
+    },
+    "success": false,
+    "error": "waiting for selector `select#competencia` failed: timeout 30000ms exceeded"
+  },
+  "extractedData": null
+}
