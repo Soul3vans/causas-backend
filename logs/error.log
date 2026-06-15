@@ -347,3 +347,43 @@ TimeoutError: waiting for selector `tbody#verDetalle, .alert-danger, .alert-warn
     at UnifiedQuery.applyFilter (/home/soul/Escritorio/causas-backend/utils/causes/unified-query/unified-query.js:202:29)
     at async scrapRawDataAuth (/home/soul/Escritorio/causas-backend/utils/scrapper-auth.js:191:9)
     at async testScraperAuth (/home/soul/Escritorio/causas-backend/scripts/test-scraper-auth.js:60:24)
+2026-06-14 15:32:59 [ERROR]: Error en scrapRawData {"error":"Navigation timeout of 30000 ms exceeded","rol":"C-21503-2024"}
+TimeoutError: Navigation timeout of 30000 ms exceeded
+    at LifecycleWatcher._LifecycleWatcher_createTimeoutPromise (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/LifecycleWatcher.js:146:12)
+    at async FrameManager.waitForFrameNavigation (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/FrameManager.js:209:23)
+    at async Frame.waitForNavigation (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/FrameManager.js:613:16)
+    at async Page.waitForNavigation (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/Page.js:1150:16)
+    at async UnifiedQuery.goUnifiedQuery (/home/soul/Escritorio/causas-backend/utils/causes/unified-query/unified-query.js:81:17)
+    at async UnifiedQuery.factory (/home/soul/Escritorio/causas-backend/utils/causes/unified-query/unified-query.js:38:9)
+    at async scrapRawData (/home/soul/Escritorio/causas-backend/utils/scrapper.js:152:5)
+    at async updateCase (/home/soul/Escritorio/causas-backend/resolvers.js:1327:23)
+2026-06-14 15:32:59 [ERROR]: ❌ Error en updateCase: {"error":"Navigation timeout of 30000 ms exceeded"}
+TimeoutError: Navigation timeout of 30000 ms exceeded
+    at LifecycleWatcher._LifecycleWatcher_createTimeoutPromise (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/LifecycleWatcher.js:146:12)
+    at async FrameManager.waitForFrameNavigation (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/FrameManager.js:209:23)
+    at async Frame.waitForNavigation (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/FrameManager.js:613:16)
+    at async Page.waitForNavigation (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/Page.js:1150:16)
+    at async UnifiedQuery.goUnifiedQuery (/home/soul/Escritorio/causas-backend/utils/causes/unified-query/unified-query.js:81:17)
+    at async UnifiedQuery.factory (/home/soul/Escritorio/causas-backend/utils/causes/unified-query/unified-query.js:38:9)
+    at async scrapRawData (/home/soul/Escritorio/causas-backend/utils/scrapper.js:152:5)
+    at async updateCase (/home/soul/Escritorio/causas-backend/resolvers.js:1327:23)
+2026-06-14 15:32:59 [ERROR]: Error en scrapRawData {"error":"Navigation timeout of 30000 ms exceeded","rol":"C-21503-2024"}
+TimeoutError: Navigation timeout of 30000 ms exceeded
+    at LifecycleWatcher._LifecycleWatcher_createTimeoutPromise (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/LifecycleWatcher.js:146:12)
+    at async FrameManager.waitForFrameNavigation (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/FrameManager.js:209:23)
+    at async Frame.waitForNavigation (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/FrameManager.js:613:16)
+    at async Page.waitForNavigation (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/Page.js:1150:16)
+    at async UnifiedQuery.goUnifiedQuery (/home/soul/Escritorio/causas-backend/utils/causes/unified-query/unified-query.js:81:17)
+    at async UnifiedQuery.factory (/home/soul/Escritorio/causas-backend/utils/causes/unified-query/unified-query.js:38:9)
+    at async scrapRawData (/home/soul/Escritorio/causas-backend/utils/scrapper.js:152:5)
+    at async updateCase (/home/soul/Escritorio/causas-backend/resolvers.js:1327:23)
+2026-06-14 15:32:59 [ERROR]: ❌ Error en updateCase: {"error":"Navigation timeout of 30000 ms exceeded"}
+TimeoutError: Navigation timeout of 30000 ms exceeded
+    at LifecycleWatcher._LifecycleWatcher_createTimeoutPromise (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/LifecycleWatcher.js:146:12)
+    at async FrameManager.waitForFrameNavigation (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/FrameManager.js:209:23)
+    at async Frame.waitForNavigation (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/FrameManager.js:613:16)
+    at async Page.waitForNavigation (/home/soul/Escritorio/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/Page.js:1150:16)
+    at async UnifiedQuery.goUnifiedQuery (/home/soul/Escritorio/causas-backend/utils/causes/unified-query/unified-query.js:81:17)
+    at async UnifiedQuery.factory (/home/soul/Escritorio/causas-backend/utils/causes/unified-query/unified-query.js:38:9)
+    at async scrapRawData (/home/soul/Escritorio/causas-backend/utils/scrapper.js:152:5)
+    at async updateCase (/home/soul/Escritorio/causas-backend/resolvers.js:1327:23)

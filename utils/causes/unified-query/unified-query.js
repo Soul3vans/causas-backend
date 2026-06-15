@@ -78,7 +78,10 @@ class UnifiedQuery {
                 
                 // Esperar a que la redirección ocurra y la nueva página cargue
                 console.log('⏳ Esperando redirección a indexN.php...');
-                await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 });
+                //await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 });
+                // En lugar de esperar navegación, esperar a que el formulario esté visible
+                await this.page.waitForSelector('select#competencia', { timeout: 30000, visible: true });
+                console.log('✅ Formulario de búsqueda visible después del clic');
                 
                 // Esperar adicional 2 segundos para asegurar que la página cargue completamente
                 await this.timeout(2000);
