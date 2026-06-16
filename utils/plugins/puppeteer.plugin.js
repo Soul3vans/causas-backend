@@ -269,16 +269,19 @@ class ScrapService extends events_1.default {
         };
       });
       console.log('✅ Tokens establecidos:', tokens)
-      
+      /*
       await this.page.goto('https://oficinajudicialvirtual.pjud.cl/indexN.php', {
         waitUntil: 'domcontentloaded', // Si eso no funciona usar waitUntil: 'networkidle2',
         timeout: 60000
       })
+      */
 
        // Esperar adicional
-      await this.timeout(3000);
-      
-      console.log('✅ Acceso como invitado completado, en página de búsqueda')
+      await this.timeout(5000);
+      // console.log('✅ Acceso como invitado completado, en página de búsqueda')
+
+      console.log('✅ Acceso como invitado completado, permaneciendo en home/index.php');
+      console.log('📍 El scraper navegará a indexN.php cuando sea necesario');
       // INICIAR KEEP-ALIVE (sin afectar la lógica existente)
       this.startKeepAliveWithReload(300000); // 5 minutos
     } else {
