@@ -23,6 +23,7 @@ class ScrapService extends events_1.default {
     this.isLoggedIn = false
     this.currentProxy = null
     this.anonymizedProxyUrl = null
+    this.keepAliveInterval = null
   }
 
   getBrowser() {
@@ -278,6 +279,8 @@ class ScrapService extends events_1.default {
       await this.timeout(3000);
       
       console.log('✅ Acceso como invitado completado, en página de búsqueda')
+      // INICIAR KEEP-ALIVE (sin afectar la lógica existente)
+      this.startKeepAliveWithReload(300000); // 5 minutos
     } else {
       await this.pageGoto(url)
       await this.login()
@@ -369,7 +372,10 @@ class ScrapService extends events_1.default {
     
     this.isLoggedIn = true
     console.log('✅ Autenticación completada exitosamente')
+    
     await this.timeout(2000)
+    // INICIAR KEEP-ALIVE
+    this.startKeepAliveWithReload(300000); // 5 minutos
   }
 
   async invalidLoadImages() {
@@ -573,7 +579,75 @@ async getRecaptchaTokens() {
     return new Promise(resolve => setTimeout(resolve, ms))
   }
 
+  // ========== KEEP-ALIVE ==========
+  /**
+   * Mantiene la sesión activa recargando la página periódicamente
+   * @param {number} intervalMs - Intervalo en milisegundos (default: 300000 = 5 minutos)
+   * @returns {NodeJS.Timeout}
+   */
+  startKeepAliveWithReload(intervalMs = 300000) {
+    // Limpiar intervalo anterior si existe
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      console.log('🔄 Keep-alive anterior detenido');
+    }
+
+    console.log(`🔄 Iniciando keep-alive con recarga cada ${intervalMs / 1000} segundos...`);
+    
+    this.keepAliveInterval = setInterval(async () => {
+      try {
+        if (this.page && !this.page.isClosed()) {
+          console.log(`🔄 [Keep-Alive] Navegando a home/index.php para mantener sesión...`);
+          
+          await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
+            waitUntil: 'domcontentloaded',
+            timeout: 30000
+          });
+          
+          await this.timeout(3000);
+          
+          await this.page.evaluate(() => {
+            localStorage.setItem('InitSitioOld', '0');
+            localStorage.setItem('InitSitioNew', '1');
+            localStorage.setItem('logged-in', 'true');
+            localStorage.setItem('acceso-invitado', 'true');
+            sessionStorage.setItem('logged-in', 'true');
+            sessionStorage.setItem('acceso-invitado', 'true');
+          });
+          
+          console.log('✅ [Keep-Alive] Tokens restablecidos en home/index.php');
+          console.log('📍 [Keep-Alive] Página mantenida en home/index.php - lista para próxima consulta');
+          
+        } else {
+          console.warn('⚠️ [Keep-Alive] Página cerrada, deteniendo intervalo');
+          if (this.keepAliveInterval) {
+            clearInterval(this.keepAliveInterval);
+            this.keepAliveInterval = null;
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ [Keep-Alive] Error:', error.message);
+      }
+    }, intervalMs);
+    
+    return this.keepAliveInterval;
+  }
+
+  /**
+   * Detiene el keep-alive
+   */
+  stopKeepAlive() {
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
+      console.log('🛑 Keep-Alive detenido');
+    }
+  }
+
   async close() {
+    // Detener keep-alive antes de cerrar
+    this.stopKeepAlive();
+    
     if (this.anonymizedProxyUrl) {
       await proxyChain.closeAnonymizedProxy(this.anonymizedProxyUrl);
       console.log('🧹 Proxy cerrado correctamente');

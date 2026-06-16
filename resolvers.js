@@ -1284,6 +1284,9 @@ const resolvers = {
     },
     
     updateCase: async (_, { input }, { Cases, CasesUpdated, CasesReviews }) => {
+      console.log('🔴🔴🔴 MUTATION UPDATE CASE RECIBIDA 🔴🔴🔴')
+      console.log('Input recibido:', JSON.stringify(input, null, 2))
+      
       try {
         const scrapeInstance = await initGlobalScrape();
         

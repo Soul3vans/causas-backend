@@ -22,8 +22,8 @@ let isInitializing = false;
 // Configuración de reintentos
 const DEFAULT_RETRY_CONFIG = {
   maxRetries: 3,
-  baseDelay: 2000,      // 2 segundos
-  maxDelay: 30000,      // 30 segundos
+  baseDelay: 5000,      // 5 segundos
+  maxDelay: 60000,      // 60 segundos
   backoffMultiplier: 2
 };
 

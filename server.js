@@ -1,4 +1,4 @@
-const express = require('express')
+Const express = require('express')
 const { ApolloServer, AuthenticationError } = require('apollo-server-express')
 const cors = require('cors')
 const morgan = require('morgan')
@@ -59,9 +59,10 @@ const app = express()
 
 // ========== MORGAN MIDDLEWARE ==========
 // Configurar Morgan para usar Winston (logs de HTTP requests)
+app.timeout = 120000; // 2 minutos
 app.use(morgan('combined', {
   stream: {
-    write: (message) => logger.info(message.trim())
+    write: (message) => logger.debug(message.trim())
   }
 }))
 logger.info('📝 Morgan HTTP logging configurado con Winston')
