@@ -1,4 +1,4 @@
-Const express = require('express')
+const express = require('express')
 const { ApolloServer, AuthenticationError } = require('apollo-server-express')
 const cors = require('cors')
 const morgan = require('morgan')
