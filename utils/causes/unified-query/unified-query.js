@@ -63,7 +63,7 @@ class UnifiedQuery {
                 waitUntil: 'domcontentloaded',
                 timeout: 30000
             });
-            await this.timeout(3000);
+            await this.timeout(8000);
             }
             
             // Caso 2: Estamos en home/index.php
@@ -88,7 +88,7 @@ class UnifiedQuery {
             // Esperar la redirección a indexN.php
             console.log('⏳ Esperando redirección a indexN.php...');
             await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 });
-            await this.timeout(2000);
+            await this.timeout(8000);
             }
             
             // Verificar que estamos en indexN.php
@@ -111,9 +111,9 @@ class UnifiedQuery {
                 retries--;
                 console.log(`⚠️ Intento fallido, quedan ${retries} reintentos...`);
                 if (retries === 0) throw err;
-                await this.timeout(5000);
+                await this.timeout(10000);
                 await this.page.reload({ waitUntil: 'domcontentloaded' });
-                await this.timeout(3000);
+                await this.timeout(5000);
             }
             }
             
