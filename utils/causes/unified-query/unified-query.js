@@ -56,37 +56,39 @@ class UnifiedQuery {
             const currentUrl = await this.page.url();
             console.log(`📍 URL actual: ${currentUrl}`);
             
-            // Si estamos en la página de inicio (home/index.php)
-            if (currentUrl.includes('home/index.php')) {
-                console.log('🔍 En página de inicio, haciendo clic en "Consulta causas"...');
-                
-                // Esperar a que el botón esté presente (hasta 10 segundos)
-                await this.page.waitForSelector('button.dropbtn[onclick*="accesoConsultaCausas"]', { timeout: 8000 });
-                
-                // Hacer clic en el botón "Consulta causas"
-                await this.page.evaluate(() => {
-                    const btn = document.querySelector('button.dropbtn[onclick*="accesoConsultaCausas"]');
-                    if (btn) {
-                        btn.click();
-                    } else {
-                        // Fallback: buscar por el texto
-                        const buttons = Array.from(document.querySelectorAll('button.dropbtn'));
-                        const consultaBtn = buttons.find(b => b.textContent.includes('Consulta causas'));
-                        if (consultaBtn) consultaBtn.click();
-                    }
-                });
-                
-                // Esperar a que la redirección ocurra y la nueva página cargue
-                console.log('⏳ Esperando redirección a indexN.php...');
-                //await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 });
-                // En lugar de esperar navegación, esperar a que el formulario esté visible
-                await this.page.waitForSelector('select#competencia', { timeout: 30000, visible: true });
-                console.log('✅ Formulario de búsqueda visible después del clic');
-                
-                // Esperar adicional 2 segundos para asegurar que la página cargue completamente
-                await this.timeout(2000);
-                
-                console.log('✅ Redirección completada, ahora en página de consulta');
+            // Caso 1: Estamos en indexN.php pero el formulario no está visible
+            if (currentUrl.includes('indexN.php')) {
+            console.log('⚠️ Estamos en indexN.php sin formulario visible. Navegando a home/index.php...');
+            await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
+                waitUntil: 'domcontentloaded',
+                timeout: 30000
+            });
+            await this.timeout(3000);
+            }
+            
+            // Caso 2: Estamos en home/index.php
+            if (currentUrl.includes('home/index.php') || this.page.url().includes('home/index.php')) {
+            console.log('🔍 En página de inicio, haciendo clic en "Consulta causas"...');
+            
+            // Esperar a que el botón esté presente
+            await this.page.waitForSelector('button.dropbtn[onclick*="accesoConsultaCausas"]', { timeout: 8000 });
+            
+            // Hacer clic en el botón "Consulta causas"
+            await this.page.evaluate(() => {
+                const btn = document.querySelector('button.dropbtn[onclick*="accesoConsultaCausas"]');
+                if (btn) {
+                btn.click();
+                } else {
+                const buttons = Array.from(document.querySelectorAll('button.dropbtn'));
+                const consultaBtn = buttons.find(b => b.textContent.includes('Consulta causas'));
+                if (consultaBtn) consultaBtn.click();
+                }
+            });
+            
+            // Esperar la redirección a indexN.php
+            console.log('⏳ Esperando redirección a indexN.php...');
+            await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 });
+            await this.timeout(2000);
             }
             
             // Verificar que estamos en indexN.php
@@ -94,26 +96,25 @@ class UnifiedQuery {
             console.log(`📍 Nueva URL: ${newUrl}`);
             
             if (!newUrl.includes('indexN.php')) {
-                throw new Error(`No se pudo navegar a indexN.php. URL actual: ${newUrl}`);
+            throw new Error(`No se pudo navegar a indexN.php. URL actual: ${newUrl}`);
             }
             
-            // Aumentar timeout y agregar reintentos
+            // Esperar a que el formulario esté visible
             let retries = 3;
             let selectorFound = false;
             while (retries > 0 && !selectorFound) {
-                try {
-                    await this.page.waitForSelector('select#competencia', { timeout: 30000, visible: true });
-                    selectorFound = true;
-                    console.log('✅ Selector select#competencia encontrado');
-                } catch (err) {
-                    retries--;
-                    console.log(`⚠️ Intento fallido, quedan ${retries} reintentos...`);
-                    if (retries === 0) throw err;
-                    await this.timeout(5000);
-                    // Recargar la página si es necesario
-                    await this.page.reload({ waitUntil: 'domcontentloaded' });
-                    await this.timeout(3000);
-                }
+            try {
+                await this.page.waitForSelector('select#competencia', { timeout: 30000, visible: true });
+                selectorFound = true;
+                console.log('✅ Selector select#competencia encontrado');
+            } catch (err) {
+                retries--;
+                console.log(`⚠️ Intento fallido, quedan ${retries} reintentos...`);
+                if (retries === 0) throw err;
+                await this.timeout(5000);
+                await this.page.reload({ waitUntil: 'domcontentloaded' });
+                await this.timeout(3000);
+            }
             }
             
             console.log("✅ Navegación completada, listo para buscar");
