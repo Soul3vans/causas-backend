@@ -39,16 +39,54 @@ let useAuthScraper = false; // Cambiar a true para usar modo autenticado
  * @returns {Promise<ScrapService>}
  */
 async function initGlobalScrape() {
-    if (!globalScrape) {
-        logger.info('🚀 Inicializando navegador global (solo una vez)...');
-        console.log('🚀 Inicializando navegador global (solo una vez)...');
+    // Si ya existe una instancia, reutilizarla
+    if (globalScrape) {
+        console.log('♻️ Reutilizando instancia existente del navegador');
         
-        if (useAuthScraper) {
-            const { getAuthScrapeInstance } = require('./utils/scrapper-auth');
-            globalScrape = await getAuthScrapeInstance();
-        } else {
-            globalScrape = await getScrapeInstance();
+        // Verificar que la página sigue abierta
+        try {
+            const page = globalScrape.getPage();
+            const url = await page.url();
+            console.log(`📍 URL actual de la instancia: ${url}`);
+            
+            // Si estamos en indexN.php y necesitamos home/index.php, navegar
+            if (url.includes('indexN.php')) {
+                console.log('🔄 Navegando a home/index.php para mantener sesión...');
+                await page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
+                    waitUntil: 'domcontentloaded',
+                    timeout: 60000
+                });
+                await page.evaluate(() => {
+                    localStorage.setItem('InitSitioOld', '0');
+                    localStorage.setItem('InitSitioNew', '1');
+                    localStorage.setItem('logged-in', 'true');
+                    localStorage.setItem('acceso-invitado', 'true');
+                    sessionStorage.setItem('logged-in', 'true');
+                    sessionStorage.setItem('acceso-invitado', 'true');
+                });
+                console.log('✅ Tokens restablecidos en home/index.php');
+            }
+        } catch (error) {
+            console.warn('⚠️ La instancia existente parece cerrada, creando nueva...');
+            // Si la página está cerrada, crear nueva
+            globalScrape = null;
         }
+        
+        // Si globalScrape no es null, retornarla
+        if (globalScrape) {
+            return globalScrape;
+        }
+    }
+    
+    // Crear nueva instancia solo si no existe
+    console.log('🚀 Creando nueva instancia del navegador...');
+    logger.info('🚀 Inicializando navegador global (solo una vez)...');
+    
+    if (useAuthScraper) {
+        const { getAuthScrapeInstance } = require('./utils/scrapper-auth');
+        globalScrape = await getAuthScrapeInstance();
+    } else {
+        globalScrape = await getScrapeInstance();
     }
     return globalScrape;
 }
