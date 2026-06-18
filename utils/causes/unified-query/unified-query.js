@@ -87,7 +87,7 @@ class UnifiedQuery {
             
             // Esperar la redirección a indexN.php
             console.log('⏳ Esperando redirección a indexN.php...');
-            await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 });
+            await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 });
             await this.timeout(8000);
             }
             
@@ -131,7 +131,7 @@ class UnifiedQuery {
             let selectorFound = false;
             while (retries > 0 && !selectorFound) {
             try {
-                await this.page.waitForSelector('select#competencia', { timeout: 30000, visible: true });
+                await this.page.waitForSelector('select#competencia', { timeout: 60000, visible: true });
                 selectorFound = true;
                 console.log('✅ Selector select#competencia encontrado');
             } catch (err) {
