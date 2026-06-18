@@ -246,7 +246,7 @@ class ScrapService extends events_1.default {
       
       await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
         waitUntil: 'networkidle2',
-        timeout: 60000
+        timeout: 120000
       })
       // Esperar a que la página cargue completamente
       console.log('⏳ Esperando 10 segundos para que cargue la página...');

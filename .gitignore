@@ -11,3 +11,6 @@ test-result.json
 mapa_inicial.json
 ngrok
 ngrok-v3-stable-linux-amd64.tgz
+
+/ngrok.exe
+/scriptstest_dns.js

@@ -32,11 +32,19 @@ const sendActivityReminder = require('./workers/mail-sender/activity-reminder')
 const dailyScraps = require('./workers/mail-sender/daily-scraps')
 const casesUpdater = require('./workers/mail-sender/cases-updater')
 
-// Conectar a MongoDB
-MongoDatabase.connect({
-  url: envs.MONGO_URI,
-  dbName: envs.MONGO_DB_NAME
-})
+// Conectar a MongoDB con manejo de errores
+;(async function connectDB() {
+  try {
+    await MongoDatabase.connect({
+      url: envs.MONGO_URI,
+      dbName: envs.MONGO_DB_NAME
+    })
+    console.log('✅ Conexión a MongoDB establecida correctamente')
+  } catch (error) {
+    console.error('❌ Error fatal conectando a MongoDB:', error.message)
+    console.log('⚠️ El servidor continuará iniciando, pero las consultas a la BD fallarán')
+  }
+})()
 
 const getUser = async token => {
   if (token) {
@@ -58,8 +66,8 @@ cron.schedule('30 06 * * *', () => casesUpdater(), { timezone: 'America/Santiago
 const app = express()
 
 // ========== MORGAN MIDDLEWARE ==========
-// Configurar Morgan para usar Winston (logs de HTTP requests)
-app.timeout = 120000; // 2 minutos
+app.timeout = 240000; // 4 minutos (aumentado para el scraper)
+
 app.use(morgan('combined', {
   stream: {
     write: (message) => logger.debug(message.trim())
@@ -76,11 +84,12 @@ if (process.env.NODE_ENV === 'production') {
   app.disable('x-powered-by')
 }
 
+// ========== APOLLO SERVER CON TIMEOUT ==========
 const server = new ApolloServer({
   typeDefs,
   resolvers,
-  introspection: true,   // 👈 Necesario para que el Playground funcione en producción
-  playground: true,      // 👈 Habilita la interfaz gráfica de GraphQL
+  introspection: true,
+  playground: true,
   formatError: error => {
     error = {
       name: error.name,
@@ -110,23 +119,22 @@ const server = new ApolloServer({
       Priority,
       currentUser: await getUser(token)
     }
-  }
+  },
+  // 🔑 TIMEOUT PARA EL SCRAPER (4 minutos)
+  timeout: 240000,  // 4 minutos - suficiente para el scraper
 })
 
 // Función principal para iniciar el servidor
 async function startServer() {
   try {
-    // 1. Iniciar Apollo Server
     await server.start()
     logger.info('✅ Apollo Server iniciado')
     console.log('✅ Apollo Server iniciado')
 
-    // 2. Aplicar middleware a Express
     server.applyMiddleware({ app, cors: corsOptions })
     logger.info('✅ Middleware de Apollo aplicado')
     console.log('✅ Middleware de Apollo aplicado')
 
-    // 3. Rutas adicionales
     app.get('/', (req, res) => {
       res.json({
         message: 'Servidor funcionando correctamente',
@@ -139,11 +147,9 @@ async function startServer() {
       res.status(200).send('OK')
     })
 
-    // 4. Puerto y host
     const PORT = process.env.PORT || 4000
     const HOST = '0.0.0.0'
 
-    // 5. Iniciar servidor HTTP
     app.listen(PORT, HOST, () => {
       console.log(`🚀 Servidor corriendo en http://${HOST}:${PORT}`)
       console.log(`📡 GraphQL endpoint: http://${HOST}:${PORT}${server.graphqlPath}`)
@@ -158,5 +164,4 @@ async function startServer() {
   }
 }
 
-// Ejecutar
 startServer()
