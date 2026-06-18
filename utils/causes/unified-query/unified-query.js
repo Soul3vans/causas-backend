@@ -98,6 +98,33 @@ class UnifiedQuery {
             if (!newUrl.includes('indexN.php')) {
             throw new Error(`No se pudo navegar a indexN.php. URL actual: ${newUrl}`);
             }
+
+            // ✅ NUEVO: Verificar si hay reCAPTCHA o bloqueo
+            const pageContent = await this.page.content();
+            const hasRecaptcha = pageContent.includes('recaptcha') || 
+                                pageContent.includes('reCAPTCHA') ||
+                                pageContent.includes('verification') ||
+                                pageContent.includes('verifica') ||
+                                pageContent.includes('captcha');
+            
+            if (hasRecaptcha) {
+                console.log('🔐 Se detectó reCAPTCHA o verificación humana.');
+                console.log('⏳ Esperando 30 segundos para que el usuario pueda resolverlo manualmente...');
+                await this.timeout(30000);
+                
+                // Verificar si el reCAPTCHA fue resuelto
+                const recaptchaResolved = await this.page.evaluate(() => {
+                    // Buscar si el formulario está visible
+                    const competenciaSelect = document.querySelector('select#competencia');
+                    return competenciaSelect !== null;
+                });
+                
+                if (recaptchaResolved) {
+                    console.log('✅ reCAPTCHA resuelto, continuando...');
+                } else {
+                    console.warn('⚠️ reCAPTCHA no resuelto, intentando continuar de todos modos...');
+                }
+            }
             
             // Esperar a que el formulario esté visible
             let retries = 3;
@@ -110,6 +137,15 @@ class UnifiedQuery {
             } catch (err) {
                 retries--;
                 console.log(`⚠️ Intento fallido, quedan ${retries} reintentos...`);
+
+                // Tomar captura de pantalla para debuggear
+                try {
+                    const screenshot = await this.page.screenshot({ encoding: 'base64' });
+                    console.log(`📸 Captura de pantalla (base64): ${screenshot.substring(0, 100)}...`);
+                } catch (screenshotError) {
+                    console.log('⚠️ No se pudo tomar captura de pantalla');
+                }
+                
                 if (retries === 0) throw err;
                 await this.timeout(10000);
                 await this.page.reload({ waitUntil: 'domcontentloaded' });
