@@ -274,21 +274,32 @@ const resolvers = {
       return usersResult
     },
     getInvolvedUsers: async (_, { caseId }, { Users, InvolvedUsersCase }) => {
-      const usersResult = await Users.find({}, { password: false }).sort({ createdAt: 1 })
-      const usersInvResult = await InvolvedUsersCase.findOne(
-        { case: caseId },
-        'involved'
-      ).populate('involved.userIn', '-password')
-      let userInvArray = []
-      usersResult.forEach(a => {
-        const p = usersInvResult.involved.find(
-          b => b.userIn._id.toString() === a._id.toString()
-        )
-        p
-          ? userInvArray.push({ userIn: p.userIn, status: p.status })
-          : userInvArray.push({ userIn: a, status: 'SELECCIONE' })
-      })
-      return userInvArray
+      try {
+        const usersResult = await Users.find({}, { password: false }).sort({ createdAt: 1 })
+        
+        // Buscar el documento de InvolvedUsersCase para esta causa
+        const usersInvResult = await InvolvedUsersCase.findOne(
+          { case: caseId },
+          'involved'
+        ).populate('involved.userIn', '-password')
+        
+        // Si no existe documento, todos los usuarios están "SELECCIONE"
+        const involvedList = usersInvResult?.involved || []
+        
+        let userInvArray = []
+        usersResult.forEach(a => {
+          const p = involvedList.find(
+            b => b.userIn?._id.toString() === a._id.toString()
+          )
+          p
+            ? userInvArray.push({ userIn: p.userIn, status: p.status })
+            : userInvArray.push({ userIn: a, status: 'SELECCIONE' })
+        })
+        return userInvArray
+      } catch (error) {
+        console.error('❌ Error en getInvolvedUsers:', error)
+        return []
+      }
     },
     getUser: async (_, { userId }, { Users }) => {
       const user = await Users.findOne({ _id: userId }, { password: false })
