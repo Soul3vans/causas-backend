@@ -52,7 +52,12 @@ class MongoDatabase {
       await mongoose_1.default.connect(connectionUrl, connectionOptions)
       
       console.log('✅ MongoDB conectado exitosamente')
-      console.log(`📊 Base de datos: ${mongoose_1.default.connection.db.databaseName}`)
+      try {
+        const dbName = mongoose_1.default.connection.db?.databaseName || 'desconocida'
+        console.log(`📊 Base de datos: ${dbName}`)
+      } catch (e) {
+        console.log('📊 Base de datos: (no disponible)')
+      }
       
       // Manejar eventos de conexión
       mongoose_1.default.connection.on('error', (err) => {

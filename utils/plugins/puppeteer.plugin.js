@@ -245,8 +245,8 @@ class ScrapService extends events_1.default {
       console.log('🔓 Accediendo como invitado a consulta de causas...')
       
       await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
-        waitUntil: 'networkidle2',
-        timeout: 120000
+        waitUntil: 'domcontentloaded',
+        timeout: 180000
       })
       // Esperar a que la página cargue completamente
       console.log('⏳ Esperando 10 segundos para que cargue la página...');
@@ -604,7 +604,7 @@ async getRecaptchaTokens() {
           
           await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
             waitUntil: 'domcontentloaded',
-            timeout: 30000
+            timeout: 50000
           });
           
           await this.timeout(3000);
@@ -913,7 +913,7 @@ async rotateIpViaTor() {
     // Reiniciar la página con el nuevo proxy
     await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
       waitUntil: 'networkidle2',
-      timeout: 60000
+      timeout: 50000
     });
     
     console.log('✅ Rotación con Tor completada');
@@ -978,8 +978,8 @@ async rotateIpViaDHCP() {
     
     // Reiniciar navegación
     await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
-      waitUntil: 'networkidle2',
-      timeout: 60000
+      waitUntil: 'domcontentloaded',
+      timeout: 50000
     });
     
     return true;
