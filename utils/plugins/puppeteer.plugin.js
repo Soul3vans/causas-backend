@@ -245,7 +245,7 @@ class ScrapService extends events_1.default {
       console.log('🔓 Accediendo como invitado a consulta de causas...')
       
       await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
-        waitUntil: 'networkidle2',
+        waitUntil: 'domcontentloaded',
         timeout: 180000
       })
       // Esperar a que la página cargue completamente
@@ -978,7 +978,7 @@ async rotateIpViaDHCP() {
     
     // Reiniciar navegación
     await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
-      waitUntil: 'networkidle2',
+      waitUntil: 'domcontentloaded',
       timeout: 50000
     });
     
