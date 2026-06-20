@@ -24,6 +24,7 @@ class ScrapService extends events_1.default {
     this.currentProxy = null
     this.anonymizedProxyUrl = null
     this.keepAliveInterval = null
+    this.isProcessing = false
   }
 
   getBrowser() {
@@ -598,13 +599,17 @@ async getRecaptchaTokens() {
     console.log(`🔄 Iniciando keep-alive con recarga cada ${intervalMs / 1000} segundos...`);
     
     this.keepAliveInterval = setInterval(async () => {
+      if (this.isProcessing) {
+      console.log('⏳ [Keep-Alive] Scraper en ejecución, omitiendo keep-alive...');
+      return;
+      }
       try {
         if (this.page && !this.page.isClosed()) {
           console.log(`🔄 [Keep-Alive] Navegando a home/index.php para mantener sesión...`);
           
           await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
             waitUntil: 'domcontentloaded',
-            timeout: 50000
+            timeout: 30000
           });
           
           await this.timeout(3000);

@@ -134,6 +134,14 @@ async function scrapRawData({ typeSearch, rol, tribune, competencia, corteId }, 
   const scrape = existingScrape || await getScrapeInstance();
   const storage = null;
 
+  // ✅ ACTIVAR BANDERA: Keep-alive pausado
+  if (scrape && typeof scrape.setProcessing === 'function') {
+    scrape.setProcessing(true);
+  } else if (scrape) {
+    scrape.isProcessing = true;
+    console.log('🔄 Scraper iniciado, keep-alive pausado');
+  }
+
   try {
     // Crear instancia de UnifiedQuery
     const unifiedQuery = new UnifiedQuery(scrape, storage);
@@ -169,6 +177,14 @@ async function scrapRawData({ typeSearch, rol, tribune, competencia, corteId }, 
     console.error('❌ Error en el scraper:', error.message);
     logger.error('Error en scrapRawData', { error: error.message, stack: error.stack, rol });
     throw error;
+  } finally {
+    // ✅ DESACTIVAR BANDERA: Keep-alive reactivado
+    if (scrape && typeof scrape.setProcessing === 'function') {
+      scrape.setProcessing(false);
+    } else if (scrape) {
+      scrape.isProcessing = false;
+      console.log('🔄 Scraper finalizado, keep-alive reactivado');
+    }
   }
 }
 
@@ -199,6 +215,12 @@ async function scrapMultipleCauses(causes, options = {}) {
     // Inicializar navegador UNA SOLA VEZ
     console.log('🚀 Inicializando navegador (una sola vez para todas las causas)...');
     scrapeInstance = await getScrapeInstance();
+    
+    // ✅ ACTIVAR BANDERA: Keep-alive pausado durante todo el batch
+    if (scrapeInstance) {
+      scrapeInstance.isProcessing = true;
+      console.log('🔄 Scraper batch iniciado, keep-alive pausado');
+    }
     
     // Procesar cada causa
     for (let i = 0; i < causes.length; i++) {
@@ -286,6 +308,12 @@ async function scrapMultipleCauses(causes, options = {}) {
     console.error('❌ Error fatal en scrapMultipleCauses:', error.message);
     logger.error('Error fatal en scrapMultipleCauses', { error: error.message, stack: error.stack });
     throw error;
+  } finally {
+    // ✅ DESACTIVAR BANDERA: Keep-alive reactivado
+    if (scrapeInstance) {
+      scrapeInstance.isProcessing = false;
+      console.log('🔄 Scraper batch finalizado, keep-alive reactivado');
+    }
   }
 }
 
