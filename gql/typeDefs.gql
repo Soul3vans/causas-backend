@@ -221,6 +221,32 @@ type SignedUrlResult {
   message: Message
 }
 
+# ========== NUEVOS TIPOS PARA PROCESO ASÍNCRONO ==========
+
+type ProcessSummary {
+  newMovements: Int
+  litigantsChanged: Boolean
+  mainFieldsChanged: [String]
+}
+
+type ProcessStatus {
+  _id: ID!
+  caseId: ID!
+  status: String!
+  startedAt: String
+  completedAt: String
+  errorMessage: String
+  summary: ProcessSummary
+}
+
+type UpdateCaseResult {
+  messageBody: String!
+  messageType: String!
+  messageImage: String
+  processId: ID
+  success: Boolean
+}
+
 # ========== NUEVOS TIPOS PARA MÚLTIPLES CAUSAS ==========
 
 input SearchParamsInput {
@@ -344,6 +370,7 @@ input UpCaseInput {
   rol: String
   court: String
   typeSearch: String
+  userId: ID
 }
 
 input InvUserInput {
@@ -403,6 +430,9 @@ type Query {
 
   getActivities: [Activity]!
   getActivitiesByDate(days: Int!): [Activity]!
+
+  # ========== NUEVAS QUERIES PARA PROCESO ASÍNCRONO ==========
+  getProcessStatus(processId: ID!): ProcessStatus
 }
 
 # ========== MUTATION ==========
@@ -410,7 +440,7 @@ type Query {
 type Mutation {
   # Mutations existentes
   addCase(input: CaseInput!): Message!
-  updateCase(input: UpCaseInput!): Message!
+  updateCase(input: UpCaseInput!): UpdateCaseResult!
   deleteCase(caseId: ID!): Message!
 
   deleteActivity(id: ID!): Message!

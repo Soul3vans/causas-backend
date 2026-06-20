@@ -687,6 +687,28 @@ const resolvers = {
         }
       })
       return activities
+    },
+    getProcessStatus: async (_, { processId }, { ProcessStatus }) => {
+      try {
+        const status = await ProcessStatus.findById(processId)
+        
+        if (!status) {
+          return null
+        }
+        
+        return {
+          _id: status._id,
+          caseId: status.caseId,
+          status: status.status,
+          startedAt: status.startedAt ? status.startedAt.toISOString() : null,
+          completedAt: status.completedAt ? status.completedAt.toISOString() : null,
+          errorMessage: status.errorMessage,
+          summary: status.summary || { newMovements: 0, litigantsChanged: false, mainFieldsChanged: [] }
+        }
+      } catch (error) {
+        console.error('❌ Error en getProcessStatus:', error)
+        return null
+      }
     }
   },
   
@@ -1332,168 +1354,97 @@ const resolvers = {
       }
     },
     
-    updateCase: async (_, { input }, { Cases, CasesUpdated, CasesReviews }) => {
+    updateCase: async (_, { input }, { Cases, CasesUpdated, CasesReviews, ProcessStatus, Users }) => {
       console.log('🔴🔴🔴 MUTATION UPDATE CASE RECIBIDA 🔴🔴🔴')
       console.log('Input recibido:', JSON.stringify(input, null, 2))
       
       try {
-        const scrapeInstance = await initGlobalScrape();
-        
+        // 1. Verificar que la causa existe
         const existingCase = await Cases.findOne({
           rol: input.rol,
           court: input.court
-        });
+        })
         
         if (!existingCase) {
           return {
             messageBody: 'No se encontró la causa para actualizar',
             messageType: 'is-danger',
-            messageImage: null
-          };
+            messageImage: null,
+            success: false
+          }
+        }
+
+        // 2. Verificar si ya hay un proceso en curso para esta causa
+        const existingProcess = await ProcessStatus.findOne({
+          caseId: existingCase._id,
+          status: 'processing'
+        })
+        
+        if (existingProcess) {
+          return {
+            messageBody: '⚠️ Ya hay una actualización en curso para esta causa. Por favor espera.',
+            messageType: 'is-warning',
+            messageImage: null,
+            processId: existingProcess._id.toString(),
+            success: false
+          }
         }
         
-        const tribunalId = existingCase.searchParams?.tribunalId;
-        const competencia = existingCase.searchParams?.competencia;
-        const corteId = existingCase.searchParams?.corteId;
+        // 3. Obtener el tribunalId, competencia, corteId de la causa
+        const tribunalId = existingCase.searchParams?.tribunalId
+        const competencia = existingCase.searchParams?.competencia
+        const corteId = existingCase.searchParams?.corteId
         
         if (!tribunalId || !competencia || !corteId) {
-          logger.warn('⚠️ La causa no tiene searchParams completos, no se puede actualizar');
+          logger.warn('⚠️ La causa no tiene searchParams completos, no se puede actualizar')
           return {
             messageBody: 'No se pueden actualizar los datos porque faltan parámetros de búsqueda',
             messageType: 'is-warning',
-            messageImage: null
-          };
+            messageImage: null,
+            success: false
+          }
         }
         
-        logger.info('🔄 Actualizando causa con parámetros:', { rol: input.rol, tribune: tribunalId, competencia, corteId });
-    
-        let scrapData;
-        if (useAuthScraper) {
-          scrapData = await scrapRawDataAuth({
-            rol: input.rol,
-            tribune: tribunalId,
-            competencia: competencia,
-            corteId: corteId
-          });
-        } else {
-          scrapData = await scrapRawData({
-            typeSearch: input.typeSearch || existingCase.typeSearch,
-            rol: input.rol,
-            tribune: tribunalId,
-            competencia: competencia,
-            corteId: corteId
-          }, scrapeInstance);
-        }
+        // 4. Obtener el userId del input (si no viene, usar el creador de la causa)
+        const userId = input.userId || existingCase.createdBy
         
-        await new CasesUpdated({
-          ...scrapData,
-          rol: input.rol,
-          court: input.court
-        }).save()
-    
-        const cc = await Cases.findOne({
-          rol: input.rol,
-          court: input.court
+        // 5. Crear registro de proceso
+        const processId = new mongoose.Types.ObjectId()
+        await ProcessStatus.create({
+          _id: processId,
+          caseId: existingCase._id,
+          userId: userId,
+          status: 'processing',
+          startedAt: new Date()
         })
-    
-        const ccu = await CasesUpdated.findOne({
-          rol: input.rol,
-          court: input.court
-        })
-    
-        await CasesReviews.findOneAndUpdate(
-          { case: cc._id },
-          { $set: { case: cc._id } },
-          { new: true, upsert: true }
+        
+        // 6. INICIAR SCRAPER EN BACKGROUND (SIN await para no bloquear)
+        // Llamamos a la función que definiremos fuera del objeto Mutation
+        startScrapingProcess(
+          processId,
+          existingCase._id,
+          input,
+          { Cases, CasesUpdated, CasesReviews, ProcessStatus, Users, useAuthScraper, keepSessionAlive }
         )
-    
-        if (
-          cc.movementsHistory.length < ccu.movementsHistory.length ||
-          cc.litigants.length < ccu.litigants.length
-        ) {
-          const upArr = []
-          Object.entries(ccu._doc).forEach(([key, val]) => {
-            if (key !== '_id' && key !== '__v') {
-              upArr.push([key, val])
-            }
-          })
-          const ccuo = Object.fromEntries(upArr)
-    
-          const upCaRe = await Cases.findOneAndUpdate(
-            { rol: input.rol, court: input.court },
-            { $set: { ...ccuo } },
-            { new: true }
-          )
-    
-          if (upCaRe) {
-            await CasesUpdated.findOneAndDelete({
-              rol: input.rol,
-              court: input.court
-            })
-          }
-          
-          await Cases.findOneAndUpdate(
-            { rol: input.rol, court: input.court },
-            { 
-              $set: { 
-                'scrapedData.status': 'success',
-                'scrapedData.lastScrapedAt': new Date(),
-                'scrapedData.data': scrapData
-              } 
-            }
-          )
-          
-          if (useAuthScraper) {
-            await keepSessionAlive();
-          }
-        } else {
-          await CasesUpdated.findOneAndDelete({
-            rol: input.rol,
-            court: input.court
-          })
-          return {
-            messageBody: 'La causa no tiene cambios publicados, aparentemente',
-            messageType: 'is-warning',
-            messageImage: null
-          }
-        }
-    
+        
+        // 7. RESPONDER INMEDIATAMENTE
         return {
-          messageBody: 'La causa se actualizó de manera satisfactoria',
-          messageType: 'is-primary',
-          messageImage: null
+          messageBody: '🔄 Procesando actualización... Te notificaremos cuando termine',
+          messageType: 'is-info',
+          messageImage: null,
+          processId: processId.toString(),
+          success: true
         }
+        
       } catch (error) {
-        logger.error('❌ Error en updateCase:', { error: error.message, stack: error.stack });
-        console.log(error)
+        logger.error('❌ Error en updateCase:', { error: error.message, stack: error.stack })
+        console.error('❌ Error en updateCase:', error)
         return {
-          messageBody: 'El servidor no está respondiendo bien, intente en unos minutos',
+          messageBody: 'Error al iniciar el proceso de actualización',
           messageType: 'is-danger',
-          messageImage: null
+          messageImage: null,
+          success: false
         }
-      }
-    },
-    
-    addDdor: async (_, args, { Cases }) => {
-      const cc = await Cases.find({})
-      let conta = 0
-      cc.forEach(async e => {
-        const dbt = e.litigants.find(
-          i => i.participant === 'DDOR.' || i.participant === 'DDO.'
-        )
-        if (dbt) {
-          await Cases.findOneAndUpdate(
-            { _id: e._id },
-            { $set: { debtor: dbt.name } },
-            { new: true }
-          )
-          conta++
-        }
-      })
-      return {
-        messageBody: `Se encotraron y actualizaron ${conta} registros`,
-        messageType: 'is-success',
-        messageImage: null
       }
     },
     
@@ -1690,6 +1641,194 @@ const resolvers = {
         }
       }
     }
+  }
+}
+
+/**
+ * Proceso en background para actualizar una causa
+ * Esta función se ejecuta de forma asíncrona sin bloquear la respuesta
+ */
+async function startScrapingProcess(processId, caseId, input, models) {
+  const { Cases, CasesUpdated, CasesReviews, ProcessStatus, Users, useAuthScraper, keepSessionAlive } = models
+  
+  try {
+    console.log(`🔄 [Process ${processId}] Iniciando scraping en background...`)
+    
+    // 1. Obtener instancia del navegador
+    const scrapeInstance = await initGlobalScrape()
+    
+    // 2. Obtener datos de la causa
+    const existingCase = await Cases.findById(caseId)
+    
+    if (!existingCase) {
+      await ProcessStatus.findByIdAndUpdate(processId, {
+        status: 'error',
+        errorMessage: 'Causa no encontrada',
+        completedAt: new Date()
+      })
+      return
+    }
+    
+    const tribunalId = existingCase.searchParams?.tribunalId
+    const competencia = existingCase.searchParams?.competencia
+    const corteId = existingCase.searchParams?.corteId
+    
+    if (!tribunalId || !competencia || !corteId) {
+      await ProcessStatus.findByIdAndUpdate(processId, {
+        status: 'error',
+        errorMessage: 'Faltan parámetros de búsqueda',
+        completedAt: new Date()
+      })
+      return
+    }
+    
+    // 3. Ejecutar scraper (esto puede tomar tiempo)
+    logger.info(`🕷️ [Process ${processId}] Ejecutando scraper...`)
+    
+    let scrapData
+    if (useAuthScraper) {
+      scrapData = await scrapRawDataAuth({
+        rol: input.rol,
+        tribune: tribunalId,
+        competencia: competencia,
+        corteId: corteId
+      })
+    } else {
+      scrapData = await scrapRawData({
+        typeSearch: input.typeSearch || existingCase.typeSearch || 'UNIFICADA',
+        rol: input.rol,
+        tribune: tribunalId,
+        competencia: competencia,
+        corteId: corteId
+      }, scrapeInstance)
+    }
+    
+    console.log(`✅ [Process ${processId}] Scraping completado`)
+    
+    // 4. Guardar en CasesUpdated
+    await new CasesUpdated({
+      ...scrapData,
+      rol: input.rol,
+      court: input.court
+    }).save()
+    
+    // 5. Obtener la causa actual y la actualizada
+    const cc = await Cases.findOne({
+      rol: input.rol,
+      court: input.court
+    })
+    
+    const ccu = await CasesUpdated.findOne({
+      rol: input.rol,
+      court: input.court
+    })
+    
+    // 6. Verificar si hay cambios
+    let hasChanges = false
+    let summary = {
+      newMovements: 0,
+      litigantsChanged: false,
+      mainFieldsChanged: []
+    }
+    
+    if (cc && ccu) {
+      const oldMovements = cc.movementsHistory || []
+      const newMovements = ccu.movementsHistory || []
+      
+      if (newMovements.length > oldMovements.length) {
+        summary.newMovements = newMovements.length - oldMovements.length
+        hasChanges = true
+      }
+      
+      if ((cc.litigants || []).length < (ccu.litigants || []).length) {
+        summary.litigantsChanged = true
+        hasChanges = true
+      }
+      
+      // Comparar campos principales
+      const mainFields = ['cover', 'stage', 'processState', 'estAdmin', 'process', 'location']
+      for (const field of mainFields) {
+        if (cc[field] !== ccu[field]) {
+          summary.mainFieldsChanged.push(field)
+          hasChanges = true
+        }
+      }
+      
+      if (hasChanges) {
+        // Actualizar la causa
+        const upArr = []
+        const ccuDoc = ccu._doc || ccu
+        Object.entries(ccuDoc).forEach(([key, val]) => {
+          if (key !== '_id' && key !== '__v') {
+            upArr.push([key, val])
+          }
+        })
+        const ccuo = Object.fromEntries(upArr)
+        
+        await Cases.findOneAndUpdate(
+          { rol: input.rol, court: input.court },
+          { $set: { ...ccuo } },
+          { new: true }
+        )
+        
+        await CasesReviews.findOneAndUpdate(
+          { case: cc._id },
+          { $set: { case: cc._id } },
+          { new: true, upsert: true }
+        )
+        
+        // Actualizar scrapedData
+        await Cases.findOneAndUpdate(
+          { rol: input.rol, court: input.court },
+          { 
+            $set: { 
+              'scrapedData.status': 'success',
+              'scrapedData.lastScrapedAt': new Date(),
+              'scrapedData.data': scrapData
+            } 
+          }
+        )
+        
+        console.log(`✅ [Process ${processId}] Causa actualizada con cambios:`, summary)
+      } else {
+        console.log(`📭 [Process ${processId}] No se detectaron cambios en la causa`)
+      }
+      
+      // 7. Eliminar de CasesUpdated (siempre)
+      await CasesUpdated.findOneAndDelete({
+        rol: input.rol,
+        court: input.court
+      })
+    }
+    
+    // 8. Actualizar estado del proceso
+    await ProcessStatus.findByIdAndUpdate(processId, {
+      status: 'completed',
+      completedAt: new Date(),
+      summary: summary
+    })
+    
+    console.log(`✅ [Process ${processId}] Proceso completado.`)
+    
+    // 9. Mantener sesión
+    if (useAuthScraper && keepSessionAlive) {
+      await keepSessionAlive()
+    }
+    
+  } catch (error) {
+    console.error(`❌ [Process ${processId}] Error:`, error.message)
+    logger.error('Error en startScrapingProcess', { 
+      processId, 
+      caseId, 
+      error: error.message, 
+      stack: error.stack 
+    })
+    
+    await ProcessStatus.findByIdAndUpdate(processId, {
+      status: 'error',
+      errorMessage: error.message || 'Error desconocido en el proceso',
+      completedAt: new Date()
+    })
   }
 }
 
