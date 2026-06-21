@@ -343,12 +343,64 @@ const resolvers = {
       const user = await Users.findOne({ _id: userId }, { password: false })
       return user
     },
-    getCases: async (_, args, { Cases }) => {
-      const cc = await Cases.find(
+    /**
+     * ✅ MODIFICADO: getCases ahora busca datos en CasesUpdated
+     * Primero obtiene las causas base de Cases, luego enriquece con datos de CasesUpdated
+     */
+    getCases: async (_, args, { Cases, CasesUpdated }) => {
+      // Obtener causas base
+      const baseCases = await Cases.find(
         {},
-        '_id rol cover admission court stage debtor'
+        '_id rol cover admission court stage debtor estAdmin processState typeSearch'
       ).populate('createdBy', '-password')
-      return cc
+      
+      // Para cada causa, buscar datos actualizados en CasesUpdated
+      const enrichedCases = await Promise.all(
+        baseCases.map(async (baseCase) => {
+          const baseDoc = baseCase._doc || baseCase
+          
+          // Buscar en CasesUpdated por caseId o por rol
+          const updatedData = await CasesUpdated.findOne({ 
+            $or: [
+              { caseId: baseCase._id },
+              { rol: baseCase.rol }
+            ]
+          })
+          
+          if (updatedData) {
+            // Combinar datos: usar los de CasesUpdated si existen, sino los de Cases
+            return {
+              _id: baseCase._id,
+              rol: baseCase.rol,
+              cover: updatedData.cover || baseDoc.cover,
+              admission: updatedData.admission || baseDoc.admission,
+              court: updatedData.court || baseDoc.court,
+              stage: updatedData.stage || baseDoc.stage,
+              debtor: updatedData.debtor || baseDoc.debtor,
+              estAdmin: updatedData.estAdmin || baseDoc.estAdmin,
+              processState: updatedData.processState || baseDoc.processState,
+              typeSearch: baseDoc.typeSearch,
+              createdBy: baseCase.createdBy
+            }
+          }
+          // Si no hay datos en CasesUpdated, devolver los datos base
+          return {
+            _id: baseCase._id,
+            rol: baseCase.rol,
+            cover: baseDoc.cover,
+            admission: baseDoc.admission,
+            court: baseDoc.court,
+            stage: baseDoc.stage,
+            debtor: baseDoc.debtor,
+            estAdmin: baseDoc.estAdmin,
+            processState: baseDoc.processState,
+            typeSearch: baseDoc.typeSearch,
+            createdBy: baseCase.createdBy
+          }
+        })
+      )
+      
+      return enrichedCases
     },
     getCaseViewed: async (_, args, { Users, CasesViewed, currentUser }) => {
       const user = await Users.findOne({ email: currentUser.email }, { _id: 1 })
@@ -371,22 +423,58 @@ const resolvers = {
       ).populate('createdBy')
       return cc
     },
-    getCase: async (_, { id }, { Users, Cases, CasesViewed, currentUser }) => {
-      const cc = await Cases.findOne({ _id: id }).populate({
+    /**
+     * ✅ MODIFICADO: getCase busca en CasesUpdated por ROL
+     * CasesUpdated contiene los datos completos del scraper (movimientos, litigantes, etc.)
+     * Cases contiene solo los datos base creados en el frontend
+     */
+    getCase: async (_, { id }, { Users, Cases, CasesUpdated, CasesViewed, currentUser }) => {
+      let caseData = null;
+      
+      // ✅ 1. Primero obtener la causa base para conocer el rol y el createdBy
+      const caseBase = await Cases.findById(id).populate({
         path: 'createdBy',
         select: '_id name email avatar'
-      })
-      const user = await gu(Users, currentUser)
-      const viewedUpdated = {
-        caseBankruptcy: id,
-        viewedBy: user._id
+      });
+      
+      if (caseBase) {
+        // ✅ 2. Buscar en CasesUpdated por el rol
+        caseData = await CasesUpdated.findOne({ 
+          rol: caseBase.rol 
+        });
+        
+        // ✅ 3. Si encontramos en CasesUpdated, lo convertimos y agregamos createdBy
+        if (caseData) {
+          // Convertir a objeto plano
+          caseData = caseData.toObject();
+          // Usar el createdBy ya poblado de caseBase
+          caseData.createdBy = caseBase.createdBy;
+          // Mantener el ID consistente con el que espera el frontend
+          caseData._id = id;
+        }
       }
-      await CasesViewed.findOneAndUpdate(
-        { ...viewedUpdated },
-        { $set: { ...viewedUpdated } },
-        { new: true, upsert: true }
-      )
-      return cc
+      
+      // ✅ 4. Si no existe en CasesUpdated, buscar en Cases (fallback)
+      if (!caseData) {
+        caseData = await Cases.findOne({ _id: id }).populate({
+          path: 'createdBy',
+          select: '_id name email avatar'
+        });
+      }
+      
+      // ✅ 5. Registrar vista
+      const user = await gu(Users, currentUser);
+      if (user && caseData) {
+        await CasesViewed.findOneAndUpdate(
+          { caseBankruptcy: id, viewedBy: user._id },
+          { $set: { caseBankruptcy: id, viewedBy: user._id } },
+          { new: true, upsert: true }
+        );
+      }
+      
+      console.log(`📊 getCase: ${id} → ${caseData ? 'ENCONTRADO' : 'NO ENCONTRADO'} (movements: ${caseData?.movementsHistory?.length || 0})`);
+      
+      return caseData;
     },
     getUserUnreadMessages: async (_, { userId }, { Messages }) => {
       const userMessages = await Messages.find({
@@ -807,6 +895,10 @@ const resolvers = {
         })
         await InvolvedUsersCase.findOneAndRemove({
           case: caseId
+        })
+        // ✅ También eliminar de CasesUpdated
+        await CasesUpdated.findOneAndRemove({
+          caseId: caseId
         })
         return {
           messageBody: 'La causa fue eliminada de manera satisfactoria',
@@ -1647,6 +1739,10 @@ const resolvers = {
 /**
  * Proceso en background para actualizar una causa
  * Esta función se ejecuta de forma asíncrona sin bloquear la respuesta
+ * 
+ * ✅ MODIFICADO: Ahora guarda los datos en CasesUpdated y NO los elimina
+ * CasesUpdated contiene los datos completos del scraper (movimientos, litigantes, etc.)
+ * Cases contiene solo los datos base creados en el frontend
  */
 async function startScrapingProcess(processId, caseId, input, models) {
   const { Cases, CasesUpdated, CasesReviews, ProcessStatus, Users, useAuthScraper, keepSessionAlive } = models
@@ -1705,112 +1801,84 @@ async function startScrapingProcess(processId, caseId, input, models) {
     
     console.log(`✅ [Process ${processId}] Scraping completado`)
     
-    // 4. Guardar en CasesUpdated
+    // ✅ 4. GUARDAR en CasesUpdated (datos completos del scraper)
+    // Guardar con caseId para poder buscar por la causa original
     await new CasesUpdated({
       ...scrapData,
+      caseId: caseId,           // ✅ Guardar referencia a la causa original
       rol: input.rol,
-      court: input.court
+      court: input.court,
+      createdBy: existingCase.createdBy,
+      // Copiar campos base de la causa original
+      status: existingCase.status,
+      visibility: existingCase.visibility,
+      typeSearch: existingCase.typeSearch || 'UNIFICADA'
     }).save()
     
-    // 5. Obtener la causa actual y la actualizada
-    const cc = await Cases.findOne({
-      rol: input.rol,
-      court: input.court
+    console.log(`📝 [Process ${processId}] Datos guardados en CasesUpdated`)
+    
+    // ✅ 5. Actualizar el estado en Cases (solo el estado del scraping)
+    await Cases.findByIdAndUpdate(caseId, {
+      'scrapedData.status': 'success',
+      'scrapedData.lastScrapedAt': new Date(),
+      'scrapedData.data': scrapData,
+      'scrapedData.errorMessage': null
     })
     
-    const ccu = await CasesUpdated.findOne({
-      rol: input.rol,
-      court: input.court
-    })
+    console.log(`✅ [Process ${processId}] Estado actualizado en Cases`)
     
-    // 6. Verificar si hay cambios
-    let hasChanges = false
+    // ✅ 6. Actualizar CasesReviews
+    await CasesReviews.findOneAndUpdate(
+      { case: caseId },
+      { $set: { case: caseId, updatedAt: new Date() } },
+      { new: true, upsert: true }
+    )
+    
+    // ✅ 7. NO ELIMINAMOS CasesUpdated - los datos quedan disponibles para el frontend
+    
+    // 8. Resumen de cambios (para el polling y notificaciones)
     let summary = {
-      newMovements: 0,
+      newMovements: scrapData?.movementsHistory?.length || 0,
       litigantsChanged: false,
       mainFieldsChanged: []
     }
     
-    if (cc && ccu) {
-      const oldMovements = cc.movementsHistory || []
-      const newMovements = ccu.movementsHistory || []
+    // Comparar con datos anteriores si existen
+    const oldCase = await Cases.findById(caseId)
+    if (oldCase && oldCase.movementsHistory) {
+      const oldMovements = oldCase.movementsHistory || []
+      const newMovements = scrapData?.movementsHistory || []
       
       if (newMovements.length > oldMovements.length) {
         summary.newMovements = newMovements.length - oldMovements.length
-        hasChanges = true
       }
       
-      if ((cc.litigants || []).length < (ccu.litigants || []).length) {
+      // Comparar litigantes
+      if ((oldCase.litigants || []).length !== (scrapData?.litigants || []).length) {
         summary.litigantsChanged = true
-        hasChanges = true
       }
-      
-      // Comparar campos principales
-      const mainFields = ['cover', 'stage', 'processState', 'estAdmin', 'process', 'location']
-      for (const field of mainFields) {
-        if (cc[field] !== ccu[field]) {
-          summary.mainFieldsChanged.push(field)
-          hasChanges = true
-        }
-      }
-      
-      if (hasChanges) {
-        // Actualizar la causa
-        const upArr = []
-        const ccuDoc = ccu._doc || ccu
-        Object.entries(ccuDoc).forEach(([key, val]) => {
-          if (key !== '_id' && key !== '__v') {
-            upArr.push([key, val])
-          }
-        })
-        const ccuo = Object.fromEntries(upArr)
-        
-        await Cases.findOneAndUpdate(
-          { rol: input.rol, court: input.court },
-          { $set: { ...ccuo } },
-          { new: true }
-        )
-        
-        await CasesReviews.findOneAndUpdate(
-          { case: cc._id },
-          { $set: { case: cc._id } },
-          { new: true, upsert: true }
-        )
-        
-        // Actualizar scrapedData
-        await Cases.findOneAndUpdate(
-          { rol: input.rol, court: input.court },
-          { 
-            $set: { 
-              'scrapedData.status': 'success',
-              'scrapedData.lastScrapedAt': new Date(),
-              'scrapedData.data': scrapData
-            } 
-          }
-        )
-        
-        console.log(`✅ [Process ${processId}] Causa actualizada con cambios:`, summary)
-      } else {
-        console.log(`📭 [Process ${processId}] No se detectaron cambios en la causa`)
-      }
-      
-      // 7. Eliminar de CasesUpdated (siempre)
-      await CasesUpdated.findOneAndDelete({
-        rol: input.rol,
-        court: input.court
-      })
     }
     
-    // 8. Actualizar estado del proceso
+    // 9. Actualizar estado del proceso
     await ProcessStatus.findByIdAndUpdate(processId, {
       status: 'completed',
       completedAt: new Date(),
       summary: summary
     })
     
-    console.log(`✅ [Process ${processId}] Proceso completado.`)
+    // 10. Enviar notificaciones por email (si hay cambios significativos)
+    if (summary.newMovements > 0 || summary.litigantsChanged) {
+      const updatedCase = await Cases.findById(caseId)
+      await sendUpdateNotification(Users, updatedCase, {
+        newMovementsCount: summary.newMovements,
+        litigantsChanged: summary.litigantsChanged,
+        mainFieldsChanged: summary.mainFieldsChanged
+      })
+    }
     
-    // 9. Mantener sesión
+    console.log(`✅ [Process ${processId}] Proceso completado. Datos disponibles en CasesUpdated`)
+    
+    // 11. Mantener sesión
     if (useAuthScraper && keepSessionAlive) {
       await keepSessionAlive()
     }
@@ -1834,9 +1902,6 @@ async function startScrapingProcess(processId, caseId, input, models) {
 
 // ========== EXPORTAR ==========
 module.exports = resolvers
-
-// Exportar la función auxiliar por separado (no es un resolver GraphQL)
-//module.exports.updateCaseIfNeeded = updateCaseIfNeeded
 
 // ========== INICIALIZACIÓN DEL NAVEGADOR GLOBAL ==========
 initGlobalScrape().catch(console.error);
