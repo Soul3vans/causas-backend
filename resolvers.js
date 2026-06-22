@@ -428,7 +428,7 @@ const resolvers = {
      * CasesUpdated contiene los datos completos del scraper (movimientos, litigantes, etc.)
      * Cases contiene solo los datos base creados en el frontend
      */
-    getCase: async (_, { id }, { Users, Cases, CasesUpdated, CasesViewed, currentUser }) => {
+    getCase: async (_, { id }, { Users, Cases, CasesUpdated, CasesViewed, CasesLogs, currentUser }) => {
       let caseData = null;
       
       // ✅ 1. Primero obtener la causa base para conocer el rol y el createdBy
@@ -470,6 +470,18 @@ const resolvers = {
           { $set: { caseBankruptcy: id, viewedBy: user._id } },
           { new: true, upsert: true }
         );
+        
+        // ✅ 6. Registrar en CasesLogs (auditoría de vista)
+        try {
+          await CasesLogs.create({
+            caseId: id,
+            accesedBy: user._id,
+            action: 'VIEW',
+            details: `Usuario ${user.name || 'Sistema'} visualizó la causa ${caseData.rol}`
+          });
+        } catch (logError) {
+          console.warn('⚠️ Error registrando en CasesLogs:', logError.message);
+        }
       }
       
       console.log(`📊 getCase: ${id} → ${caseData ? 'ENCONTRADO' : 'NO ENCONTRADO'} (movements: ${caseData?.movementsHistory?.length || 0})`);
@@ -973,7 +985,7 @@ const resolvers = {
     addCase: async (
       _,
       { input, causes },
-      { Users, Cases, InvolvedUsersCase, CasesReviews }
+      { Users, Cases, InvolvedUsersCase, CasesReviews, CasesLogs }
     ) => {
       try {
         const causesToProcess = causes || [input];
@@ -1053,6 +1065,18 @@ const resolvers = {
               
               const newCase = await new Cases(caseData).save();
               
+              // ✅ Registrar en CasesLogs (auditoría de creación)
+              try {
+                await CasesLogs.create({
+                  caseId: newCase._id,
+                  accesedBy: causeInput.createdBy,
+                  action: 'CREATE',
+                  details: `Causa ${fullRol} creada por usuario`
+                });
+              } catch (logError) {
+                console.warn('⚠️ Error registrando en CasesLogs:', logError.message);
+              }
+              
               if (causeInput.involved && causeInput.involved.length > 0) {
                 const userInvolved = causeInput.involved.map(a => ({
                   status: 'COOPERADOR',
@@ -1065,11 +1089,23 @@ const resolvers = {
                 }).save();
               }
               
-              await CasesReviews.findOneAndUpdate(
-                { case: newCase._id },
-                { $set: { case: newCase._id } },
-                { upsert: true }
-              );
+              // ✅ Registrar en CasesReviews
+              try {
+                await CasesReviews.create({
+                  caseId: newCase._id,
+                  reviewedBy: causeInput.createdBy,
+                  reviewType: 'MANUAL',
+                  status: 'COMPLETED',
+                  currentData: {
+                    cover: scrapResult.data.cover,
+                    stage: scrapResult.data.stage,
+                    movementsCount: scrapResult.data.movementsHistory?.length || 0,
+                    litigantsCount: scrapResult.data.litigants?.length || 0
+                  }
+                });
+              } catch (reviewError) {
+                console.warn('⚠️ Error registrando en CasesReviews:', reviewError.message);
+              }
               
               savedResults.push({ rol: fullRol, status: 'success', id: newCase._id });
               
@@ -1196,6 +1232,18 @@ const resolvers = {
         
         const newCase = await new Cases(caseData).save();
         
+        // ✅ Registrar en CasesLogs (auditoría de creación)
+        try {
+          await CasesLogs.create({
+            caseId: newCase._id,
+            accesedBy: createdBy,
+            action: 'CREATE',
+            details: `Causa ${fullRol} creada por usuario`
+          });
+        } catch (logError) {
+          console.warn('⚠️ Error registrando en CasesLogs:', logError.message);
+        }
+        
         if (involved && involved.length > 0) {
           const userInvolved = involved.map(a => ({
             status: 'COOPERADOR',
@@ -1208,11 +1256,23 @@ const resolvers = {
           }).save();
         }
         
-        await CasesReviews.findOneAndUpdate(
-          { case: newCase._id },
-          { $set: { case: newCase._id } },
-          { upsert: true }
-        );
+        // ✅ Registrar en CasesReviews
+        try {
+          await CasesReviews.create({
+            caseId: newCase._id,
+            reviewedBy: createdBy,
+            reviewType: 'MANUAL',
+            status: 'COMPLETED',
+            currentData: {
+              cover: scrapData?.cover || null,
+              stage: scrapData?.stage || null,
+              movementsCount: scrapData?.movementsHistory?.length || 0,
+              litigantsCount: scrapData?.litigants?.length || 0
+            }
+          });
+        } catch (reviewError) {
+          console.warn('⚠️ Error registrando en CasesReviews:', reviewError.message);
+        }
         
         const users = await Users.find({}, 'email name');
         for (const user of users) {
@@ -1313,7 +1373,7 @@ const resolvers = {
     scrapeMultipleNewCases: async (
       _,
       { causes, createdBy },
-      { Cases, Users, InvolvedUsersCase, CasesReviews }
+      { Cases, Users, InvolvedUsersCase, CasesReviews, CasesLogs }
     ) => {
       try {
         if (!causes || causes.length === 0) {
@@ -1396,11 +1456,35 @@ const resolvers = {
               }).save();
             }
             
-            await CasesReviews.findOneAndUpdate(
-              { case: newCase._id },
-              { $set: { case: newCase._id } },
-              { upsert: true }
-            );
+            // ✅ Registrar en CasesLogs (auditoría de creación)
+            try {
+              await CasesLogs.create({
+                caseId: newCase._id,
+                accesedBy: createdBy,
+                action: 'CREATE',
+                details: `Causa ${fullRol} creada por usuario (batch)`
+              });
+            } catch (logError) {
+              console.warn('⚠️ Error registrando en CasesLogs:', logError.message);
+            }
+            
+            // ✅ Registrar en CasesReviews
+            try {
+              await CasesReviews.create({
+                caseId: newCase._id,
+                reviewedBy: createdBy,
+                reviewType: 'MANUAL',
+                status: 'COMPLETED',
+                currentData: {
+                  cover: scrapResult.data.cover,
+                  stage: scrapResult.data.stage,
+                  movementsCount: scrapResult.data.movementsHistory?.length || 0,
+                  litigantsCount: scrapResult.data.litigants?.length || 0
+                }
+              });
+            } catch (reviewError) {
+              console.warn('⚠️ Error registrando en CasesReviews:', reviewError.message);
+            }
             
             savedCases.push({ rol: fullRol, status: 'success', id: newCase._id });
           } else {
@@ -1446,7 +1530,7 @@ const resolvers = {
       }
     },
     
-    updateCase: async (_, { input }, { Cases, CasesUpdated, CasesReviews, ProcessStatus, Users }) => {
+    updateCase: async (_, { input }, { Cases, CasesUpdated, CasesReviews, CasesLogs, ProcessStatus, Users }) => {
       console.log('🔴🔴🔴 MUTATION UPDATE CASE RECIBIDA 🔴🔴🔴')
       console.log('Input recibido:', JSON.stringify(input, null, 2))
       
@@ -1510,16 +1594,37 @@ const resolvers = {
           startedAt: new Date()
         })
         
-        // 6. INICIAR SCRAPER EN BACKGROUND (SIN await para no bloquear)
-        // Llamamos a la función que definiremos fuera del objeto Mutation
+        // ✅ 6. Registrar en CasesLogs (auditoría de inicio de scraping)
+        try {
+          const user = await Users.findById(userId);
+          await CasesLogs.create({
+            caseId: existingCase._id,
+            accesedBy: userId,
+            action: 'SCRAPE',
+            details: `Usuario ${user?.name || 'Sistema'} inició scraping de la causa ${existingCase.rol}`
+          });
+        } catch (logError) {
+          console.warn('⚠️ Error registrando en CasesLogs:', logError.message);
+        }
+        
+        // 7. INICIAR SCRAPER EN BACKGROUND (SIN await para no bloquear)
         startScrapingProcess(
           processId,
           existingCase._id,
           input,
-          { Cases, CasesUpdated, CasesReviews, ProcessStatus, Users, useAuthScraper, keepSessionAlive }
+          { 
+            Cases, 
+            CasesUpdated, 
+            CasesReviews, 
+            CasesLogs,
+            ProcessStatus, 
+            Users, 
+            useAuthScraper, 
+            keepSessionAlive 
+          }
         )
         
-        // 7. RESPONDER INMEDIATAMENTE
+        // 8. RESPONDER INMEDIATAMENTE
         return {
           messageBody: '🔄 Procesando actualización... Te notificaremos cuando termine',
           messageType: 'is-info',
@@ -1745,7 +1850,9 @@ const resolvers = {
  * Cases contiene solo los datos base creados en el frontend
  */
 async function startScrapingProcess(processId, caseId, input, models) {
-  const { Cases, CasesUpdated, CasesReviews, ProcessStatus, Users, useAuthScraper, keepSessionAlive } = models
+  const { Cases, CasesUpdated, CasesReviews, CasesLogs, ProcessStatus, Users, useAuthScraper, keepSessionAlive } = models
+  
+  let review = null;
   
   try {
     console.log(`🔄 [Process ${processId}] Iniciando scraping en background...`)
@@ -1778,6 +1885,25 @@ async function startScrapingProcess(processId, caseId, input, models) {
       return
     }
     
+    // ✅ Crear registro en CasesReviews (seguimiento del proceso)
+    try {
+      review = await CasesReviews.create({
+        caseId: caseId,
+        reviewedBy: input.userId || existingCase.createdBy,
+        reviewType: input.userId ? 'MANUAL' : 'SCHEDULED',
+        status: 'PROCESSING',
+        previousData: {
+          cover: existingCase.cover,
+          stage: existingCase.stage,
+          movementsCount: existingCase.movementsHistory?.length || 0,
+          litigantsCount: existingCase.litigants?.length || 0
+        }
+      });
+      console.log(`📝 [Process ${processId}] Registro en CasesReviews creado: ${review._id}`)
+    } catch (reviewError) {
+      console.warn(`⚠️ [Process ${processId}] Error creando CasesReviews:`, reviewError.message)
+    }
+    
     // 3. Ejecutar scraper (esto puede tomar tiempo)
     logger.info(`🕷️ [Process ${processId}] Ejecutando scraper...`)
     
@@ -1802,14 +1928,12 @@ async function startScrapingProcess(processId, caseId, input, models) {
     console.log(`✅ [Process ${processId}] Scraping completado`)
     
     // ✅ 4. GUARDAR en CasesUpdated (datos completos del scraper)
-    // Guardar con caseId para poder buscar por la causa original
     await new CasesUpdated({
       ...scrapData,
-      caseId: caseId,           // ✅ Guardar referencia a la causa original
+      caseId: caseId,
       rol: input.rol,
       court: input.court,
       createdBy: existingCase.createdBy,
-      // Copiar campos base de la causa original
       status: existingCase.status,
       visibility: existingCase.visibility,
       typeSearch: existingCase.typeSearch || 'UNIFICADA'
@@ -1817,24 +1941,70 @@ async function startScrapingProcess(processId, caseId, input, models) {
     
     console.log(`📝 [Process ${processId}] Datos guardados en CasesUpdated`)
     
-    // ✅ 5. Actualizar el estado en Cases (solo el estado del scraping)
-    await Cases.findByIdAndUpdate(caseId, {
+    // ✅ 5. Actualizar TAMBIÉN Cases con los datos principales
+    const updateData = {
+      cover: scrapData.cover || existingCase.cover,
+      admission: scrapData.admission || existingCase.admission,
+      court: scrapData.court || existingCase.court,
+      stage: scrapData.stage || existingCase.stage,
+      debtor: scrapData.debtor || existingCase.debtor,
+      estAdmin: scrapData.estAdmin || existingCase.estAdmin,
+      processState: scrapData.processState || existingCase.processState,
+      process: scrapData.process || existingCase.process,
+      location: scrapData.location || existingCase.location,
+      movementsHistory: scrapData.movementsHistory || existingCase.movementsHistory,
+      litigants: scrapData.litigants || existingCase.litigants,
       'scrapedData.status': 'success',
       'scrapedData.lastScrapedAt': new Date(),
       'scrapedData.data': scrapData,
       'scrapedData.errorMessage': null
-    })
+    }
     
-    console.log(`✅ [Process ${processId}] Estado actualizado en Cases`)
+    await Cases.findByIdAndUpdate(caseId, { $set: updateData })
+    console.log(`✅ [Process ${processId}] Datos principales actualizados en Cases`)
     
-    // ✅ 6. Actualizar CasesReviews
-    await CasesReviews.findOneAndUpdate(
-      { case: caseId },
-      { $set: { case: caseId, updatedAt: new Date() } },
-      { new: true, upsert: true }
-    )
+    // ✅ 6. Actualizar CasesReviews con los resultados
+    if (review) {
+      try {
+        const oldMovements = existingCase.movementsHistory || []
+        const newMovements = scrapData.movementsHistory || []
+        const newMovementsCount = newMovements.length - oldMovements.length
+        
+        await CasesReviews.findByIdAndUpdate(review._id, {
+          status: 'COMPLETED',
+          currentData: {
+            cover: scrapData.cover,
+            stage: scrapData.stage,
+            movementsCount: newMovements.length,
+            litigantsCount: scrapData.litigants?.length || 0
+          },
+          changes: {
+            newMovements: newMovementsCount > 0 ? newMovementsCount : 0,
+            litigantsChanged: (existingCase.litigants || []).length !== (scrapData.litigants || []).length,
+            mainFieldsChanged: []
+          }
+        });
+        console.log(`✅ [Process ${processId}] CasesReviews actualizado: ${review._id}`)
+      } catch (updateReviewError) {
+        console.warn(`⚠️ [Process ${processId}] Error actualizando CasesReviews:`, updateReviewError.message)
+      }
+    }
     
-    // ✅ 7. NO ELIMINAMOS CasesUpdated - los datos quedan disponibles para el frontend
+    // ✅ 7. Registrar en CasesLogs (auditoría de finalización)
+    try {
+      const oldMovements = existingCase.movementsHistory || []
+      const newMovements = scrapData.movementsHistory || []
+      const newMovementsCount = newMovements.length - oldMovements.length
+      
+      await CasesLogs.create({
+        caseId: caseId,
+        accesedBy: input.userId || existingCase.createdBy,
+        action: 'UPDATE',
+        details: `Scraping completado: ${newMovementsCount > 0 ? newMovementsCount + ' nuevos movimientos, ' : ''}${(existingCase.litigants || []).length !== (scrapData.litigants || []).length ? 'litigantes actualizados' : 'sin cambios en litigantes'}`
+      });
+    } catch (logError) {
+      console.warn(`⚠️ [Process ${processId}] Error registrando en CasesLogs:`, logError.message)
+    }
     
     // 8. Resumen de cambios (para el polling y notificaciones)
     let summary = {
@@ -1853,7 +2023,6 @@ async function startScrapingProcess(processId, caseId, input, models) {
         summary.newMovements = newMovements.length - oldMovements.length
       }
       
-      // Comparar litigantes
       if ((oldCase.litigants || []).length !== (scrapData?.litigants || []).length) {
         summary.litigantsChanged = true
       }
@@ -1876,7 +2045,7 @@ async function startScrapingProcess(processId, caseId, input, models) {
       })
     }
     
-    console.log(`✅ [Process ${processId}] Proceso completado. Datos disponibles en CasesUpdated`)
+    console.log(`✅ [Process ${processId}] Proceso completado. Datos disponibles en CasesUpdated y Cases actualizados.`)
     
     // 11. Mantener sesión
     if (useAuthScraper && keepSessionAlive) {
@@ -1891,6 +2060,18 @@ async function startScrapingProcess(processId, caseId, input, models) {
       error: error.message, 
       stack: error.stack 
     })
+    
+    // ✅ Actualizar CasesReviews con error
+    if (review) {
+      try {
+        await CasesReviews.findByIdAndUpdate(review._id, {
+          status: 'ERROR',
+          errorMessage: error.message
+        });
+      } catch (updateError) {
+        console.warn(`⚠️ Error actualizando CasesReviews con error:`, updateError.message)
+      }
+    }
     
     await ProcessStatus.findByIdAndUpdate(processId, {
       status: 'error',
