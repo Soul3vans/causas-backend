@@ -1,23 +1,49 @@
-const { Date } = require('mongoose')
 const mongoose = require('mongoose')
 
-const CasesLogsShema = new mongoose.Schema(
+const CasesReviewsSchema = new mongoose.Schema(
   {
     caseId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
       ref: 'Cases'
     },
-    accesedBy: {
+    previousData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
+    currentData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
+    changes: {
+      newMovements: { type: Number, default: 0 },
+      litigantsChanged: { type: Boolean, default: false },
+      mainFieldsChanged: { type: [String], default: [] }
+    },
+    reviewedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
       ref: 'Users'
     },
-    accessDate: {
-      type: Date
+    reviewType: {
+      type: String,
+      enum: ['MANUAL', 'SCHEDULED', 'AUTO'],
+      default: 'MANUAL'
+    },
+    status: {
+      type: String,
+      enum: ['PENDING', 'PROCESSING', 'COMPLETED', 'ERROR'],
+      default: 'PENDING'
+    },
+    errorMessage: {
+      type: String,
+      default: ''
     }
   },
   { timestamps: true }
 )
 
-module.exports = mongoose.model('CasesLogs', CasesLogsShema)
+// Índices
+CasesReviewsSchema.index({ caseId: 1, createdAt: -1 })
+CasesReviewsSchema.index({ status: 1 })
+
+module.exports = mongoose.model('CasesReviews', CasesReviewsSchema)

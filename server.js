@@ -21,6 +21,7 @@ const Posts = require('./models/Posts')
 const Patients = require('./models/Patients')
 const Checks = require('./models/Checks')
 const Cases = require('./models/Cases')
+const CasesLogs = require('./models/CasesLogs')
 const CasesViewed = require('./models/CasesViewed')
 const CasesSettings = require('./models/CasesSettings')
 const Messages = require('./models/Messages')
@@ -109,6 +110,7 @@ const server = new ApolloServer({
       Patients,
       Checks,
       Cases,
+      CasesLogs,
       CasesViewed,
       Activity,
       File,
