@@ -31,6 +31,7 @@ const Priority = require('./models/Priority')
 const sendActivityReminder = require('./workers/mail-sender/activity-reminder')
 const dailyScraps = require('./workers/mail-sender/daily-scraps')
 const casesUpdater = require('./workers/mail-sender/cases-updater')
+const ProcessStatus = require('./models/ProcessStatus')
 
 // Conectar a MongoDB con manejo de errores
 ;(async function connectDB() {
@@ -117,6 +118,7 @@ const server = new ApolloServer({
       CasesUpdated,
       CasesReviews,
       Priority,
+      ProcessStatus,
       currentUser: await getUser(token)
     }
   },
