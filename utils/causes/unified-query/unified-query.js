@@ -63,7 +63,7 @@ class UnifiedQuery {
                 waitUntil: 'domcontentloaded',
                 timeout: 30000
             });
-            await this.timeout(8000);
+            await this.timeout(5000);
             }
             
             // Caso 2: Estamos en home/index.php
@@ -71,7 +71,7 @@ class UnifiedQuery {
             console.log('🔍 En página de inicio, haciendo clic en "Consulta causas"...');
             
             // Esperar a que el botón esté presente
-            await this.page.waitForSelector('button.dropbtn[onclick*="accesoConsultaCausas"]', { timeout: 8000 });
+            await this.page.waitForSelector('button.dropbtn[onclick*="accesoConsultaCausas"]', { timeout: 3000 });
             
             // Hacer clic en el botón "Consulta causas"
             await this.page.evaluate(() => {
@@ -88,7 +88,7 @@ class UnifiedQuery {
             // Esperar la redirección a indexN.php
             console.log('⏳ Esperando redirección a indexN.php...');
             await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 });
-            await this.timeout(8000);
+            await this.timeout(3000);
             }
             
             // Verificar que estamos en indexN.php
@@ -110,7 +110,7 @@ class UnifiedQuery {
             if (hasRecaptcha) {
                 console.log('🔐 Se detectó reCAPTCHA o verificación humana.');
                 console.log('⏳ Esperando 30 segundos para que el usuario pueda resolverlo manualmente...');
-                await this.timeout(30000);
+                await this.timeout(10000);
                 
                 // Verificar si el reCAPTCHA fue resuelto
                 const recaptchaResolved = await this.page.evaluate(() => {
@@ -147,9 +147,9 @@ class UnifiedQuery {
                 }
                 
                 if (retries === 0) throw err;
-                await this.timeout(10000);
-                await this.page.reload({ waitUntil: 'domcontentloaded' });
                 await this.timeout(5000);
+                await this.page.reload({ waitUntil: 'domcontentloaded' });
+                await this.timeout(1500);
             }
             }
             
@@ -248,7 +248,7 @@ class UnifiedQuery {
     }
 
     async extractAnchors() {
-        await this.scrape.waitForSelector("tbody#verDetalle", 3000);
+        await this.scrape.waitForSelector("tbody#verDetalle", 1500);
         
         const text = "No se han encontrado resultados";
         const empty = await this.page.evaluate((text) => {
@@ -298,7 +298,7 @@ class UnifiedQuery {
             
             // Ejecutar el script onclick para abrir el modal
             await this.scrape.execute(anchor.script);
-            await this.scrape.waitForSelector("#modalDetalleCivil", 10000, true);
+            await this.scrape.waitForSelector("#modalDetalleCivil", 1500, true);
             
             // Extraer detalles de la causa
             const { book, ...causeDetails } = await this.extractCauseDetails();
@@ -439,7 +439,7 @@ class UnifiedQuery {
 
     async extractDocumentLinks() {
         try {
-            await this.scrape.waitForSelector("#modalDetalleCivil", 8000, true);
+            await this.scrape.waitForSelector("#modalDetalleCivil", 1500, true);
             
             const documentLinks = await this.page.evaluate(() => {
                 const links = [];
@@ -513,7 +513,7 @@ class UnifiedQuery {
 
     async extractMovementsHistory(cause) {
         try {
-            await this.scrape.waitForSelector("div#loadHistCuadernoCiv", 5000);
+            await this.scrape.waitForSelector("div#loadHistCuadernoCiv", 1500);
             const historyScrape = new history_scrape_1.HistoryScrape(this.page, cause, "one");
             const annexDocs = await historyScrape.start();
             this.annex.push(...annexDocs);
