@@ -197,25 +197,25 @@ class UnifiedQuery {
             // Seleccionar competencia
             await this.page.select("select#competencia", competenciaValue);
             console.log(`✅ Competencia seleccionada: ${competenciaValue}`);
-            await (0, wait_1.wait)(1000);
+            await (0, wait_1.wait)(500);
             
             // Seleccionar corte
             await this.page.click("select#conCorte", { delay: 500 });
             await this.page.select("select#conCorte", corteValue.toString());
             console.log(`✅ Corte seleccionada: ${corteValue}`);
-            await (0, wait_1.wait)(1000);
+            await (0, wait_1.wait)(500);
             
             // Seleccionar tribunal
             await this.page.click("select#conTribunal", { delay: 500 });
             await this.page.select("select#conTribunal", tribuneValue.toString());
             console.log(`✅ Tribunal seleccionado: ${tribuneValue}`);
-            await (0, wait_1.wait)(1000);
+            await (0, wait_1.wait)(500);
             
             // Seleccionar libro/tipo
             const [type, ...paramsRol] = rol.split("-");
             await this.page.select("select#conTipoCausa", type);
             console.log(`✅ Libro/Tipo seleccionado: ${type}`);
-            await (0, wait_1.wait)(1000);
+            await (0, wait_1.wait)(500);
             
             // Llenar rol y año
             const roleNumber = paramsRol[0];
@@ -248,7 +248,7 @@ class UnifiedQuery {
     }
 
     async extractAnchors() {
-        await this.scrape.waitForSelector("tbody#verDetalle", 1500);
+        await this.scrape.waitForSelector("tbody#verDetalle", 500);
         
         const text = "No se han encontrado resultados";
         const empty = await this.page.evaluate((text) => {
@@ -291,40 +291,38 @@ class UnifiedQuery {
                 return null;
             }
             
-            // Procesar SOLO la primera causa (índice 0)
             const anchor = this.anchors[0];
             
             console.log(`📋 Procesando causa única: ${this.rit || 'desconocida'}`);
             
-            // Ejecutar el script onclick para abrir el modal
             await this.scrape.execute(anchor.script);
-            await this.scrape.waitForSelector("#modalDetalleCivil", 1500, true);
+            await this.scrape.waitForSelector("#modalDetalleCivil", 500, true);
             
-            // Extraer detalles de la causa
             const { book, ...causeDetails } = await this.extractCauseDetails();
-            await (0, wait_1.wait)(1000);
+            await (0, wait_1.wait)(500);
             
             console.log("📖 Datos generales de la causa:");
             console.table(causeDetails);
             
-            // Extraer historial de movimientos
-            const movementsHistory = await this.extractMovementsHistory(causeDetails.rol);
+            // ✅ PARALELIZAR: extraer movimientos, litigantes y enlaces al mismo tiempo
+            console.log('🔄 Extrayendo movimientos, litigantes y enlaces en paralelo...');
+            
+            const [movementsHistory, litigants, documentLinks] = await Promise.all([
+                this.extractMovementsHistory(causeDetails.rol),
+                this.extractLitigants(),
+                this.extractDocumentLinks()
+            ]);
+            
+            // ✅ Procesar movimientos
             const movements = movementsHistory.map((item) => ({
                 ...item,
                 book: book || '0 Principal',
             }));
             
             console.log(`📜 Movimientos extraídos: ${movements.length}`);
-            
-            // Extraer litigantes
-            const litigants = await this.extractLitigants();
             console.log(`👥 Litigantes extraídos: ${litigants.length}`);
-            
-            // Extraer enlaces a documentos
-            const documentLinks = await this.extractDocumentLinks();
             console.log(`🔗 Enlaces a documentos extraídos: ${documentLinks.length}`);
             
-            // Construir resultado
             this.civils.push({
                 ...causeDetails,
                 documentLinks,
@@ -339,7 +337,6 @@ class UnifiedQuery {
             
             console.log(`✅ Resumen - Movimientos: ${movements.length}, Litigantes: ${litigants.length}, Enlaces: ${documentLinks.length}`);
             
-            // Cerrar el modal si está habilitado
             if (autoCloseModal) {
                 await this.closeCurrentModal();
             }
@@ -349,7 +346,6 @@ class UnifiedQuery {
         } catch (error) {
             console.error("❌ Error recopilando detalles:", error);
             
-            // Intentar cerrar modal aunque haya error
             try {
                 await this.closeCurrentModal();
             } catch (closeError) {
@@ -489,7 +485,7 @@ class UnifiedQuery {
     async extractLitigants() {
         try {
             await this.page.click('a[href="#litigantesCiv"]');
-            await (0, wait_1.wait)(1500);
+            await (0, wait_1.wait)(500);
             
             const litigants = await this.page.evaluate(() => {
                 const rows = Array.from(document.querySelectorAll("div#litigantesCiv table > tbody > tr") || []);
@@ -513,9 +509,9 @@ class UnifiedQuery {
 
     async extractMovementsHistory(cause) {
         try {
-            await this.scrape.waitForSelector("div#loadHistCuadernoCiv", 1500);
+            await this.scrape.waitForSelector("div#loadHistCuadernoCiv", 500);
             const historyScrape = new history_scrape_1.HistoryScrape(this.page, cause, "one");
-            const annexDocs = await historyScrape.start();
+            const annexDocs = await historyScrape.start({ skipDocumentDownload: true });
             this.annex.push(...annexDocs);
             return historyScrape.getmovementsHistories();
         } catch (error) {

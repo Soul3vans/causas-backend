@@ -5,6 +5,7 @@ const wait_1 = require("../../plugins/wait");
 const date_calc_1 = require("./date-calc");
 const document_persist_helper_1 = require("./document-persist.helper");
 const const_1 = require("./const");
+
 class HistoryScrape {
     constructor(page, cause, issue) {
         this.page = page;
@@ -14,10 +15,21 @@ class HistoryScrape {
         this.folders = [];
         this.anexs = [];
     }
+
     getmovementsHistories() {
         return this.histories;
     }
-    async start() {
+
+    /**
+     * ✅ MODIFICADO: Ahora recibe options para controlar la descarga de documentos
+     * @param {Object} options - Opciones de ejecución
+     * @param {boolean} options.skipDocumentDownload - Si true, salta la descarga de documentos (solo extrae enlaces)
+     */
+    async start(options = {}) {
+        const { skipDocumentDownload = true } = options; // ✅ Por defecto true (solo enlaces)
+        
+        console.log(`📜 Extrayendo movimientos... (skipDocumentDownload: ${skipDocumentDownload})`);
+        
         const movements = await this.page.evaluate(() => {
             const container = document.querySelector("div#loadHistCuadernoCiv");
             const table = container?.querySelector("table");
@@ -25,7 +37,7 @@ class HistoryScrape {
             return rows.map((row) => {
                 const cells = Array.from(row.querySelectorAll("td"));
                 const invoice = cells[0]?.textContent?.trim() || "";
-                const folder = cells[2].querySelector("a")?.getAttribute("onclick") || "";
+                const folder = cells[2]?.querySelector("a")?.getAttribute("onclick") || "";
                 const stage = cells[3]?.textContent?.trim() || "";
                 const procedure = cells[4]?.textContent?.trim() || "";
                 const descProcedure = cells[5]?.textContent?.trim() || "";
@@ -53,6 +65,7 @@ class HistoryScrape {
                 };
             });
         });
+
         this.histories.push(...movements.map((item) => ({
             dateProcedure: (0, date_calc_1.dateCalc)(item.dateProcedure),
             descProcedure: item.descProcedure,
@@ -63,6 +76,7 @@ class HistoryScrape {
             stage: item.stage,
             guid: item.guid,
         })));
+
         this.folders.push(...movements
             .filter((item) => item.folder.length > 0)
             .map((item) => ({
@@ -71,72 +85,155 @@ class HistoryScrape {
             script: item.folder,
             guid: item.guid,
         })));
+
         if (this.folders.length === 0) {
-            console.log("No contiene carpetas", this.cause);
+            console.log("📭 No contiene carpetas", this.cause);
             return [];
         }
-        await this.folderExtract();
+
+        // ✅ Si skipDocumentDownload es true, solo extraemos anexos sin descargar
+        if (skipDocumentDownload) {
+            console.log(`⏭️ Saltando descarga de documentos (solo enlaces). Carpetas: ${this.folders.length}`);
+            // 🔄 EXTRAER ANEXOS SIN DESCARGAR (solo enlaces)
+            await this.folderExtractLight();
+        } else {
+            // 🔄 EXTRAER ANEXOS CON DESCARGA
+            await this.folderExtract();
+        }
+
         const persist = new document_persist_helper_1.DocumentAnnexPersistHelper(this.cause, this.anexs, this.issue);
         persist.annexsEvaluate();
         return persist.makeFilenames();
     }
-    async folderExtract() {
-        console.log("Carpetas", this.folders.length);
+
+    /**
+     * ✅ NUEVO: Extrae anexos SIN descargar documentos (solo enlaces)
+     * Versión ligera que no descarga archivos, solo extrae los enlaces
+     */
+    async folderExtractLight() {
+        console.log(`📂 Carpetas a procesar (solo enlaces): ${this.folders.length}`);
+        
         for (const folder of this.folders) {
-            this.anexs.push(...(await this.rawDataFolder(this.page, folder)));
-        }
-    }
-    async rawDataFolder(page, folder) {
-        try {
-            console.log("Inicializar evaluacion de carpeta en", folder.procedure, folder.descProcedure);
-            await page.evaluate((script) => {
-                eval(script);
-            }, folder.script);
-            await page.waitForSelector('div[class="modal in"]', {
-                timeout: const_1.DEFAULT_TIMEOUT,
-                visible: true,
-            });
-            await (0, wait_1.wait)(4000);
-            const result = await page.$$eval("#modalAnexoSolicitudCivil .modal-body table tbody tr", (rows) => {
-                return rows.map((row) => {
-                    // Obtén todos los celdas (td) de la fila
-                    const cells = row.querySelectorAll("td");
-                    // Obtén el valor del token del input hidden
-                    const form = row.querySelector("form");
-                    const action = form?.getAttribute("action") || "";
-                    const input = form?.querySelector("input");
-                    const queryName = input?.getAttribute("name") || "";
-                    const queryValue = input?.getAttribute("value") || "";
-                    const url = `${action}?${queryName}=${queryValue}`;
-                    return {
-                        document: url,
-                        date: cells[1]?.textContent?.trim() || "",
-                        reference: cells[2]?.textContent?.trim() || "",
-                    };
+            try {
+                console.log(`🔍 Evaluando carpeta: ${folder.procedure} - ${folder.descProcedure}`);
+                
+                await this.page.evaluate((script) => {
+                    eval(script);
+                }, folder.script);
+                
+                await this.page.waitForSelector('div[class="modal in"]', {
+                    timeout: 5000, // ✅ Reducido de DEFAULT_TIMEOUT a 5000
+                    visible: true,
                 });
-            });
-            console.log("Finalizar evaluacion de carpeta en", folder.procedure, folder.descProcedure);
-            console.table(result.map((item) => ({
-                reference: item.reference,
-                date: item.date,
-            })));
-            return result.map((item) => ({
-                date: (0, date_calc_1.dateCalc)(item.date),
-                descProcedure: folder.descProcedure,
-                document: item.document,
-                procedure: folder.procedure,
-                reference: item.reference,
-                guid: folder.guid,
-            }));
+                
+                await (0, wait_1.wait)(1500); // ✅ 4000 → 1500 (reducido significativamente)
+                
+                const result = await this.page.$$eval("#modalAnexoSolicitudCivil .modal-body table tbody tr", (rows) => {
+                    return rows.map((row) => {
+                        const cells = row.querySelectorAll("td");
+                        const form = row.querySelector("form");
+                        const action = form?.getAttribute("action") || "";
+                        const input = form?.querySelector("input");
+                        const queryName = input?.getAttribute("name") || "";
+                        const queryValue = input?.getAttribute("value") || "";
+                        const url = `${action}?${queryName}=${queryValue}`;
+                        return {
+                            document: url,
+                            date: cells[1]?.textContent?.trim() || "",
+                            reference: cells[2]?.textContent?.trim() || "",
+                        };
+                    });
+                });
+                
+                console.log(`✅ Carpeta procesada: ${folder.procedure} - ${result.length} anexos (solo enlaces)`);
+                
+                this.anexs.push(...result.map((item) => ({
+                    date: (0, date_calc_1.dateCalc)(item.date),
+                    descProcedure: folder.descProcedure,
+                    document: item.document,
+                    procedure: folder.procedure,
+                    reference: item.reference,
+                    guid: folder.guid,
+                })));
+                
+                // ✅ Cerrar modal después de extraer
+                try {
+                    await this.page.evaluate(() => {
+                        const closeBtn = document.querySelector('#modalAnexoSolicitudCivil .close');
+                        if (closeBtn) closeBtn.click();
+                    });
+                    await (0, wait_1.wait)(300);
+                } catch (closeError) {
+                    console.warn('⚠️ Error cerrando modal de anexo:', closeError.message);
+                }
+                
+            } catch (error) {
+                console.warn(`⚠️ Error procesando carpeta ${folder.procedure}:`, error.message);
+            }
         }
-        catch (error) {
-            console.warn("Error al renderizar el modal del anexo", HistoryScrape.prototype.rawDataFolder.name);
-            if (error instanceof TypeError)
-                console.warn(error.message);
-            if (error instanceof Error)
-                console.warn(error.message);
-            return [];
+        
+        console.log(`✅ Extracción de anexos completada (solo enlaces). Total: ${this.anexs.length}`);
+    }
+
+    /**
+     * ✅ MÉTODO ORIGINAL: Extrae anexos CON descarga de documentos
+     * Se mantiene para compatibilidad
+     */
+    async folderExtract() {
+        console.log(`📂 Carpetas a procesar (con descarga): ${this.folders.length}`);
+        
+        for (const folder of this.folders) {
+            try {
+                console.log(`📥 Procesando carpeta con descarga: ${folder.procedure} - ${folder.descProcedure}`);
+                
+                await this.page.evaluate((script) => {
+                    eval(script);
+                }, folder.script);
+                
+                await this.page.waitForSelector('div[class="modal in"]', {
+                    timeout: const_1.DEFAULT_TIMEOUT,
+                    visible: true,
+                });
+                
+                await (0, wait_1.wait)(4000);
+                
+                const result = await this.page.$$eval("#modalAnexoSolicitudCivil .modal-body table tbody tr", (rows) => {
+                    return rows.map((row) => {
+                        const cells = row.querySelectorAll("td");
+                        const form = row.querySelector("form");
+                        const action = form?.getAttribute("action") || "";
+                        const input = form?.querySelector("input");
+                        const queryName = input?.getAttribute("name") || "";
+                        const queryValue = input?.getAttribute("value") || "";
+                        const url = `${action}?${queryName}=${queryValue}`;
+                        return {
+                            document: url,
+                            date: cells[1]?.textContent?.trim() || "",
+                            reference: cells[2]?.textContent?.trim() || "",
+                        };
+                    });
+                });
+                
+                console.log(`✅ Carpeta procesada: ${folder.procedure} - ${result.length} anexos`);
+                
+                this.anexs.push(...result.map((item) => ({
+                    date: (0, date_calc_1.dateCalc)(item.date),
+                    descProcedure: folder.descProcedure,
+                    document: item.document,
+                    procedure: folder.procedure,
+                    reference: item.reference,
+                    guid: folder.guid,
+                })));
+                
+            } catch (error) {
+                console.warn(`⚠️ Error procesando carpeta ${folder.procedure}:`, error.message);
+                if (error instanceof TypeError)
+                    console.warn(error.message);
+                if (error instanceof Error)
+                    console.warn(error.message);
+            }
         }
     }
 }
+
 exports.HistoryScrape = HistoryScrape;

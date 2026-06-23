@@ -129,7 +129,7 @@ class ScrapService extends events_1.default {
 
   async init(url = 'https://oficinajudicialvirtual.pjud.cl/home/index.php', skipAuth = true) {
     const customUA = (0, user_agent_1.generateRandomUA)()
-    const isHeadless = process.env.NODE_ENV === 'production' || env_plugin_1.envs.BROWSER_HEADLESS === true;
+    const isHeadless = process.env.NODE_ENV === 'production' || env_plugin_1.envs.BROWSER_HEADLESS === true ? 'new' : false;
     
     // === ROTACIÓN DE PROXY AL INICIAR ===
     //const proxyServer = await this.rotateProxy();
@@ -138,7 +138,7 @@ class ScrapService extends events_1.default {
     const launchOptions = {
       headless: isHeadless,
       defaultViewport: null,
-      slowMo: process.env.NODE_ENV === 'production' ? 0 : 400,
+      slowMo: process.env.NODE_ENV === 'production' ? 0 : 100,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
