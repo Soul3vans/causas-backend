@@ -96,5 +96,16 @@ CasesShema.index({ rol: 1 })
 CasesShema.index({ 'searchParams.fullRol': 1 })
 CasesShema.index({ 'scrapedData.status': 1, 'scrapedData.lastScrapedAt': 1 })
 CasesShema.index({ 'movementsHistory.$**': 'text' })
+// ✅ Índice para paginación (ordenar por createdAt)
+CasesShema.index({ createdAt: -1 });
+
+// ✅ Índice para búsqueda por tribunal
+CasesShema.index({ 'searchParams.tribunalId': 1 });
+
+// ✅ Índice para estadísticas
+CasesShema.index({ status: 1 });
+
+// ✅ Índice compuesto para queries comunes
+CasesShema.index({ court: 1, stage: 1 });
 
 module.exports = mongoose.model('Cases', CasesShema)

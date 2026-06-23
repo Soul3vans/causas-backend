@@ -344,63 +344,55 @@ const resolvers = {
       return user
     },
     /**
-     * ✅ MODIFICADO: getCases ahora busca datos en CasesUpdated
-     * Primero obtiene las causas base de Cases, luego enriquece con datos de CasesUpdated
+     * ✅ MODIFICADO: getCases ahora con paginación
+     * Devuelve un objeto CasesPage con cases, total y hasMore
      */
-    getCases: async (_, args, { Cases, CasesUpdated }) => {
-      // Obtener causas base
-      const baseCases = await Cases.find(
-        {},
-        '_id rol cover admission court stage debtor estAdmin processState typeSearch'
-      ).populate('createdBy', '-password')
-      
-      // Para cada causa, buscar datos actualizados en CasesUpdated
-      const enrichedCases = await Promise.all(
-        baseCases.map(async (baseCase) => {
-          const baseDoc = baseCase._doc || baseCase
-          
-          // Buscar en CasesUpdated por caseId o por rol
-          const updatedData = await CasesUpdated.findOne({ 
-            $or: [
-              { caseId: baseCase._id },
-              { rol: baseCase.rol }
-            ]
-          })
-          
-          if (updatedData) {
-            // Combinar datos: usar los de CasesUpdated si existen, sino los de Cases
-            return {
-              _id: baseCase._id,
-              rol: baseCase.rol,
-              cover: updatedData.cover || baseDoc.cover,
-              admission: updatedData.admission || baseDoc.admission,
-              court: updatedData.court || baseDoc.court,
-              stage: updatedData.stage || baseDoc.stage,
-              debtor: updatedData.debtor || baseDoc.debtor,
-              estAdmin: updatedData.estAdmin || baseDoc.estAdmin,
-              processState: updatedData.processState || baseDoc.processState,
-              typeSearch: baseDoc.typeSearch,
-              createdBy: baseCase.createdBy
-            }
-          }
-          // Si no hay datos en CasesUpdated, devolver los datos base
-          return {
-            _id: baseCase._id,
-            rol: baseCase.rol,
-            cover: baseDoc.cover,
-            admission: baseDoc.admission,
-            court: baseDoc.court,
-            stage: baseDoc.stage,
-            debtor: baseDoc.debtor,
-            estAdmin: baseDoc.estAdmin,
-            processState: baseDoc.processState,
-            typeSearch: baseDoc.typeSearch,
-            createdBy: baseCase.createdBy
-          }
-        })
-      )
-      
-      return enrichedCases
+    getCases: async (_, { limit = 20, offset = 0 }, { Cases }) => {
+      try {
+        console.log(`📊 getCases: limit=${limit}, offset=${offset}`);
+        
+        // Obtener total de causas
+        const total = await Cases.countDocuments();
+        
+        // Obtener causas con paginación
+        const cases = await Cases.find(
+          {},
+          '_id rol cover admission court stage debtor estAdmin processState typeSearch'
+        )
+        .skip(offset)
+        .limit(limit)
+        .populate('createdBy', '-password')
+        .sort({ createdAt: -1 }); // ✅ Más recientes primero
+        
+        const hasMore = offset + limit < total;
+        
+        console.log(`📊 getCases: ${cases.length} causas de ${total} total, hasMore: ${hasMore}`);
+        
+        return {
+          cases,
+          total,
+          hasMore
+        };
+        
+      } catch (error) {
+        console.error('❌ Error en getCases:', error);
+        return {
+          cases: [],
+          total: 0,
+          hasMore: false
+        };
+      }
+    },
+    /**
+     * ✅ NUEVO: Obtener el total de causas (para el contador)
+     */
+    getCasesCount: async (_, args, { Cases }) => {
+      try {
+        return await Cases.countDocuments();
+      } catch (error) {
+        console.error('❌ Error en getCasesCount:', error);
+        return 0;
+      }
     },
     getCaseViewed: async (_, args, { Users, CasesViewed, currentUser }) => {
       const user = await Users.findOne({ email: currentUser.email }, { _id: 1 })
@@ -422,71 +414,6 @@ const resolvers = {
         '_id rol cover admission court stage debtor'
       ).populate('createdBy')
       return cc
-    },
-    /**
-     * ✅ MODIFICADO: getCase busca en CasesUpdated por ROL
-     * CasesUpdated contiene los datos completos del scraper (movimientos, litigantes, etc.)
-     * Cases contiene solo los datos base creados en el frontend
-     */
-    getCase: async (_, { id }, { Users, Cases, CasesUpdated, CasesViewed, CasesLogs, currentUser }) => {
-      let caseData = null;
-      
-      // ✅ 1. Primero obtener la causa base para conocer el rol y el createdBy
-      const caseBase = await Cases.findById(id).populate({
-        path: 'createdBy',
-        select: '_id name email avatar'
-      });
-      
-      if (caseBase) {
-        // ✅ 2. Buscar en CasesUpdated por el rol
-        caseData = await CasesUpdated.findOne({ 
-          rol: caseBase.rol 
-        });
-        
-        // ✅ 3. Si encontramos en CasesUpdated, lo convertimos y agregamos createdBy
-        if (caseData) {
-          // Convertir a objeto plano
-          caseData = caseData.toObject();
-          // Usar el createdBy ya poblado de caseBase
-          caseData.createdBy = caseBase.createdBy;
-          // Mantener el ID consistente con el que espera el frontend
-          caseData._id = id;
-        }
-      }
-      
-      // ✅ 4. Si no existe en CasesUpdated, buscar en Cases (fallback)
-      if (!caseData) {
-        caseData = await Cases.findOne({ _id: id }).populate({
-          path: 'createdBy',
-          select: '_id name email avatar'
-        });
-      }
-      
-      // ✅ 5. Registrar vista
-      const user = await gu(Users, currentUser);
-      if (user && caseData) {
-        await CasesViewed.findOneAndUpdate(
-          { caseBankruptcy: id, viewedBy: user._id },
-          { $set: { caseBankruptcy: id, viewedBy: user._id } },
-          { new: true, upsert: true }
-        );
-        
-        // ✅ 6. Registrar en CasesLogs (auditoría de vista)
-        try {
-          await CasesLogs.create({
-            caseId: id,
-            accesedBy: user._id,
-            action: 'VIEW',
-            details: `Usuario ${user.name || 'Sistema'} visualizó la causa ${caseData.rol}`
-          });
-        } catch (logError) {
-          console.warn('⚠️ Error registrando en CasesLogs:', logError.message);
-        }
-      }
-      
-      console.log(`📊 getCase: ${id} → ${caseData ? 'ENCONTRADO' : 'NO ENCONTRADO'} (movements: ${caseData?.movementsHistory?.length || 0})`);
-      
-      return caseData;
     },
     getUserUnreadMessages: async (_, { userId }, { Messages }) => {
       const userMessages = await Messages.find({

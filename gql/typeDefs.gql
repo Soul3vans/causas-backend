@@ -307,6 +307,14 @@ type ScrapeMultipleNewCasesResponse {
   results: [BatchCaseResult!]
 }
 
+# ========== NUEVOS TIPOS PARA PAGINACIÓN ==========
+
+type CasesPage {
+  cases: [Cases!]!
+  total: Int!
+  hasMore: Boolean!
+}
+
 # ========== INPUTS EXISTENTES ==========
 
 input UsersInput {
@@ -348,7 +356,6 @@ input ActivityUpdateInput {
 }
 
 input CaseInput {
-  # NUEVOS CAMPOS (obligatorios para scraping)
   competencia: String!
   corteId: String!
   tribunalId: String!
@@ -356,7 +363,6 @@ input CaseInput {
   rolNumber: String!
   year: String!
   
-  # CAMPOS LEGACY (compatibilidad - se mantienen por si acaso)
   rol: String
   era: String
   court: String
@@ -405,7 +411,9 @@ input SignedUrlInput {
 # ========== QUERY ==========
 
 type Query {
-  getCases: [Cases]
+  getCases(limit: Int = 20, offset: Int = 0): CasesPage!
+  getCasesCount: Int!
+  
   getCaseViewed: [CasesViewed]
   getCasesByUser(userId: ID!): [Cases]
   getCase(id: String!): Cases!
@@ -419,7 +427,6 @@ type Query {
   getUserMessages(userId: ID!): [Messages]!
   getInvolvedUsers(caseId: String!): [UsersInvolved]!
   searchMovements(input: searchInput): [Movement]!
-  # zszdfdfdsfsd
   getChecksOfDate(day: Int, month: Int, year: Int): [GetChecks]!
   getDateOfChecks: [GetDate]
   getChecksOfUsers(id: ID!, month: Int, year: Int): [GetChecksUsers]!
@@ -431,14 +438,12 @@ type Query {
   getActivities: [Activity]!
   getActivitiesByDate(days: Int!): [Activity]!
 
-  # ========== NUEVAS QUERIES PARA PROCESO ASÍNCRONO ==========
   getProcessStatus(processId: ID!): ProcessStatus
 }
 
 # ========== MUTATION ==========
 
 type Mutation {
-  # Mutations existentes
   addCase(input: CaseInput!): Message!
   updateCase(input: UpCaseInput!): UpdateCaseResult!
   deleteCase(caseId: ID!): Message!
@@ -467,11 +472,7 @@ type Mutation {
 
   getFileSignedS3Url(input: SignedUrlInput!): SignedUrlResult!
 
-  # ========== NUEVAS MUTATIONS ==========
-  
-  # Actualizar múltiples causas existentes
   updateMultipleCases(cases: [UpdateMultipleCaseInput!]!): UpdateMultipleCasesResponse!
   
-  # Scraping batch de nuevas causas
   scrapeMultipleNewCases(causes: [NewCauseBatchInput!]!, createdBy: ID!): ScrapeMultipleNewCasesResponse!
 }
