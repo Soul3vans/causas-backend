@@ -897,30 +897,90 @@ const resolvers = {
         messageImage: null
       }
     },
-    deleteCase: async (_, { caseId }, { Cases, InvolvedUsersCase, CasesViewed }) => {
-      try {
-        await Cases.findOneAndRemove({
-          _id: caseId
-        })
-        await CasesViewed.findOneAndRemove({
-          caseBankruptcy: caseId
-        })
-        await InvolvedUsersCase.findOneAndRemove({
-          case: caseId
-        })
-        // ✅ También eliminar de CasesUpdated
-        await CasesUpdated.findOneAndRemove({
-          caseId: caseId
-        })
-        return {
-          messageBody: 'La causa fue eliminada de manera satisfactoria',
-          messageType: 'is-primary',
-          messageImage: null
-        }
-      } catch (error) {
-        console.log(error)
-      }
-    },
+    deleteCase: async (_, { caseId }, { Cases, InvolvedUsersCase, CasesViewed, CasesUpdated }) => {
+	  try {
+		console.log(`🗑️ Eliminando causa: ${caseId}`);
+		
+		// ✅ 1. Verificar que la causa existe
+		const existingCase = await Cases.findById(caseId);
+		if (!existingCase) {
+		  console.warn(`⚠️ Causa no encontrada: ${caseId}`);
+		  return {
+			messageBody: 'La causa no existe en el sistema',
+			messageType: 'is-warning',
+			messageImage: null
+		  };
+		}
+		
+		// ✅ 2. Eliminar de Cases (principal)
+		await Cases.findOneAndDelete({ _id: caseId });
+		console.log(`✅ Causa eliminada de Cases: ${caseId}`);
+		
+		// ✅ 3. Eliminar de CasesViewed (vistas)
+		await CasesViewed.findOneAndDelete({ caseBankruptcy: caseId });
+		console.log(`✅ Eliminado de CasesViewed: ${caseId}`);
+		
+		// ✅ 4. Eliminar de InvolvedUsersCase (usuarios involucrados)
+		await InvolvedUsersCase.findOneAndDelete({ case: caseId });
+		console.log(`✅ Eliminado de InvolvedUsersCase: ${caseId}`);
+		
+		// ✅ 5. Eliminar de CasesUpdated (datos del scraper) - con manejo de error
+		try {
+		  const result = await CasesUpdated.findOneAndDelete({ caseId: caseId });
+		  if (result) {
+			console.log(`✅ Eliminado de CasesUpdated: ${caseId}`);
+		  } else {
+			console.log(`ℹ️ No había registro en CasesUpdated para: ${caseId}`);
+		  }
+		} catch (updatedError) {
+		  // Si el modelo no existe o hay error, solo loguear y continuar
+		  console.warn(`⚠️ Error eliminando de CasesUpdated: ${updatedError.message}`);
+		}
+		
+		// ✅ 6. También eliminar de ProcessStatus si existe
+		try {
+		  const ProcessStatus = require('./models/ProcessStatus');
+		  await ProcessStatus.findOneAndDelete({ caseId: caseId });
+		  console.log(`✅ Eliminado de ProcessStatus: ${caseId}`);
+		} catch (processError) {
+		  console.warn(`⚠️ Error eliminando de ProcessStatus: ${processError.message}`);
+		}
+		
+		// ✅ 7. También eliminar de CasesReviews si existe
+		try {
+		  const CasesReviews = require('./models/CasesReviews');
+		  await CasesReviews.findOneAndDelete({ caseId: caseId });
+		  console.log(`✅ Eliminado de CasesReviews: ${caseId}`);
+		} catch (reviewError) {
+		  console.warn(`⚠️ Error eliminando de CasesReviews: ${reviewError.message}`);
+		}
+		
+		// ✅ 8. También eliminar de CasesLogs si existe
+		try {
+		  const CasesLogs = require('./models/CasesLogs');
+		  await CasesLogs.findOneAndDelete({ caseId: caseId });
+		  console.log(`✅ Eliminado de CasesLogs: ${caseId}`);
+		} catch (logError) {
+		  console.warn(`⚠️ Error eliminando de CasesLogs: ${logError.message}`);
+		}
+		
+		return {
+		  messageBody: 'La causa fue eliminada de manera satisfactoria',
+		  messageType: 'is-primary',
+		  messageImage: null
+		};
+		
+	  } catch (error) {
+		console.error(`❌ Error eliminando causa ${caseId}:`, error.message);
+		console.error(error.stack);
+		
+		return {
+		  messageBody: `Error al eliminar la causa: ${error.message}`,
+		  messageType: 'is-danger',
+		  messageImage: null
+		};
+	  }
+	},
     deleteActivity: async (_, { id }, { Activity }) => {
       try {
         await Activity.findOneAndRemove({
