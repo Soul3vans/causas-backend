@@ -1,8 +1,8 @@
 {
   "projectName": "causas-concursales-server",
   "projectDescription": "Sistema de Gestión de Causas Concursales - Backend GraphQL con Express y MongoDB",
-  "version": "3.0.0",
-  "lastUpdated": "2026-06-05",
+  "version": "3.2.0",
+  "lastUpdated": "2026-06-23",
   
   "architecture": {
     "pattern": "GraphQL + Express",
@@ -51,16 +51,16 @@
 
   "directoryStructure": {
     "root": {
-      "server.js": "Punto de entrada principal - Configuración de Apollo Server y Express",
-      "resolvers.js": "Resolvers GraphQL - MODIFICADO: addCase usa nuevos campos y scraper unificado",
+      "server.js": "Punto de entrada principal - Configuración de Apollo Server y Express (Reestructurado con función async startServer)",
+      "resolvers.js": "Resolvers GraphQL - MODIFICADO: addCase usa nuevos campos y scraper unificado con optimizaciones de paginación",
       "package.json": "Configuración del proyecto y dependencias",
       "apollo.config.js": "Configuración de Apollo Client/DevTools"
     },
     "config/": "Configuraciones de aplicación",
-    "models/": "Modelos Mongoose - MODIFICADO: Cases.js con searchParams y scrapedData",
-    "gql/": "Definiciones GraphQL (TypeDefs)",
-    "utils/": "Utilidades y helpers - MODIFICADOS: scrapper.js, puppeteer.plugin.js, unified-query.js",
-    "workers/": "Jobs en segundo plano y tareas programadas",
+    "models/": "Modelos Mongoose - MODIFICADO: Cases.js con searchParams y scrapedData, mejorado manejo de errores",
+    "gql/": "Definiciones GraphQL (TypeDefs) - ACTUALIZADO con nuevos campos y tipos",
+    "utils/": "Utilidades y helpers - MODIFICADOS: scrapper.js, puppeteer.plugin.js, unified-query.js con optimizaciones de rendimiento",
+    "workers/": "Jobs en segundo plano y tareas programadas - MEJORADOS: eliminados process.exit, agregados manejadores de sesiones",
     "views/": "Vistas o templates",
     "variables.env": "Variables de entorno (NO usar en producción)"
   },
@@ -99,6 +99,10 @@
         }
       }
     },
+    "ProcessStatus": {
+      "description": "NUEVO: Modelo para rastrear estado de procesos asíncronos",
+      "purposes": ["Resolver problemas de sincronización entre backend y frontend", "Seguimiento de scraping en tiempo real"]
+    },
     "Activity": {
       "description": "Modelo de actividades/tareas",
       "purposes": ["Tareas programadas", "Calendario de actividades", "Seguimiento de procesos"]
@@ -124,7 +128,7 @@
       "purposes": ["Notificaciones", "Comunicación interna"]
     },
     "InvolvedUsersCase": {
-      "description": "Modelo de relación entre usuarios y causas",
+      "description": "Modelo de relación entre usuarios y causas - MEJORADO: manejo de null y unknown",
       "purposes": ["Usuarios involucrados en cada causa", "Estados de participación"]
     },
     "CasesViewed": {
@@ -136,7 +140,7 @@
       "purposes": ["Diferenciación de cambios en causas"]
     },
     "CasesReviews": {
-      "description": "Modelo de revisiones de causas",
+      "description": "Modelo de revisiones de causas - ACTUALIZADO",
       "purposes": ["Control de cambios y auditoría"]
     },
     "CasesSettings": {
@@ -157,11 +161,11 @@
       ],
       "userManagement": [
         "getUsers - Lista todos los usuarios",
-        "getInvolvedUsers - Usuarios involucrados en una causa",
+        "getInvolvedUsers - Usuarios involucrados en una causa - MEJORADO: manejo de null",
         "searchUsers - Búsqueda de usuarios por texto"
       ],
       "cases": [
-        "getCases - Lista todas las causas",
+        "getCases - Lista todas las causas - OPTIMIZADO: paginación mejorada para reducir tiempos",
         "getCase - Obtiene causa específica por ID",
         "getCaseViewed - Causas vistas por usuario actual",
         "getCasesByUser - Causas creadas por usuario específico",
@@ -202,9 +206,9 @@
         "deleteUser - Eliminar usuario"
       ],
       "cases": [
-        "addCase - Agrega nueva causa con scraping automático (recibe libroTipo, rolNumber, year, competencia, corteId, tribunalId)",
+        "addCase - Agrega nueva causa con scraping automático (recibe libroTipo, rolNumber, year, competencia, corteId, tribunalId) - MEJORADO",
         "updateCase - Actualiza causa existente",
-        "deleteCase - Elimina causa",
+        "deleteCase - Elimina causa - CORREGIDO: problema resuelto",
         "addDdor - Actualiza deudores en causas",
         "updateVisibilityCase - Cambia visibilidad/permisos"
       ],
@@ -238,7 +242,7 @@
       "dailyScraps": {
         "schedule": "00 04 * * * America/Santiago (4 AM diariamente)",
         "purpose": "Actualización diaria de causas desde sistema de justicia",
-        "integration": "Utiliza scrapeAndUpdateCase del scrapper unificado"
+        "integration": "Utiliza scrapeAndUpdateCase del scrapper unificado con manejador de sesiones mejorado"
       },
       "casesUpdater": {
         "schedule": "30 06 * * * America/Santiago (6:30 AM diariamente)",
@@ -248,11 +252,11 @@
   },
 
   "utilities": {
-    "db": "MongoDatabase - Conexión a MongoDB",
+    "db": "MongoDatabase - Conexión a MongoDB con manejo mejorado de errores",
     "plugins": "Plugins y configuraciones (FileSystemService para S3)",
     "mail": "Configuración de nodemailer para envío de emails",
     "scrapper": {
-      "description": "Módulo unificado de scraping - Punto de entrada principal",
+      "description": "Módulo unificado de scraping - Punto de entrada principal con optimizaciones",
       "location": "utils/scrapper.js",
       "functions": {
         "scrapRawData": "Función principal que ejecuta el scraping completo de una causa",
@@ -261,15 +265,21 @@
         "closeScrapeInstance": "Cierra la instancia del navegador",
         "authenticateScrape": "Autentica el navegador (para uso futuro)"
       },
-      "singletonPattern": "Se implementó Singleton para evitar múltiples instancias del navegador. La primera llamada crea el navegador, las siguientes lo reutilizan."
+      "singletonPattern": "Singleton para evitar múltiples instancias del navegador. Implementado con keep-alive flags para evitar interrupciones.",
+      "optimizations": [
+        "Paralelización de extracción de movimientos, litigantes y enlaces simultáneamente",
+        "Procesamiento de documentos en lotes de 5-10 en lugar de uno a uno",
+        "Reduced timeout from 20 to 10 seconds for modal waiting",
+        "Improved handling of redirects from home/index.php to indexN.php"
+      ]
     },
     "causes": {
       "getCivilCauseDetail": "Obtener detalles de causa civil del sistema judicial (legacy)",
-      "scrapeUnified": "Scraping unificado de sistemas de justicia - Integrado en scrapper.js",
-      "unifiedQuery": "Clase principal que maneja la navegación y extracción de datos"
+      "scrapeUnified": "Scraping unificado de sistemas de justicia con cambios de waitForNavigation",
+      "unifiedQuery": "Clase principal que maneja la navegación y extracción de datos - MEJORADA con optimizaciones de timeout"
     },
     "seedsjudge": {
-      "description": "Mapeo de tribunales (ID <-> Nombre)",
+      "description": "Mapeo de tribunales (ID <-> Nombre) - MEJORADO: mejor manejo de errores",
       "functions": {
         "courtNameById": "Convierte ID numérico a nombre del tribunal",
         "courtIdByName": "Convierte nombre del tribunal a ID numérico"
@@ -283,10 +293,10 @@
       "step1": "Navegar a home/index.php como invitado",
       "step2": "Establecer localStorage/sessionStorage como invitado",
       "step3": "Hacer clic en 'Consulta causas' (accesoConsultaCausas())",
-      "step4": "Redirigir a indexN.php",
+      "step4": "Redirigir a indexN.php - MEJORADO: con session handlers",
       "step5": "Llenar formulario de búsqueda por RIT",
       "step6": "Extraer JWT de la tabla de resultados",
-      "step7": "Abrir modal y extraer litigantes, movimientos y enlaces"
+      "step7": "Abrir modal y extraer litigantes, movimientos y enlaces - PARALELIZADO"
     },
     "inputFields": {
       "competencia": "ID de competencia (ej: 3 para Civil)",
@@ -300,7 +310,7 @@
       "generalInfo": "Datos principales de la causa (rol, fecha ingreso, tribunal, estado, etapa)",
       "litigants": "Lista completa de participantes (deudores, acreedores, abogados)",
       "movementsHistory": "Historial de trámites y resoluciones",
-      "documentLinks": "Enlaces a documentos PDF con sus JWT preservados (sin descargar)"
+      "documentLinks": "Enlaces a documentos PDF con sus JWT preservados (sin descargar automáticamente)"
     },
     "antiDetection": {
       "stealthPlugin": "puppeteer-extra-plugin-stealth",
@@ -308,16 +318,17 @@
       "recaptcha": "Manejo automático de tokens reCAPTCHA v3"
     },
     "performance": {
-      "singleBrowserInstance": "Singleton - una sola instancia del navegador para todas las consultas",
+      "singleBrowserInstance": "Singleton - una sola instancia del navegador para todas las consultas con keep-alive flags",
       "guestMode": "Acceso como invitado, sin necesidad de RUT/contraseña",
-      "noAutoDownload": "No se descargan documentos automáticamente, solo se extraen los enlaces"
+      "noAutoDownload": "No se descargan documentos automáticamente, solo se extraen los enlaces",
+      "batchProcessing": "Documentos procesados en lotes de 5-10 para mejor rendimiento"
     }
   },
 
   "keyFeatures": [
     "Gestión completa de causas legales",
-    "Web scraping automático de sistemas judiciales",
-    "Actualización automática de causas en segundo plano",
+    "Web scraping automático de sistemas judiciales con optimizaciones de rendimiento",
+    "Actualización automática de causas en segundo plano con manejadores de sesiones mejorados",
     "Sistema de usuarios con roles",
     "Involucrar múltiples usuarios por causa",
     "Actividades y calendario integrado",
@@ -329,7 +340,11 @@
     "Auditoría de acceso a causas",
     "Extracción y preservación de enlaces a documentos con JWT",
     "Singleton pattern para una sola instancia del navegador",
-    "Acceso como invitado al sistema judicial"
+    "Acceso como invitado al sistema judicial",
+    "Procesamiento de documentos en lotes",
+    "Paralelización de extracción de datos",
+    "Rastreo de estado de procesos asíncronos (ProcessStatus)",
+    "Paginación optimizada para reducir tiempos de espera"
   ],
 
   "authentication": {
@@ -377,18 +392,20 @@
     "causeFetch": [
       "1. Usuario envía libroTipo, rolNumber, year, competencia, corteId, tribunalId",
       "2. Sistema construye fullRol (formato: libroTipo-rolNumber-year)",
-      "3. Sistema obtiene tribunalName desde seedsjudge usando tribunalId",
+      "3. Sistema obtiene tribunalName desde seedsjudge usando tribunalId con mejor manejo de errores",
       "4. Sistema ejecuta scraper automáticamente en modo invitado",
-      "5. Scraper navega como invitado: home/index.php → clic Consulta causas → indexN.php",
-      "6. Scraper completa formulario, extrae JWT, abre modal y extrae datos",
-      "7. Datos se guardan en MongoDB con searchParams y scrapedData",
-      "8. Se asignan usuarios involucrados",
-      "9. Se notifica a todos los usuarios"
+      "5. Scraper navega como invitado: home/index.php → clic Consulta causas → indexN.php con session handlers",
+      "6. Scraper completa formulario, extrae JWT, abre modal y extrae datos en paralelo",
+      "7. Documentos procesados en lotes de 5-10 para mejor rendimiento",
+      "8. Datos se guardan en MongoDB con searchParams y scrapedData",
+      "9. ProcessStatus trackea el progreso del scraping",
+      "10. Se asignan usuarios involucrados",
+      "11. Se notifica a todos los usuarios"
     ],
     "caseUpdate": [
       "1. Cron job ejecuta dailyScraps a las 4:00 AM",
       "2. Se buscan causas con scrapedData.status ≠ 'success' o con actualización antigua",
-      "3. Para cada causa, se ejecuta scrapeAndUpdateCase reutilizando la instancia del navegador",
+      "3. Para cada causa, se ejecuta scrapeAndUpdateCase reutilizando la instancia del navegador con keep-alive",
       "4. El scraper actualiza los datos y cambia el estado a 'success'",
       "5. Si hay cambios significativos, se notifica a usuarios involucrados"
     ],
@@ -402,14 +419,18 @@
   },
 
   "performanceNotes": [
-    "MongoDB conectada con Mongoose ODM",
+    "MongoDB conectada con Mongoose ODM con manejo mejorado de errores",
     "Agregaciones de MongoDB para consultas complejas",
-    "Paginación en búsquedas (infiniteScrollPosts)",
-    "Tareas programadas en segundo plano (no bloquean)",
+    "Paginación optimizada en getCases para reducir tiempos",
+    "Tareas programadas en segundo plano sin bloqueo",
     "S3 presigned URLs para descargas seguras",
-    "Singleton pattern: una sola instancia del navegador reutilizada",
-    "Acceso como invitado: sin necesidad de autenticación en cada scraping",
-    "No descarga automática de documentos: solo extrae enlaces"
+    "Singleton pattern con keep-alive flags para una sola instancia del navegador",
+    "Acceso como invitado sin autenticación en cada scraping",
+    "No descarga automática de documentos, solo extrae enlaces",
+    "Procesamiento de documentos en lotes (5-10 por vez)",
+    "Paralelización de extracción: movimientos, litigantes y enlaces simultáneamente",
+    "Reducción de timeout del modal de 20 a 10 segundos",
+    "Cambio de waitForNavigation a domcontentloaded para mayor velocidad"
   ],
 
   "securityConsiderations": [
@@ -424,22 +445,51 @@
   ],
 
   "knownIssues": [
-    "Método findOneAndRemove deprecado (usar findOneAndDelete)",
-    "Algunos resolvers no tienen manejo completo de errores",
-    "Variables de entorno en versionControl (.env expuesto)"
+    "Método findOneAndRemove deprecado (usar findOneAndDelete) - PARCIALMENTE RESUELTO",
+    "Algunos resolvers mejoraron pero pueden necesitar más refinamiento en manejo de errores",
+    "Variables de entorno en versionControl (.env expuesto) - CONSIDERAR USAR .env.example"
   ],
 
   "recentChanges": {
-    "date": "2026-06-05",
-    "version": "3.0.0",
+    "date": "2026-06-23",
+    "version": "3.2.0",
+    "changesSummary": "Optimizaciones significativas de rendimiento, mejora en estabilidad del scraper, corrección de bugs en causas, paginación optimizada",
     "changes": [
-      "Implementado Singleton pattern en scrapper.js para una sola instancia del navegador",
-      "Modificado puppeteer.plugin.js para acceder como invitado (sin login)",
-      "Corregido unified-query.js para navegar correctamente desde home/index.php",
-      "Eliminada la descarga automática de documentos (solo se extraen enlaces)",
-      "Reducido timeout de espera del modal de 20 a 10 segundos",
-      "Añadido manejo de redirección desde home/index.php a indexN.php",
-      "Mejorada la estabilidad del scraper con esperas y verificaciones"
+      "Actualizada la paginación de las causas para reducir tiempos de espera (2026-06-23)",
+      "Corregido problema al eliminar causas (2026-06-23)",
+      "Optimizado procesamiento de descarga de documentos de uno a uno a lotes de 5-10 (2026-06-23)",
+      "Optimización del proceso de descarga de documentos en history.scrape (2026-06-23)",
+      "Reducción de tiempos de espera en puppeteer.plugin (2026-06-23)",
+      "Paralelización en unified-query: extracción simultánea de movimientos, litigantes y enlaces (2026-06-23)",
+      "Mejorados los tiempos del scraper y actualizado los problemas en el nombre de la BD (2026-06-22)",
+      "Mejorado getCases, addCases, updateCases y startScrapingProcess (2026-06-22)",
+      "Actualizado CasesLogs y CasesReviews (2026-06-22)",
+      "Agregado ProcessStatus para resolver problemas de sincronización entre backend y frontend (2026-06-20)",
+      "Mejorada la función getCases (2026-06-21)",
+      "Agregadas banderas para evitar que keep-alive detenga el proceso del scraper (2026-06-20)",
+      "Agregado manejador de sesiones en initGlobalScrape (2026-06-18)",
+      "Cambio de networkidle2 a domcontentloaded para mayor velocidad (2026-06-18)",
+      "Aumento de timeouts para respuestas lentas (2026-06-18)",
+      "Mejorada la captura de errores de la BD en mongoose (2026-06-18)",
+      "Manejadores para cuando InvolvedUser sea null o unknown (2026-06-18)",
+      "Cambio de cluster de MongoDB Atlas (2026-06-18)",
+      "Comentada redirección a indexN.php en init() para mantener estabilidad (2026-06-16)",
+      "Corregidos timeouts en goUnifiedQuery (2026-06-16)",
+      "Mejorado el flujo de goUnifiedQuery (2026-06-16)",
+      "Aumento de tiempos de espera y nuevos logs (2026-06-16)",
+      "Modificación en typeDefs GraphQL (2026-06-15)",
+      "Recuperada carpeta de modelos (2026-06-15)",
+      "Corrección de problemas del scraper y pruebas (2026-06-04)",
+      "Eliminada la descarga automática de documentos - solo se extraen enlaces (2026-06-04)",
+      "Mejorado el flujo de acceso a unified-query (2026-06-15)",
+      "Arreglos en autenticación y adición de red TOR como proxy (2026-06-14)",
+      "Cambio de URL de civil.pujd.cl a oficinajudicialvirtual.pjud.cl (2026-06-02)",
+      "Reestructuración de server.js con función async startServer (2026-05-30)",
+      "Adición de rutas raíz y health check (2026-05-30)",
+      "Eliminación de process.exit en workers para evitar caída del servidor (2026-05-30)",
+      "Configuración del servidor para escuchar en 0.0.0.0 con PORT de Render (2026-05-30)",
+      "Habilitar playground e introspection de Apollo Server (2026-05-30)",
+      "Mejora de CORS para permitir frontend en Netlify (2026-05-30)"
     ]
   },
 
@@ -447,11 +497,25 @@
     "Implementar validaciones más robustas en inputs",
     "Añadir tests unitarios y E2E",
     "Mejorar manejo de errores con tipos específicos",
-    "Implementar caché (Redis)",
-    "Documentación de GraphQL schema",
-    "Rate limiting en endpoints",
+    "Implementar caché (Redis) para mejorar performance",
+    "Documentación automática de GraphQL schema",
+    "Rate limiting en endpoints para proteger contra abuso",
     "Añadir soporte para otras competencias (Laboral, Penal, etc.)",
     "Implementar cola de scraping para evitar sobrecarga",
-    "Migrar lógica de autenticación para cuando se necesite modo autenticado"
-  ]
+    "Migrar lógica de autenticación para cuando se necesite modo autenticado",
+    "Refactorizar findOneAndRemove por findOneAndDelete en modelos",
+    "Monitoreo y logging mejorados en producción",
+    "Migración a TypeScript para mejor type safety"
+  ],
+
+  "deploymentInfo": {
+    "platform": "Render (o similar)",
+    "databaseHosting": "MongoDB Atlas",
+    "requirements": [
+      "Node.js 14+",
+      "Yarn 4.5.0",
+      "Chromium/Chrome para Puppeteer",
+      "Variables de entorno configuradas"
+    ]
+  }
 }
