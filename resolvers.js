@@ -10,7 +10,7 @@ const { abstractSendMail } = require('./utils/mail')
 const { GraphQLUpload } = require('graphql-upload')
 
 // Importar desde scrapper.js
-const { scrapRawData, scrapMultipleCauses, scrapeAndUpdateCase, updateMultipleCases, closeScrapeInstance, getScrapeInstance } = require('./utils/scrapper')
+const { scrapRawData, scrapMultipleCauses, scrapeAndUpdateCase, updateMultipleCases, closeScrapeInstance, getScrapeInstance, CaseNotFoundError } = require('./utils/scrapper')
 const { scrapRawDataAuth, keepSessionAlive, closeAuthScrapeInstance, isSessionAlive } = require('./utils/scrapper-auth')
 
 // Importar utilidades de comparación (NUEVO)
@@ -2047,28 +2047,35 @@ async function startScrapingProcess(processId, caseId, input, models) {
     }
     
   } catch (error) {
-    console.error(`❌ [Process ${processId}] Error:`, error.message)
-    logger.error('Error en startScrapingProcess', { 
-      processId, 
-      caseId, 
-      error: error.message, 
-      stack: error.stack 
-    })
-    
+    const isNotFound = error instanceof CaseNotFoundError
+
+    if (isNotFound) {
+      console.warn(`⚠️ [Process ${processId}] Causa no encontrada:`, error.message)
+      logger.warn('Causa no encontrada en startScrapingProcess', { processId, caseId, rol: error.rol })
+    } else {
+      console.error(`❌ [Process ${processId}] Error:`, error.message)
+      logger.error('Error en startScrapingProcess', {
+        processId,
+        caseId,
+        error: error.message,
+        stack: error.stack
+      })
+    }
+
     // ✅ Actualizar CasesReviews con error
     if (review) {
       try {
         await CasesReviews.findByIdAndUpdate(review._id, {
-          status: 'ERROR',
+          status: isNotFound ? 'NOT_FOUND' : 'ERROR',
           errorMessage: error.message
         });
       } catch (updateError) {
         console.warn(`⚠️ Error actualizando CasesReviews con error:`, updateError.message)
       }
     }
-    
+
     await ProcessStatus.findByIdAndUpdate(processId, {
-      status: 'error',
+      status: isNotFound ? 'not_found' : 'error',   // ✅ status distinto
       errorMessage: error.message || 'Error desconocido en el proceso',
       completedAt: new Date()
     })

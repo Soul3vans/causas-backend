@@ -15,6 +15,18 @@ const { ScrapService } = require('./plugins/puppeteer.plugin');
 const { UnifiedQuery } = require('./causes/unified-query/unified-query');
 const logger = require('./logger');
 
+/**
+ * Error específico: la causa no existe / no fue encontrada en el sitio del Poder Judicial.
+ * Esto NO es una falla del sistema, es un resultado válido de búsqueda.
+ */
+class CaseNotFoundError extends Error {
+  constructor(rol) {
+    super(`No se encontró la causa "${rol}" en el sitio del Poder Judicial`);
+    this.name = 'CaseNotFoundError';
+    this.rol = rol;
+  }
+}
+
 // Instancia única del navegador (Singleton)
 let globalScrapeInstance = null;
 let isInitializing = false;
@@ -163,7 +175,7 @@ async function scrapRawData({ typeSearch, rol, tribune, competencia, corteId }, 
     const result = unifiedQuery.getccivil();
     
     if (!result) {
-      throw new Error('No se obtuvieron resultados del scraper para la causa: ' + rol);
+      throw new CaseNotFoundError(rol);
     }
     
     console.log('✅ Scraping completado exitosamente');
@@ -174,8 +186,13 @@ async function scrapRawData({ typeSearch, rol, tribune, competencia, corteId }, 
     return result;
     
   } catch (error) {
-    console.error('❌ Error en el scraper:', error.message);
-    logger.error('Error en scrapRawData', { error: error.message, stack: error.stack, rol });
+    if (error instanceof CaseNotFoundError) {
+      console.warn('⚠️ Causa no encontrada:', error.message);
+      logger.warn('Causa no encontrada en scrapRawData', { rol });   // log nivel warning, no error
+    } else {
+      console.error('❌ Error en el scraper:', error.message);
+      logger.error('Error en scrapRawData', { error: error.message, stack: error.stack, rol });
+    }
     throw error;
   } finally {
     // ✅ DESACTIVAR BANDERA: Keep-alive reactivado
