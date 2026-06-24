@@ -71,6 +71,15 @@ const app = express()
 app.timeout = 240000; // 4 minutos (aumentado para el scraper)
 
 app.use(morgan('combined', {
+  skip: (req, res) => {
+	//Para debug descomentar la siguiente linea
+	// if (process.env.VERBOSE_LOGS === 'true') return false
+    // No loguear preflight CORS
+    if (req.method === 'OPTIONS') return true
+    // No loguear requests exitosos (200/204) — solo errores
+    if (res.statusCode < 400) return true
+    return false
+  },
   stream: {
     write: (message) => logger.debug(message.trim())
   }
