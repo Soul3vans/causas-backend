@@ -416,7 +416,7 @@ type Query {
   
   getCaseViewed: [CasesViewed]
   getCasesByUser(userId: ID!): [Cases]
-  getCase(id: String!): Cases!
+  getCase(id: String!): Cases
   getCasesInfo: CaseStatistics!
   getCasesInfoAdmin: CaseStatistics!
 

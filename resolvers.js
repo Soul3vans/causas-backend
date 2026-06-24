@@ -347,6 +347,13 @@ const resolvers = {
      * ✅ MODIFICADO: getCases ahora con paginación
      * Devuelve un objeto CasesPage con cases, total y hasMore
      */
+    getCase: async (_, { id }, { Cases }) => {
+	  const caseDoc = await Cases.findById(id).populate('createdBy', '-password')
+	  if (!caseDoc) {
+		throw new Error('Causa no encontrada')
+	  }
+	  return caseDoc
+	},
     getCases: async (_, { limit = 20, offset = 0 }, { Cases }) => {
       try {
         console.log(`📊 getCases: limit=${limit}, offset=${offset}`);
