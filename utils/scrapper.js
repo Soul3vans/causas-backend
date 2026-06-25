@@ -533,5 +533,6 @@ module.exports = {
   closeScrapeInstance,
   getScrapeInstance,
   authenticateScrape,
-  withRetryAndIpRotation    // Exportado para uso externo
+  withRetryAndIpRotation,
+  CaseNotFoundError
 };

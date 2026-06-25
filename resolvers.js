@@ -1616,7 +1616,27 @@ const resolvers = {
             useAuthScraper, 
             keepSessionAlive 
           }
-        )
+        ).catch(async (fatalError) => {
+          // Red de seguridad: si algo se escapa del try/catch interno de
+          // startScrapingProcess, esto evita que tumbe el proceso de Node entero.
+          console.error(`💥 [Process ${processId}] Error FATAL no controlado:`, fatalError)
+          logger.error('Error fatal no controlado en startScrapingProcess', {
+            processId,
+            caseId: existingCase._id,
+            error: fatalError.message,
+            stack: fatalError.stack
+          })
+
+          try {
+            await ProcessStatus.findByIdAndUpdate(processId, {
+              status: 'error',
+              errorMessage: 'Error interno inesperado. Contacta al administrador.',
+              completedAt: new Date()
+            })
+          } catch (dbError) {
+            console.error('💥 No se pudo ni actualizar ProcessStatus tras el error fatal:', dbError)
+          }
+        })
         
         // 8. RESPONDER INMEDIATAMENTE
         return {
@@ -2047,7 +2067,7 @@ async function startScrapingProcess(processId, caseId, input, models) {
     }
     
   } catch (error) {
-    const isNotFound = error instanceof CaseNotFoundError
+    const isNotFound = (typeof CaseNotFoundError === 'function' && error instanceof CaseNotFoundError) || error?.name === 'CaseNotFoundError'   // ✅ fallback por nombre, no depende del import
 
     if (isNotFound) {
       console.warn(`⚠️ [Process ${processId}] Causa no encontrada:`, error.message)

@@ -65,6 +65,26 @@ cron.schedule('*/30 * * * *', () => sendActivityReminder())
 cron.schedule('00 04 * * *', () => dailyScraps(), { timezone: 'America/Santiago' })
 cron.schedule('30 06 * * *', () => casesUpdater(), { timezone: 'America/Santiago' })
 
+// ========== RED DE SEGURIDAD: errores no controlados ==========
+// Si algo en background (scraper, cron, etc.) lanza un error que se
+// escapa de todos los try/catch, esto lo deja registrado en el log
+// en vez de que el proceso muera en silencio sin rastro.
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('🔥 Unhandled Rejection no capturada en ningún lado', {
+    reason: reason?.message || reason,
+    stack: reason?.stack
+  })
+  console.error('🔥 Unhandled Rejection:', reason)
+})
+
+process.on('uncaughtException', (error) => {
+  logger.error('🔥 Uncaught Exception no capturada en ningún lado', {
+    error: error.message,
+    stack: error.stack
+  })
+  console.error('🔥 Uncaught Exception:', error)
+})
+
 const app = express()
 
 // ========== MORGAN MIDDLEWARE ==========
