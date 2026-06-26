@@ -5,6 +5,8 @@ const mongoose = require('mongoose')
 const puppeteer = require('puppeteer-extra')
 const StealthPlugin = require('puppeteer-extra-plugin-stealth')
 const { courtNameById, courtIdByName } = require('./utils/seedsjudge')
+const { updateCaseIfNeeded, sendUpdateNotification } = require('./utils/case-updater')
+const { enqueueCaseUpdate, getPendingCount, MAX_QUEUE_SIZE } = require('./utils/queues/scraping-queue')
 const { config } = require('./config/mail')
 const { abstractSendMail } = require('./utils/mail')
 const { GraphQLUpload } = require('graphql-upload')
@@ -113,194 +115,6 @@ async function gu(um, cu) {
   }
   const user = await um.findOne({ email: cu.email }, { password: false })
   return user
-}
-
-/**
- * Envía notificación por email a usuarios involucrados cuando hay cambios en una causa
- * @param {Object} Users - Modelo de Users
- * @param {Object} caseData - Datos de la causa actualizada
- * @param {Object} changes - Resumen de cambios (de hasCaseChanged)
- */
-async function sendUpdateNotification(Users, caseData, changes) {
-  try {
-    // Buscar usuarios involucrados en la causa
-    const InvolvedUsersCase = require('./models/InvolvedUsersCase');
-    const involvedUsersDoc = await InvolvedUsersCase.findOne({ case: caseData._id }).populate('involved.userIn');
-    
-    const usersToNotify = involvedUsersDoc?.involved?.map(i => i.userIn) || [];
-    const ownerId = caseData.createdBy?.toString();
-    
-    // Agregar al dueño de la causa si no está en la lista
-    if (ownerId && !usersToNotify.some(u => u._id.toString() === ownerId)) {
-      const owner = await Users.findById(ownerId);
-      if (owner) usersToNotify.push(owner);
-    }
-    
-    // Construir resumen de cambios para el email
-    let changesHtml = '<ul>';
-    if (changes.newMovementsCount > 0) {
-      changesHtml += `<li><strong>${changes.newMovementsCount}</strong> nuevo(s) movimiento(s)</li>`;
-    }
-    if (changes.litigantsChanged) {
-      changesHtml += '<li>Cambios en la lista de litigantes</li>';
-    }
-    if (changes.mainFieldsChanged.length > 0) {
-      changesHtml += `<li>Campos actualizados: ${changes.mainFieldsChanged.join(', ')}</li>`;
-    }
-    changesHtml += '</ul>';
-    
-    for (const user of usersToNotify) {
-      if (user && user.email) {
-        const mailOptions = {
-          from: config.from,
-          to: user.email,
-          subject: `Actualización de Causa: ${caseData.rol}`,
-          html: await caseUpdated({
-            name: user.name,
-            cause: caseData,
-            changes: changesHtml
-          })
-        };
-        abstractSendMail(mailOptions);
-      }
-    }
-    
-    logger.info(`Notificaciones enviadas para causa ${caseData.rol} a ${usersToNotify.length} usuarios`);
-    
-  } catch (error) {
-    logger.error('Error enviando notificaciones de actualización:', error);
-  }
-}
-
-/**
- * ACTUALIZA UNA CAUSA EXISTENTE SOLO SI HAY CAMBIOS (MEJORADA)
- * @param {string} caseId - ID de la causa en MongoDB
- * @param {string} fullRol - Rol completo (ej: "C-21503-2024")
- * @param {Object} searchParams - Parámetros de búsqueda
- * @param {Object} models - Modelos de Mongoose
- * @returns {Promise<Object>} - Resultado de la actualización
- */
-async function updateCaseIfNeeded(caseId, fullRol, searchParams, models) {
-  const { Cases, Users } = models;
-  
-  const existingCase = await Cases.findById(caseId);
-  
-  if (!existingCase) {
-    logger.warn(`Causa no encontrada: ${caseId}`);
-    return { success: false, error: 'Causa no encontrada' };
-  }
-  
-  logger.info(`🔄 Actualizando causa ${fullRol}...`);
-  
-  try {
-    // Actualizar estado a 'scraping'
-    await Cases.findByIdAndUpdate(caseId, {
-      'scrapedData.status': 'scraping',
-      'scrapedData.lastScrapedAt': new Date(),
-      'scrapedData.lastScrapedBy': 'scheduler'
-    });
-    
-    // Ejecutar scraper
-    let scrapResult;
-    if (useAuthScraper) {
-      scrapResult = await scrapRawDataAuth({
-        rol: fullRol,
-        tribune: searchParams.tribunalId,
-        competencia: searchParams.competencia,
-        corteId: searchParams.corteId
-      });
-    } else {
-      scrapResult = await scrapRawData({
-        typeSearch: 'UNIFICADA',
-        rol: fullRol,
-        tribune: searchParams.tribunalId,
-        competencia: searchParams.competencia,
-        corteId: searchParams.corteId
-      }, globalScrape);
-    }
-    
-    // Comparar y obtener cambios usando la nueva función hasCaseChanged
-    const changes = hasCaseChanged(existingCase, scrapResult);
-    
-    if (!changes.hasChanges) {
-      logger.info(`📭 No hay cambios nuevos para causa ${fullRol}`);
-      await Cases.findByIdAndUpdate(caseId, {
-        'scrapedData.status': 'success',
-        'scrapedData.lastScrapedAt': new Date(),
-        'scrapedData.data': scrapResult,
-        'scrapedData.errorMessage': null
-      });
-      return { success: true, updated: false, reason: 'no_changes', data: existingCase };
-    }
-    
-    // Preparar datos de actualización
-    const updateData = {
-      'scrapedData.status': 'success',
-      'scrapedData.lastScrapedAt': new Date(),
-      'scrapedData.data': scrapResult,
-      'scrapedData.errorMessage': null,
-      'scrapedData.retryCount': 0
-    };
-    
-    // Agregar SOLO movimientos nuevos al inicio del array
-    if (changes.newMovementsCount > 0) {
-      const newMovementsSorted = sortMovementsByDate(changes.newMovements);
-      updateData['$push'] = {
-        movementsHistory: { $each: newMovementsSorted, $position: 0 }
-      };
-      logger.info(`➕ Agregando ${changes.newMovementsCount} movimientos nuevos`);
-    }
-    
-    // Actualizar litigantes si cambiaron
-    if (changes.litigantsChanged) {
-      updateData.litigants = scrapResult.litigants;
-      logger.info(`👥 Litigantes actualizados`);
-    }
-    
-    // Actualizar campos principales que cambiaron
-    for (const field of changes.mainFieldsChanged) {
-      if (scrapResult[field] !== undefined) {
-        updateData[field] = scrapResult[field];
-        logger.debug(`📝 Campo ${field} actualizado`);
-      }
-    }
-    
-    // Ejecutar actualización
-    await Cases.findByIdAndUpdate(caseId, { $set: updateData });
-    
-    // Obtener la causa actualizada para notificaciones
-    const updatedCase = await Cases.findById(caseId);
-    
-    // Enviar notificaciones
-    await sendUpdateNotification(Users, updatedCase, changes);
-    
-    // Mantener sesión viva si se usa autenticación
-    if (useAuthScraper) {
-      await keepSessionAlive();
-    }
-    
-    logger.info(`✅ Causa ${fullRol} actualizada correctamente con ${changes.newMovementsCount} nuevos movimientos`);
-    
-    return { 
-      success: true, 
-      updated: true, 
-      newMovements: changes.newMovementsCount,
-      litigantsChanged: changes.litigantsChanged,
-      mainFieldsChanged: changes.mainFieldsChanged,
-      data: updatedCase
-    };
-    
-  } catch (error) {
-    logger.error(`❌ Error actualizando causa ${fullRol}`, { error: error.message, stack: error.stack });
-    
-    await Cases.findByIdAndUpdate(caseId, {
-      'scrapedData.status': 'error',
-      'scrapedData.errorMessage': error.message,
-      'scrapedData.retryCount': (existingCase.scrapedData?.retryCount || 0) + 1
-    });
-    
-    return { success: false, error: error.message };
-  }
 }
 
 // ========== CONSTRUIR EL OBJETO RESOLVERS ==========
@@ -1549,14 +1363,28 @@ const resolvers = {
           caseId: existingCase._id,
           status: 'processing'
         })
-        
+
         if (existingProcess) {
-          return {
-            messageBody: '⚠️ Ya hay una actualización en curso para esta causa. Por favor espera.',
-            messageType: 'is-warning',
-            messageImage: null,
-            processId: existingProcess._id.toString(),
-            success: false
+          const STALE_PROCESS_THRESHOLD_MS = 6 * 60 * 1000 // 6 minutos
+          const ageMs = Date.now() - existingProcess.startedAt.getTime()
+
+          if (ageMs < STALE_PROCESS_THRESHOLD_MS) {
+            // Proceso realmente en curso, ahí sí bloqueamos
+            return {
+              messageBody: '⚠️ Ya hay una actualización en curso para esta causa. Por favor espera.',
+              messageType: 'is-warning',
+              messageImage: null,
+              processId: existingProcess._id.toString(),
+              success: false
+            }
+          } else {
+            // Proceso abandonado (crash/timeout) — lo liberamos y dejamos pasar uno nuevo
+            console.warn(`⚠️ Proceso huérfano detectado (${Math.round(ageMs / 1000)}s), liberando...`)
+            await ProcessStatus.findByIdAndUpdate(existingProcess._id, {
+              status: 'error',
+              errorMessage: 'Proceso abandonado (timeout o caída del servidor)',
+              completedAt: new Date()
+            })
           }
         }
         
@@ -1655,6 +1483,89 @@ const resolvers = {
           messageType: 'is-danger',
           messageImage: null,
           success: false
+        }
+      }
+    },
+    
+    updateCasesBulk: async (_, { caseIds }, { Cases, ProcessStatus, currentUser }) => {
+      try {
+        if (!caseIds || caseIds.length === 0) {
+          return {
+            messageBody: 'No se proporcionaron causas para actualizar',
+            messageType: 'is-danger',
+            messageImage: null,
+            queued: [],
+            rejected: []
+          }
+        }
+
+        const pendingCount = await getPendingCount()
+        const availableSlots = MAX_QUEUE_SIZE - pendingCount
+
+        if (availableSlots <= 0) {
+          return {
+            messageBody: `La cola está llena (máximo ${MAX_QUEUE_SIZE} pendientes). Espera a que se procesen las actuales.`,
+            messageType: 'is-warning',
+            messageImage: null,
+            queued: [],
+            rejected: caseIds
+          }
+        }
+
+        const idsToProcess = caseIds.slice(0, availableSlots)
+        const idsRejectedByLimit = caseIds.slice(availableSlots)
+
+        const queued = []
+        const rejected = [...idsRejectedByLimit]
+
+        for (const caseId of idsToProcess) {
+          const existingCase = await Cases.findById(caseId)
+          if (!existingCase) {
+            rejected.push(caseId)
+            continue
+          }
+
+          // Evitar duplicar si ya hay un proceso 'processing' para esa causa
+          const alreadyProcessing = await ProcessStatus.findOne({
+            caseId: existingCase._id,
+            status: 'processing'
+          })
+          if (alreadyProcessing) {
+            rejected.push(caseId)
+            continue
+          }
+
+          const processStatus = await ProcessStatus.create({
+            caseId: existingCase._id,
+            userId: currentUser?._id,
+            status: 'processing'
+          })
+
+          await enqueueCaseUpdate({
+            caseId: existingCase._id.toString(),
+            fullRol: existingCase.searchParams?.fullRol || existingCase.rol,
+            searchParams: existingCase.searchParams,
+            processId: processStatus._id.toString()
+          })
+
+          queued.push(processStatus._id.toString())
+        }
+
+        return {
+          messageBody: `${queued.length} causa(s) encolada(s) para actualización. ${rejected.length} rechazada(s).`,
+          messageType: queued.length > 0 ? 'is-success' : 'is-warning',
+          messageImage: null,
+          queued,
+          rejected
+        }
+      } catch (error) {
+        logger.error('❌ Error en updateCasesBulk:', error)
+        return {
+          messageBody: 'Error al encolar las causas para actualización',
+          messageType: 'is-danger',
+          messageImage: null,
+          queued: [],
+          rejected: caseIds || []
         }
       }
     },

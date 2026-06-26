@@ -307,6 +307,14 @@ type ScrapeMultipleNewCasesResponse {
   results: [BatchCaseResult!]
 }
 
+type UpdateCasesBulkResult {
+  messageBody: String!
+  messageType: String!
+  messageImage: String
+  queued: [ID!]!     # processIds encolados exitosamente
+  rejected: [ID!]!   # caseIds rechazados (no encontrados, ya en proceso, o cola llena)
+}
+
 # ========== NUEVOS TIPOS PARA PAGINACIÓN ==========
 
 type CasesPage {
@@ -461,6 +469,7 @@ type Mutation {
   updateUsersPassword(input: UpdateUsersPasswordInput!): Message!
   updateVisibilityCase(id: ID!, visibility: Boolean!): Message!
   updateActivity(input: ActivityUpdateInput!): ActivityResult!
+  updateCasesBulk(caseIds: [ID!]!): UpdateCasesBulkResult!
 
   deleteUserPost(postId: ID!): Posts!
   deleteUser(userId: ID!): Message!

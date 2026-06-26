@@ -99,7 +99,7 @@ class UnifiedQuery {
             throw new Error(`No se pudo navegar a indexN.php. URL actual: ${newUrl}`);
             }
 
-            // ✅ NUEVO: Verificar si hay reCAPTCHA o bloqueo
+            // ✅ Verificar si hay reCAPTCHA o bloqueo
             const pageContent = await this.page.content();
             const hasRecaptcha = pageContent.includes('recaptcha') || 
                                 pageContent.includes('reCAPTCHA') ||
@@ -109,20 +109,36 @@ class UnifiedQuery {
             
             if (hasRecaptcha) {
                 console.log('🔐 Se detectó reCAPTCHA o verificación humana.');
-                console.log('⏳ Esperando 30 segundos para que el usuario pueda resolverlo manualmente...');
-                await this.timeout(10000);
-                
-                // Verificar si el reCAPTCHA fue resuelto
-                const recaptchaResolved = await this.page.evaluate(() => {
-                    // Buscar si el formulario está visible
-                    const competenciaSelect = document.querySelector('select#competencia');
-                    return competenciaSelect !== null;
-                });
-                
+                console.log('📋 Por favor, resuélvelo manualmente en el navegador del servidor.');
+                console.log('⏳ Esperando hasta 120 segundos a que sea resuelto...');
+
+                let recaptchaResolved = false;
+                let attempts = 0;
+                const MAX_ATTEMPTS = 120; // 120 intentos x 1s = 2 minutos máximo
+
+                while (!recaptchaResolved && attempts < MAX_ATTEMPTS) {
+                    await this.timeout(1000); // 1 segundo entre chequeos, no 10s de una
+
+                    recaptchaResolved = await this.page.evaluate(() => {
+                        const competenciaSelect = document.querySelector('select#competencia');
+                        return competenciaSelect !== null;
+                    }).catch(() => false); // si la página navegó/recargó a mitad del check, no explota
+
+                    attempts++;
+
+                    if (attempts % 10 === 0) {
+                        console.log(`⏳ Aún esperando reCAPTCHA... (${attempts}s)`);
+                    }
+                }
+
                 if (recaptchaResolved) {
-                    console.log('✅ reCAPTCHA resuelto, continuando...');
+                    console.log(`✅ reCAPTCHA resuelto después de ${attempts}s, continuando...`);
                 } else {
-                    console.warn('⚠️ reCAPTCHA no resuelto, intentando continuar de todos modos...');
+                    // ❌ No "continuar de todos modos": eso es lo que causaba los crashes
+                    throw new Error(
+                        `reCAPTCHA no resuelto después de ${MAX_ATTEMPTS}s de espera. ` +
+                        `El proceso se marcará como error en vez de continuar a ciegas.`
+                    );
                 }
             }
             

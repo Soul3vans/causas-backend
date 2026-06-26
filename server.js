@@ -21,6 +21,7 @@ const Posts = require('./models/Posts')
 const Patients = require('./models/Patients')
 const Checks = require('./models/Checks')
 const Cases = require('./models/Cases')
+const { startScrapingWorker } = require('./utils/queues/scraping-queue')
 const CasesLogs = require('./models/CasesLogs')
 const CasesViewed = require('./models/CasesViewed')
 const CasesSettings = require('./models/CasesSettings')
@@ -47,6 +48,8 @@ const ProcessStatus = require('./models/ProcessStatus')
     console.log('⚠️ El servidor continuará iniciando, pero las consultas a la BD fallarán')
   }
 })()
+
+startScrapingWorker({ Cases, Users, ProcessStatus })
 
 const getUser = async token => {
   if (token) {
@@ -77,13 +80,19 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('🔥 Unhandled Rejection:', reason)
 })
 
-process.on('uncaughtException', (error) => {
-  logger.error('🔥 Uncaught Exception no capturada en ningún lado', {
-    error: error.message,
-    stack: error.stack
-  })
-  console.error('🔥 Uncaught Exception:', error)
-})
+async function gracefulShutdown(signal) {
+  logger.info(`📍 Señal ${signal} recibida, cerrando navegador del scraper...`)
+  try {
+    const { closeScrapeInstance } = require('./utils/scrapper')
+    await closeScrapeInstance()
+  } catch (e) {
+    console.error('Error cerrando navegador en shutdown:', e.message)
+  }
+  process.exit(0)
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'))
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
 
 const app = express()
 

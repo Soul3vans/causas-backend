@@ -21,7 +21,7 @@ const logger = require('./logger');
  */
 class CaseNotFoundError extends Error {
   constructor(rol) {
-    super(`No se encontró la causa "${rol}" en el sitio del Poder Judicial`);
+    super(`No se encontró la causa "${rol}" dirijase al sitio Oficial del Poder Judicial`);
     this.name = 'CaseNotFoundError';
     this.rol = rol;
   }
@@ -534,5 +534,5 @@ module.exports = {
   getScrapeInstance,
   authenticateScrape,
   withRetryAndIpRotation,
-  CaseNotFoundError
+  CaseNotFoundError,
 };
