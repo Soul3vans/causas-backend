@@ -469,7 +469,7 @@ type Mutation {
   updateUsersPassword(input: UpdateUsersPasswordInput!): Message!
   updateVisibilityCase(id: ID!, visibility: Boolean!): Message!
   updateActivity(input: ActivityUpdateInput!): ActivityResult!
-  updateCasesBulk(caseIds: [ID!]!): UpdateCasesBulkResult!
+  updateCasesBulk(caseIds: [ID!]!, userId: ID!): UpdateCasesBulkResult!
 
   deleteUserPost(postId: ID!): Posts!
   deleteUser(userId: ID!): Message!

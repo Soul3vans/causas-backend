@@ -1487,7 +1487,7 @@ const resolvers = {
       }
     },
     
-    updateCasesBulk: async (_, { caseIds }, { Cases, ProcessStatus, currentUser }) => {
+    updateCasesBulk: async (_, { caseIds, userId }, { Cases, ProcessStatus }) => {
       try {
         if (!caseIds || caseIds.length === 0) {
           return {
@@ -1537,7 +1537,7 @@ const resolvers = {
 
           const processStatus = await ProcessStatus.create({
             caseId: existingCase._id,
-            userId: currentUser?._id,
+            userId: userId,
             status: 'processing'
           })
 
