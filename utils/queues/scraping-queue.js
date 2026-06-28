@@ -15,7 +15,10 @@ const logger = require('../logger')
 const { updateCaseIfNeeded } = require('../case-updater')
 
 const QUEUE_NAME = 'scraping-queue'
-const MAX_QUEUE_SIZE = 100
+const MAX_QUEUE_SIZE = 2 //Son 100 por ahora
+
+let logoutTimer = null
+const LOGOUT_DELAY_MS = 4 * 60 * 1000 // 4 minutos
 
 // BullMQ requiere maxRetriesPerRequest: null en la conexión de ioredis
 const connection = new IORedis({
@@ -50,6 +53,12 @@ async function getPendingCount() {
  * @param {Object} jobData - { caseId, fullRol, searchParams, processId }
  */
 async function enqueueCaseUpdate(jobData) {
+  // Si había un logout programado, lo cancelamos: llegó trabajo nuevo
+  if (logoutTimer) {
+    clearTimeout(logoutTimer)
+    logoutTimer = null
+    console.log('🔄 Logout cancelado, llegó trabajo nuevo a la cola')
+  }
   return scrapingQueue.add('update-case', jobData, {
     removeOnComplete: { age: 3600 }, // limpiar jobs completados después de 1h
     removeOnFail: { age: 86400 },    // mantener fallidos 24h para debug
@@ -57,12 +66,35 @@ async function enqueueCaseUpdate(jobData) {
   })
 }
 
+async function drainOverflow(models) {
+  const { ScrapingOverflow } = models
+  const pending = await getPendingCount()
+  const slots = MAX_QUEUE_SIZE - pending
+  if (slots <= 0) return
+  
+  const totalInOverflow = await ScrapingOverflow.countDocuments()
+  console.log(`🔍 [${new Date().toISOString()}] drainOverflow: ${totalInOverflow} en overflow, ${slots} slots libres`)
+
+  const overflowItems = await ScrapingOverflow.find().sort({ createdAt: 1 }).limit(slots)
+
+  for (const item of overflowItems) {
+    await enqueueCaseUpdate({
+      caseId: item.caseId.toString(),
+      fullRol: item.fullRol,
+      searchParams: item.searchParams,
+      processId: item.processId.toString()
+    })
+    await ScrapingOverflow.deleteOne({ _id: item._id })
+    console.log(`📤 Drenado desde overflow: ${item.fullRol}`)
+  }
+}
+
 // ========== WORKER ==========
 // Este es el que realmente ejecuta el scraping, job por job.
 // models (Cases, Users, ProcessStatus) se inyectan al iniciar el worker
 // desde server.js, para no duplicar los requires de los modelos aquí.
 function startScrapingWorker(models) {
-  const { Cases, Users, ProcessStatus } = models
+  const { Cases, Users, ProcessStatus, ScrapingOverflow } = models
   const concurrency = parseInt(process.env.SCRAPING_CONCURRENCY) || 1
 
   const worker = new Worker(
@@ -105,8 +137,20 @@ function startScrapingWorker(models) {
     { connection, concurrency }
   )
 
-  worker.on('completed', (job) => {
+  worker.on('completed', async (job) => {
     console.log(`✅ [Job ${job.id}] Completado: ${job.data.fullRol}`)
+    
+    await drainOverflow({ ScrapingOverflow })
+
+    const pending = await getPendingCount()
+    if (pending === 0) {
+      console.log(`⏳ Cola vacía. Si no llega trabajo nuevo en 4 min, se cerrará la sesión.`)
+      logoutTimer = setTimeout(async () => {
+        const { logoutAndCloseSession } = require('../scrapper')
+        await logoutAndCloseSession()
+        logoutTimer = null
+      }, LOGOUT_DELAY_MS)
+    }
   })
 
   worker.on('failed', async (job, err) => {
@@ -147,5 +191,6 @@ module.exports = {
   enqueueCaseUpdate,
   getPendingCount,
   startScrapingWorker,
-  MAX_QUEUE_SIZE
+  MAX_QUEUE_SIZE,
+  drainOverflow
 }

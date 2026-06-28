@@ -68,6 +68,28 @@ async function getScrapeInstance() {
 }
 
 /**
+ * Hace clic en "Salir" del navbar de sesión de invitado, para cerrar
+ * la sesión cuando ya no queda trabajo pendiente en la cola.
+ */
+async function logoutAndCloseSession() {
+  try {
+    if (!globalScrapeInstance) return
+    const page = globalScrapeInstance.getPage()
+    console.log('👋 No quedan causas pendientes, cerrando sesión ("Salir")...')
+    await page.evaluate(() => {
+      const link = Array.from(document.querySelectorAll('a')).find(a =>
+        a.getAttribute('onclick')?.includes('salir(')
+      )
+      if (link) link.click()
+    })
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    console.log('✅ Sesión cerrada correctamente')
+  } catch (error) {
+    console.warn('⚠️ Error cerrando sesión:', error.message)
+  }
+}
+
+/**
  * Calcula el tiempo de espera para reintentos (backoff exponencial)
  * @param {number} attempt - Número de intento (1-indexed)
  * @param {Object} config - Configuración de reintentos
@@ -535,4 +557,5 @@ module.exports = {
   authenticateScrape,
   withRetryAndIpRotation,
   CaseNotFoundError,
+  logoutAndCloseSession,
 };

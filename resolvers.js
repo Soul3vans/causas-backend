@@ -1487,7 +1487,8 @@ const resolvers = {
       }
     },
     
-    updateCasesBulk: async (_, { caseIds, userId }, { Cases, ProcessStatus }) => {
+    updateCasesBulk: async (_, { caseIds, userId }, { Cases, ProcessStatus, ScrapingOverflow }) => {
+      console.log(`🔵 [${new Date().toISOString()}] updateCasesBulk llamado con caseIds:`, caseIds)
       try {
         if (!caseIds || caseIds.length === 0) {
           return {
@@ -1498,40 +1499,77 @@ const resolvers = {
             rejected: []
           }
         }
+        
+        // ✅ Deduplicar — sin esto, un mismo ID repetido en el array
+		// genera 2 ProcessStatus y 2 entradas de overflow para la misma causa
+		caseIds = [...new Set(caseIds.map(id => id.toString()))]
 
         const pendingCount = await getPendingCount()
         const availableSlots = MAX_QUEUE_SIZE - pendingCount
 
-        if (availableSlots <= 0) {
-          return {
-            messageBody: `La cola está llena (máximo ${MAX_QUEUE_SIZE} pendientes). Espera a que se procesen las actuales.`,
-            messageType: 'is-warning',
-            messageImage: null,
-            queued: [],
-            rejected: caseIds
-          }
-        }
-
-        const idsToProcess = caseIds.slice(0, availableSlots)
-        const idsRejectedByLimit = caseIds.slice(availableSlots)
+        const idsToProcess = caseIds.slice(0, Math.max(availableSlots, 0))
+        const idsRejectedByLimit = caseIds.slice(Math.max(availableSlots, 0))
 
         const queued = []
-        const rejected = [...idsRejectedByLimit]
+        const rejected = []
+
+        // ✅ Las que no entran por límite YA NO se pierden: van al overflow
+		// y se procesan solas cuando se libere espacio en la cola.
+		if (idsRejectedByLimit.length > 0) {
+		  const casesOverflow = await Cases.find({ _id: { $in: idsRejectedByLimit } })
+
+		  for (const existingCase of casesOverflow) {
+			const processStatus = await ProcessStatus.create({
+			  caseId: existingCase._id,
+			  userId: userId,
+			  status: 'processing'
+			})
+
+			console.log(`📥 [${new Date().toISOString()}] Creando entrada en overflow para ${existingCase.rol} (caseId: ${existingCase._id})`)
+			await ScrapingOverflow.create({
+			  caseId: existingCase._id,
+			  processId: processStatus._id,
+			  fullRol: existingCase.searchParams?.fullRol || existingCase.rol,
+			  searchParams: existingCase.searchParams,
+			  userId: userId
+			})
+
+			queued.push(processStatus._id.toString()) // ✅ cuenta como encolada, no rechazada
+		  }
+		}
 
         for (const caseId of idsToProcess) {
           const existingCase = await Cases.findById(caseId)
+
           if (!existingCase) {
-            rejected.push(caseId)
+            rejected.push({
+              caseId,
+              rol: 'Desconocida',
+              reason: 'no_encontrada'
+            })
             continue
           }
 
-          // Evitar duplicar si ya hay un proceso 'processing' para esa causa
           const alreadyProcessing = await ProcessStatus.findOne({
             caseId: existingCase._id,
             status: 'processing'
           })
           if (alreadyProcessing) {
-            rejected.push(caseId)
+            rejected.push({
+              caseId,
+              rol: existingCase.rol,
+              reason: 'ya_en_proceso'
+            })
+            continue
+          }
+
+          const alreadyInOverflow = await ScrapingOverflow.findOne({ caseId: existingCase._id })
+          if (alreadyInOverflow) {
+            rejected.push({
+              caseId,
+              rol: existingCase.rol,
+              reason: 'ya_en_proceso'
+            })
             continue
           }
 
@@ -1565,7 +1603,11 @@ const resolvers = {
           messageType: 'is-danger',
           messageImage: null,
           queued: [],
-          rejected: caseIds || []
+          rejected: (caseIds || []).map(caseId => ({
+            caseId,
+            rol: 'Desconocida',
+            reason: 'error_interno'
+          }))
         }
       }
     },

@@ -56,14 +56,24 @@ class UnifiedQuery {
             const currentUrl = await this.page.url();
             console.log(`📍 URL actual: ${currentUrl}`);
             
-            // Caso 1: Estamos en indexN.php pero el formulario no está visible
+            // Caso 1: Estamos en indexN.php — verificar si el formulario ya está disponible
             if (currentUrl.includes('indexN.php')) {
-            console.log('⚠️ Estamos en indexN.php sin formulario visible. Navegando a home/index.php...');
-            await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
-                waitUntil: 'domcontentloaded',
-                timeout: 30000
-            });
-            await this.timeout(5000);
+                const formVisible = (await this.page.$('select#competencia')) !== null;
+
+                if (formVisible) {
+                    // ✅ Sesión y tokens aún vigentes: solo limpiar el formulario,
+                    // mucho más rápido que el viaje completo a home/index.php
+                    console.log('🧹 Formulario disponible en indexN.php, limpiando con botón "Limpiar"...');
+                    await this.clearSearchForm();
+                } else {
+                    // Caso real de pérdida de sesión/tokens vencidos
+                    console.log('⚠️ indexN.php sin formulario visible. Navegando a home/index.php...');
+                    await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
+                        waitUntil: 'domcontentloaded',
+                        timeout: 30000
+                    });
+                    await this.timeout(5000);
+                }
             }
             
             // Caso 2: Estamos en home/index.php

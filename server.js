@@ -30,6 +30,7 @@ const InvolvedUsersCase = require('./models/InvolvedUsersCase')
 const CasesUpdated = require('./models/CasesUpdated')
 const CasesReviews = require('./models/CasesReviews')
 const Priority = require('./models/Priority')
+const ScrapingOverflow = require('./models/ScrapingOverflow')
 const sendActivityReminder = require('./workers/mail-sender/activity-reminder')
 const dailyScraps = require('./workers/mail-sender/daily-scraps')
 const casesUpdater = require('./workers/mail-sender/cases-updater')
@@ -49,7 +50,7 @@ const ProcessStatus = require('./models/ProcessStatus')
   }
 })()
 
-startScrapingWorker({ Cases, Users, ProcessStatus })
+startScrapingWorker({ Cases, Users, ProcessStatus, ScrapingOverflow })
 
 const getUser = async token => {
   if (token) {
@@ -159,6 +160,7 @@ const server = new ApolloServer({
       CasesReviews,
       Priority,
       ProcessStatus,
+      ScrapingOverflow,
       currentUser: await getUser(token)
     }
   },
