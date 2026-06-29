@@ -9,7 +9,7 @@ const { config } = require('../config/mail')
 const { abstractSendMail } = require('./mail')
 const { caseUpdated } = require('../workers/mail-sender/templates/update-case.tpl')
 const { hasCaseChanged, sortMovementsByDate } = require('./compareCaseData')
-const { scrapRawData, getScrapeInstance } = require('./scrapper')
+const { scrapRawData } = require('./scrapper')
 const { scrapRawDataAuth, keepSessionAlive } = require('./scrapper-auth')
 const InvolvedUsersCase = require('../models/InvolvedUsersCase')
 
@@ -71,7 +71,7 @@ async function sendUpdateNotification(Users, caseData, changes) {
  * Idéntica a la versión que vivía en resolvers.js — sin cambios de lógica,
  * solo de ubicación.
  */
-async function updateCaseIfNeeded(caseId, fullRol, searchParams, models) {
+async function updateCaseIfNeeded(caseId, fullRol, searchParams, models, scrapeInstance) {
   const { Cases, Users } = models
 
   const existingCase = await Cases.findById(caseId)
@@ -99,14 +99,14 @@ async function updateCaseIfNeeded(caseId, fullRol, searchParams, models) {
         corteId: searchParams.corteId
       })
     } else {
-      const globalScrape = await getScrapeInstance()
-      scrapResult = await scrapRawData({
-        typeSearch: 'UNIFICADA',
-        rol: fullRol,
-        tribune: searchParams.tribunalId,
-        competencia: searchParams.competencia,
-        corteId: searchParams.corteId
-      }, globalScrape)
+      // ✅ Usar la instancia del pool que nos pasaron, no getScrapeInstance()
+		scrapResult = await scrapRawData({
+		  typeSearch: 'UNIFICADA',
+		  rol: fullRol,
+		  tribune: searchParams.tribunalId,
+		  competencia: searchParams.competencia,
+		  corteId: searchParams.corteId
+		}, scrapeInstance)   // 👈 antes decía: globalScrape (de getScrapeInstance())
     }
 
     const changes = hasCaseChanged(existingCase, scrapResult)

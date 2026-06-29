@@ -15,7 +15,7 @@ const logger = require('../logger')
 const { updateCaseIfNeeded } = require('../case-updater')
 
 const QUEUE_NAME = 'scraping-queue'
-const MAX_QUEUE_SIZE = 2 //Son 100 por ahora
+const MAX_QUEUE_SIZE = 100 //Son 100 por ahora previendo el desbordamiento
 
 let logoutTimer = null
 const LOGOUT_DELAY_MS = 4 * 60 * 1000 // 4 minutos
@@ -96,6 +96,7 @@ async function drainOverflow(models) {
 function startScrapingWorker(models) {
   const { Cases, Users, ProcessStatus, ScrapingOverflow } = models
   const concurrency = parseInt(process.env.SCRAPING_CONCURRENCY) || 1
+  const { acquireInstance, releaseInstance } = require('../scrape-pool')
 
   const worker = new Worker(
     QUEUE_NAME,
@@ -105,49 +106,54 @@ function startScrapingWorker(models) {
       console.log(`🕷️ [Process ${processId}] Procesando causa ${fullRol} desde la cola...`)
       logger.info(`🕷️ [Process ${processId}] Procesando causa ${fullRol} desde la cola...`)
 
-      const result = await updateCaseIfNeeded(caseId, fullRol, searchParams, { Cases, Users })
+      const slot = await acquireInstance()   // ✅ espera/toma un navegador libre
+      try {
+		  const result = await updateCaseIfNeeded(caseId, fullRol, searchParams, { Cases, Users })
 
-      // Mapear el resultado de updateCaseIfNeeded → ProcessStatus
-      if (result.success) {
-        await ProcessStatus.findByIdAndUpdate(processId, {
-          status: 'completed',
-          completedAt: new Date(),
-          summary: {
-            newMovements: result.newMovements || 0,
-            litigantsChanged: result.litigantsChanged || false,
-            mainFieldsChanged: result.mainFieldsChanged || []
-          }
-        })
-      } else if (result.notFound) {
-        await ProcessStatus.findByIdAndUpdate(processId, {
-          status: 'not_found',
-          errorMessage: result.error,
-          completedAt: new Date()
-        })
-      } else {
-        await ProcessStatus.findByIdAndUpdate(processId, {
-          status: 'error',
-          errorMessage: result.error || 'Error desconocido',
-          completedAt: new Date()
-        })
+		  // Mapear el resultado de updateCaseIfNeeded → ProcessStatus
+		  if (result.success) {
+			await ProcessStatus.findByIdAndUpdate(processId, {
+			  status: 'completed',
+			  completedAt: new Date(),
+			  summary: {
+				newMovements: result.newMovements || 0,
+				litigantsChanged: result.litigantsChanged || false,
+				mainFieldsChanged: result.mainFieldsChanged || []
+			  }
+			})
+		  } else if (result.notFound) {
+			await ProcessStatus.findByIdAndUpdate(processId, {
+			  status: 'not_found',
+			  errorMessage: result.error,
+			  completedAt: new Date()
+			})
+		  } else {
+			await ProcessStatus.findByIdAndUpdate(processId, {
+			  status: 'error',
+			  errorMessage: result.error || 'Error desconocido',
+			  completedAt: new Date()
+			})
+		  }
+
+		  return result
+	    } finally {
+		    releaseInstance(slot)   // ✅ siempre se libera, incluso si hubo error
       }
-
-      return result
-    },
+    }, 
     { connection, concurrency }
   )
 
   worker.on('completed', async (job) => {
     console.log(`✅ [Job ${job.id}] Completado: ${job.data.fullRol}`)
-    
     await drainOverflow({ ScrapingOverflow })
 
     const pending = await getPendingCount()
     if (pending === 0) {
       console.log(`⏳ Cola vacía. Si no llega trabajo nuevo en 4 min, se cerrará la sesión.`)
       logoutTimer = setTimeout(async () => {
-        const { logoutAndCloseSession } = require('../scrapper')
-        await logoutAndCloseSession()
+        const { logoutAllInstances, closeAllInstances } = require('../scrape-pool')
+        await logoutAllInstances()
+        await closeAllInstances()
         logoutTimer = null
       }, LOGOUT_DELAY_MS)
     }
