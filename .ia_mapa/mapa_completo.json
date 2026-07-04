@@ -1,0 +1,998 @@
+{
+  "proyecto": "causas-backend",
+  "creado": "2026-07-04T17:55:09.306615",
+  "ultimo_escaneo": "2026-07-04T17:55:09.306675",
+  "archivos": [
+    {
+      "ruta": "apollo.config.js",
+      "lineas": 14,
+      "hash": "cfc8491f3ca8013c8b1f583731183c46",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "capture-competencies.js",
+      "lineas": 356,
+      "hash": "ec13818d586c155829bfba715f5f629d",
+      "imports": [
+        "const fs = require('fs');",
+        "const path = require('path');",
+        "const { ScrapService } = require('./utils/plugins/puppeteer."
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "competencias.json",
+      "lineas": 1164,
+      "hash": "ce04fe851673dcfb409e30208a9253b6",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "competencias_actualizadas.json",
+      "lineas": 8542,
+      "hash": "44dcc5eb9e1fd5557ae623acf8fff2c2",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "cookies-firefox.json",
+      "lineas": 67,
+      "hash": "fce0354ccb8344e50a04fed9f2b77b9c",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "nuevo_mapa.json",
+      "lineas": 521,
+      "hash": "844dc58449aaae65bc6ed63be4dc1e21",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "p.js",
+      "lineas": 142,
+      "hash": "3b9ebe910ff499649c79f46623f62de4",
+      "imports": [
+        "const nodemailer = require('nodemailer')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "package-lock.json",
+      "lineas": 9861,
+      "hash": "f58d78e5fdb7caf4e8895aceb597d077",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "package.json",
+      "lineas": 64,
+      "hash": "b7ac4c8d4cf71df20cf90aa8857ace6d",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "resolvers.js",
+      "lineas": 2083,
+      "hash": "09ed760defa393f75b124775607acdff",
+      "imports": [
+        "const { AuthenticationError } = require('apollo-server-expre",
+        "const bcrypt = require('bcrypt')",
+        "const jwt = require('jsonwebtoken')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "server.js",
+      "lineas": 211,
+      "hash": "af2751f14006dbc7b9e032d6fbefa880",
+      "imports": [
+        "const express = require('express')",
+        "const { ApolloServer, AuthenticationError } = require('apoll",
+        "const cors = require('cors')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": ".vscode/settings.json",
+      "lineas": 3,
+      "hash": "f6045751e06ea9a42e55fc367fcfba25",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "config/mail.js",
+      "lineas": 40,
+      "hash": "08dcbec6d98a0e36f06bf9d5d08f5296",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "models/Activity.js",
+      "lineas": 29,
+      "hash": "194c7ef0ae48c1da7bc1c1a400f7b281",
+      "imports": [
+        "const { Schema, model } = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/Cases.js",
+      "lineas": 111,
+      "hash": "9d8fa54b8b6fb347f3f15663638b9ddd",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/CasesLogs.js",
+      "lineas": 36,
+      "hash": "b4325afb5d072f87ddb7db0efa71735e",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/CasesReviews.js",
+      "lineas": 49,
+      "hash": "c04adf650878adcf5a7699a86a169ef0",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/CasesSettings.js",
+      "lineas": 28,
+      "hash": "c2e187fb2c6b8634b20fc3bdfbd56984",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/CasesUpdated.js",
+      "lineas": 65,
+      "hash": "8e934abd63c034d0bb72573ff6d1692a",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/CasesViewed.js",
+      "lineas": 22,
+      "hash": "cb283588331e9e37f467961a023c9830",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/CauseCivilUpdaters.js",
+      "lineas": 53,
+      "hash": "e677b3042cf67634a229e2b62f395139",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/Checks.js",
+      "lineas": 16,
+      "hash": "68d663eefeb99dd8e12cd184715a078a",
+      "imports": [
+        "const mongoose = require('mongoose')",
+        "const md5 = require('md5')",
+        "const bcrypt = require('bcrypt')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/File.js",
+      "lineas": 14,
+      "hash": "18f49086d095747f6a1a5c18cb3a9118",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/InvolvedUsersCase.js",
+      "lineas": 38,
+      "hash": "9f4bde8819035863ad90b5de154717ba",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/Messages.js",
+      "lineas": 30,
+      "hash": "5d3ecf59d0e27caf189e65cce71fa43d",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/Patients.js",
+      "lineas": 20,
+      "hash": "e07779a395a193179317fb9be6d109b9",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/Posts.js",
+      "lineas": 23,
+      "hash": "6422ac7364999a8a3d59be37a77fccd6",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/Priority.js",
+      "lineas": 14,
+      "hash": "2f22e77d7910ac73b9fefbfdea4642e4",
+      "imports": [
+        "const { Schema, model } = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/ProcessStatus.js",
+      "lineas": 40,
+      "hash": "042cc77d42169bfd0d591c7431868ca5",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/Session.js",
+      "lineas": 67,
+      "hash": "0f97ab66d7e3d214cc4426bad4706b14",
+      "imports": [
+        "const mongoose = require('mongoose');"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/Users.js",
+      "lineas": 60,
+      "hash": "83f1b6e87f7a4c40f94c7564ad8cbe78",
+      "imports": [
+        "const mongoose = require('mongoose')",
+        "const md5 = require('md5')",
+        "const bcrypt = require('bcrypt')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/UsersLogs.js",
+      "lineas": 17,
+      "hash": "e94f54333f61f88a90b51b7a2fd25af9",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "models/ScrapingOverflow.js",
+      "lineas": 14,
+      "hash": "e297810023f918a23c81db073497bf2c",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/compareCaseData.js",
+      "lineas": 260,
+      "hash": "79a2d79a423871155ddf1f449a5c399d",
+      "imports": [
+        "const logger = require('./logger');"
+      ],
+      "clases": [
+        "function parseDate(dateStr) {",
+        "function compareDates(dateStr1, dateStr2) {",
+        "function getMovementTimestamp(movement) {"
+      ]
+    },
+    {
+      "ruta": "utils/dailystatus.js",
+      "lineas": 48,
+      "hash": "e028b13406fecff26581100b5b940c6d",
+      "imports": [
+        "const scrape_daily_1 = require('./causes/daily-status/scrape",
+        "const const_1 = require('./causes/helpers/const')",
+        "const db_1 = require('./db')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/dateTime.js",
+      "lineas": 22,
+      "hash": "fbc9f32e32229cb6eb124dfd9de90286",
+      "imports": [
+        "const { DateTime } = require('luxon')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/logger.js",
+      "lineas": 53,
+      "hash": "2f0b132c5f00ef794ff823fc14d18c85",
+      "imports": [
+        "const winston = require('winston');",
+        "const path = require('path');",
+        "const fs = require('fs');"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/mail.js",
+      "lineas": 60,
+      "hash": "9723fd749cb9d4ada4a4d7b34ced0c87",
+      "imports": [
+        "const nodemailer = require('nodemailer')",
+        "const { config } = require('./../config/mail')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/mongoose-connet.js",
+      "lineas": 15,
+      "hash": "be5d08563d20656581a12db28081996f",
+      "imports": [
+        "const mongoose = require('mongoose')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/movupdwork.js",
+      "lineas": 193,
+      "hash": "cdfc84fa557d709adce863190efff399",
+      "imports": [
+        "const puppeteer = require('puppeteer')",
+        "const random_useragent = require('random-useragent')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/objectsUtilities.js",
+      "lineas": 21,
+      "hash": "00f543b3446bd1f037e979870d1d2bc1",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/random.js",
+      "lineas": 30,
+      "hash": "bb99d47891dc5bf270137aea0c71e7e5",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/scrap-civil-all.js",
+      "lineas": 23,
+      "hash": "771e471d9f735183c45d776ce189d5ab",
+      "imports": [
+        "const causes_1 = require(\"./causes\");",
+        "const db_1 = require(\"./db\");",
+        "const plugins_1 = require(\"./plugins\");"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/scrap-civil-one.js",
+      "lineas": 41,
+      "hash": "77be2910a56cd3777f0e52c583dbb72f",
+      "imports": [
+        "const causes_1 = require('./causes')",
+        "const const_1 = require('./causes/helpers/const')",
+        "const db_1 = require('./db')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/scrap.js",
+      "lineas": 196,
+      "hash": "7fe91255bcfe6a4d1b93dca0d588ab76",
+      "imports": [
+        "const puppeteer = require('puppeteer')",
+        "const random_useragent = require('random-useragent')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/scrapper-auth.js",
+      "lineas": 285,
+      "hash": "27596cf6c251175b21c6a46f93fbb5c3",
+      "imports": [
+        "const { ScrapService } = require('./plugins/puppeteer.plugin",
+        "const { UnifiedQuery } = require('./causes/unified-query/uni",
+        "const logger = require('./logger');"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/scrapper.js",
+      "lineas": 561,
+      "hash": "e31d88770cb64188b9dce7f2f7857f06",
+      "imports": [
+        "const { ScrapService } = require('./plugins/puppeteer.plugin",
+        "const { UnifiedQuery } = require('./causes/unified-query/uni",
+        "const logger = require('./logger');"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/seedsjudge.js",
+      "lineas": 263,
+      "hash": "144f87ed467643eacb30efdf1495f06b",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/testcases.js",
+      "lineas": 918,
+      "hash": "6a1bc8ea9269839f61a567a420229e2c",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/unified.js",
+      "lineas": 36,
+      "hash": "0195d0d38f97c57591930c4f9ad97803",
+      "imports": [
+        "const const_1 = require(\"./causes/helpers/const\");",
+        "const scrape_unified_1 = require(\"./causes/unified-query/scr",
+        "const db_1 = require(\"./db\");"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/case-updater.js",
+      "lineas": 199,
+      "hash": "5a3b158a3b7b168940016a33f22ed28c",
+      "imports": [
+        "const logger = require('./logger')",
+        "const { config } = require('../config/mail')",
+        "const { abstractSendMail } = require('./mail')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/scrape-pool.js",
+      "lineas": 126,
+      "hash": "5f2220f384bd429aee8eb14d5844cc95",
+      "imports": [
+        "const { ScrapService } = require('./plugins/puppeteer.plugin",
+        "const logger = require('./logger')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/cause.js",
+      "lineas": 34,
+      "hash": "68639b0604736cacc5697cc5e6dac4c9",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/civil-cause-rol.collect.js",
+      "lineas": 385,
+      "hash": "0f57219e7a166056da6853004f776b61",
+      "imports": [
+        "const db_1 = require('../db')",
+        "const civil_cause_detail_1 = require('./civil-cause.detail')",
+        "const code_calc_1 = require('./helpers/code-calc')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/civil-cause.active.js",
+      "lineas": 162,
+      "hash": "c22ca21de5c1b1c667cbed12453cff56",
+      "imports": [
+        "const db_1 = require(\"../db\");",
+        "const civil_cause_1 = require(\"./civil-cause\");",
+        "const pagination_1 = require(\"./pagination\");"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/civil-cause.detail.js",
+      "lineas": 25,
+      "hash": "78858cffc1ca8c5ce8d0a17ed8e9ad3c",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/civil-cause.js",
+      "lineas": 17,
+      "hash": "8128be00c559b4a0d803fa9c90129b0b",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/civil-cause.scrap.js",
+      "lineas": 351,
+      "hash": "d8681da40ba3ea2f041e6a1ce295ad89",
+      "imports": [
+        "const pagination_1 = require(\"./pagination\");"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/civil-cause.types.js",
+      "lineas": 2,
+      "hash": "8963201168a2449f79025884824955f2",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/civil-extract-doc.failed.js",
+      "lineas": 98,
+      "hash": "7265656b5db35c58eadb45f93e75d880",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/civil-items-collect.js",
+      "lineas": 80,
+      "hash": "bff31068dbbd26107139310963749676",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/dependency-inject.js",
+      "lineas": 13,
+      "hash": "489386685fe94ef8b6e64a5f0ae43454",
+      "imports": [
+        "const plugins_1 = require(\"../plugins\");",
+        "const cause_1 = require(\"./cause\");",
+        "const civil_cause_rol_collect_1 = require(\"./civil-cause-rol"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/index.js",
+      "lineas": 22,
+      "hash": "07cdcc8b4bac1f5f854c1e6577be47fa",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/pagination.js",
+      "lineas": 24,
+      "hash": "ad63319ae59e3759ea0c0fbba1544987",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/parse-string.js",
+      "lineas": 25,
+      "hash": "b5178c6c50116afe6d10cf296d22fb5d",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/daily-status/daily.js",
+      "lineas": 255,
+      "hash": "3d265f68e5c37e9deef71dee88ce2095",
+      "imports": [
+        "const node_events_1 = __importDefault(require(\"node:events\")",
+        "const wait_1 = require(\"../../plugins/wait\");",
+        "const code_calc_1 = require(\"../helpers/code-calc\");"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/daily-status/scrape-daily.js",
+      "lineas": 14,
+      "hash": "6dcec5ea2d822c42aba8cbc6df938b94",
+      "imports": [
+        "const plugins_1 = require(\"../../plugins\");",
+        "const daily_1 = require(\"./daily\");"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/helpers/code-calc.js",
+      "lineas": 13,
+      "hash": "d86ea9e6be9596cc3fc31829f574307d",
+      "imports": [],
+      "clases": [
+        "function codeUnique(date) {"
+      ]
+    },
+    {
+      "ruta": "utils/causes/helpers/const.js",
+      "lineas": 5,
+      "hash": "ef47498758c80010d80b1ef5cbfaeae8",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/helpers/date-calc.js",
+      "lineas": 21,
+      "hash": "beae6f2552b463cab702267f0263cf0c",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/helpers/document-all.helper.js",
+      "lineas": 17,
+      "hash": "5c9317af961397741bfc55514569b636",
+      "imports": [
+        "const worker_launch_document_1 = require(\"../workers/worker-"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/helpers/document-persist.helper.js",
+      "lineas": 99,
+      "hash": "9cc3f0d2a34e2bfb28d73b14919f6920",
+      "imports": [
+        "const parse_string_1 = require(\"../parse-string\");",
+        "const worker_launch_document_1 = require(\"../workers/worker-",
+        "const code_calc_1 = require(\"./code-calc\");"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/helpers/history-scrape.js",
+      "lineas": 239,
+      "hash": "17e63e8e4309bbca18ca927546789388",
+      "imports": [
+        "const wait_1 = require(\"../../plugins/wait\");",
+        "const date_calc_1 = require(\"./date-calc\");",
+        "const document_persist_helper_1 = require(\"./document-persis"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/unified-query/scrape-unified.js",
+      "lineas": 13,
+      "hash": "d0383e57cfe1daa5625e12a55fc634ba",
+      "imports": [
+        "const plugins_1 = require(\"../../plugins\");",
+        "const unified_query_1 = require(\"./unified-query\");"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/unified-query/unified-query.js",
+      "lineas": 592,
+      "hash": "8104d67e7a5b5ccaaaf5852cf998e288",
+      "imports": [
+        "const wait_1 = require(\"../../plugins/wait\");",
+        "const code_calc_1 = require(\"../helpers/code-calc\");",
+        "const history_scrape_1 = require(\"../helpers/history-scrape\""
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/workers/document-fetch.js",
+      "lineas": 37,
+      "hash": "30a3f3e588ee69e77bb5a8fa44ed2a06",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/workers/document-proccess.js",
+      "lineas": 44,
+      "hash": "71dae21fc08ecba1b9bb3732a8fd16f4",
+      "imports": [
+        "const plugins_1 = require(\"../../plugins\");",
+        "const document_fetch_1 = require(\"./document-fetch\");"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/workers/worker-launch-document.js",
+      "lineas": 39,
+      "hash": "cda04d8f3bbcca549b425cccfffdb51a",
+      "imports": [
+        "const node_path_1 = __importDefault(require(\"node:path\"));",
+        "const node_worker_threads_1 = require(\"node:worker_threads\")"
+      ],
+      "clases": [
+        "function runWorkerDocument(documents, issue, mode) {"
+      ]
+    },
+    {
+      "ruta": "utils/causes/workers/worker.js",
+      "lineas": 28,
+      "hash": "0e3887b4188a43bf0d25d5448db07268",
+      "imports": [
+        "const node_worker_threads_1 = require(\"node:worker_threads\")",
+        "const document_updater_1 = require(\"../../db/document-update",
+        "const document_proccess_1 = require(\"./document-proccess\");"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/causes/workers/worker.types.js",
+      "lineas": 2,
+      "hash": "8963201168a2449f79025884824955f2",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/db/ccause-updater.js",
+      "lineas": 13,
+      "hash": "c492b5ccaffd0f2a0ef694b1e46a29b4",
+      "imports": [
+        "const CasesUpdated = require('../../models/CasesUpdated');"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/db/civil-cause-active.schema.js",
+      "lineas": 38,
+      "hash": "2500dbe8e65d0fc62bf809c75fadfde0",
+      "imports": [
+        "const mongoose_1 = __importStar(require(\"mongoose\"));"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/db/civil-cause.schema.js",
+      "lineas": 99,
+      "hash": "607bf58f17075aab746bfb25558fda64",
+      "imports": [
+        "const mongoose_1 = __importStar(require('mongoose'))"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/db/daily-updater.js",
+      "lineas": 14,
+      "hash": "be99eda3ba5018c1e2de7cb38491064f",
+      "imports": [
+        "const CasesUpdated = require('../../models/CasesUpdated');"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/db/db.types.js",
+      "lineas": 2,
+      "hash": "8963201168a2449f79025884824955f2",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/db/document-updater.js",
+      "lineas": 42,
+      "hash": "5016dac2ad19810483d7760368d0c45b",
+      "imports": [
+        "const civil_cause_schema_1 = require(\"./civil-cause.schema\")"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/db/index.js",
+      "lineas": 20,
+      "hash": "e602ebb7f6409d5d4513b0e5d0095a27",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/db/mongoose.js",
+      "lineas": 94,
+      "hash": "25e0fd0a82f6ab09fd512488b30d2c94",
+      "imports": [
+        "const mongoose_1 = __importDefault(require('mongoose'))"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/plugins/env.plugin.js",
+      "lineas": 71,
+      "hash": "7c13ed40511110eb2aaf74bc31340afd",
+      "imports": [
+        "const env = __importStar(require('env-var'))",
+        "const node_path_1 = require('node:path')",
+        "const dotenv = __importStar(require('dotenv'))"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/plugins/event-emitir.js",
+      "lineas": 10,
+      "hash": "352e59d172d98fcae91a790e69526bf1",
+      "imports": [
+        "const events_1 = require(\"events\");"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/plugins/file.plugin.js",
+      "lineas": 143,
+      "hash": "374d8c434ac241566c17046282820693",
+      "imports": [
+        "const fs = __importStar(require('fs'))",
+        "const path = __importStar(require('path'))",
+        "const client_s3_1 = require('@aws-sdk/client-s3')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/plugins/index.js",
+      "lineas": 20,
+      "hash": "56db5844cfb083429f89d02a8a9da874",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/plugins/proxies-free.js",
+      "lineas": 87,
+      "hash": "79e16f4d1b452d63c57f509c720e7f87",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/plugins/puppeteer.plugin.js",
+      "lineas": 1066,
+      "hash": "4eece1efd9da05c7793bb32d94c78714",
+      "imports": [
+        "const puppeteer_extra_1 = __importDefault(require('puppeteer",
+        "const env_plugin_1 = require('./env.plugin')",
+        "const events_1 = __importDefault(require('events'))"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "utils/plugins/user-agent.js",
+      "lineas": 81,
+      "hash": "eb0b4661df2e256077a51ec173c4b222",
+      "imports": [],
+      "clases": []
+    },
+    {
+      "ruta": "utils/plugins/wait.js",
+      "lineas": 26,
+      "hash": "63df7171caa0f1f5eedc830dc48b1bc6",
+      "imports": [],
+      "clases": [
+        "function wait(ms) {"
+      ]
+    },
+    {
+      "ruta": "utils/queues/scraping-queue.js",
+      "lineas": 202,
+      "hash": "1892aa5e09056505aba55a0dac8e548e",
+      "imports": [
+        "const { Queue, Worker } = require('bullmq')",
+        "const IORedis = require('ioredis')",
+        "const logger = require('../logger')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "workers/cases-filter/index.js",
+      "lineas": 75,
+      "hash": "c66127d4b611cd6620ff6a38b675e5e1",
+      "imports": [
+        "const { mongooseconnet } = require('../../utils/mongoose-con",
+        "const { getRandomInt } = require('../../utils/random')",
+        "const Cases = require('../../models/Cases')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "workers/cases-updater/index.js",
+      "lineas": 164,
+      "hash": "c56c456f53ae96914428a545509967cc",
+      "imports": [
+        "const { mongooseconnet } = require('../../utils/mongoose-con",
+        "const { getRandomInt } = require('../../utils/random')",
+        "const Cases = require('../../models/Cases')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "workers/mail-sender/activity-reminder.js",
+      "lineas": 95,
+      "hash": "fb341a512990aff4ed9917b05e6fc8a0",
+      "imports": [
+        "const Activity = require('../../models/Activity')",
+        "const { activityReminder } = require('./templates/activity-r",
+        "const { config } = require('../../config/mail')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "workers/mail-sender/cases-updater.js",
+      "lineas": 368,
+      "hash": "db5c540f48c92c3faffee755577eed7e",
+      "imports": [
+        "const { mongooseconnet } = require('../../utils/mongoose-con",
+        "const mongoose = require('mongoose')",
+        "const Users = require('../../models/Users')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "workers/mail-sender/daily-scraps.js",
+      "lineas": 64,
+      "hash": "ed7399d5b7d0cb6ad98a172950f9b49a",
+      "imports": [
+        "const { DateTime } = require('luxon')",
+        "const { luxonDateTime } = require('../../utils/dateTime')",
+        "const scrapeDaily = require('../../utils/causes/daily-status"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "workers/mail-sender/templates/activity-reminder.tpl.js",
+      "lineas": 175,
+      "hash": "ce5e0e27732409f31a787d6473f28307",
+      "imports": [
+        "const { DateTime } = require('luxon')",
+        "const { luxonDateTime } = require('../../../utils/dateTime')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "workers/mail-sender/templates/add-new-cause.tpl.js",
+      "lineas": 152,
+      "hash": "0381940c230f63dad85b6873a4214645",
+      "imports": [
+        "const { DateTime } = require('luxon')",
+        "const { luxonDateTime } = require('../../../utils/dateTime')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "workers/mail-sender/templates/cases-updates.tpl.js",
+      "lineas": 82,
+      "hash": "96eed0e05b941e9c5a22557325d4b33b",
+      "imports": [
+        "const { DateTime } = require('luxon')",
+        "const { luxonDateTime } = require('../../../utils/dateTime')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "workers/mail-sender/templates/not-updates.tpl.js",
+      "lineas": 245,
+      "hash": "27d1d84d0c98ded063890c100fe914d4",
+      "imports": [
+        "const { DateTime } = require('luxon')",
+        "const { luxonDateTime } = require('../../../utils/dateTime')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "workers/mail-sender/templates/update-case.tpl.js",
+      "lineas": 227,
+      "hash": "d7ce64283d3f227bfbfe94e213a2c50a",
+      "imports": [
+        "const { DateTime } = require('luxon')",
+        "const { luxonDateTime } = require('../../../utils/dateTime')"
+      ],
+      "clases": []
+    },
+    {
+      "ruta": "workers/updater/index.js",
+      "lineas": 175,
+      "hash": "47f109cc123d7db4f138d39b814fa31f",
+      "imports": [
+        "const { mongooseconnet } = require('../../utils/mongoose-con",
+        "const { getRandomInt } = require('../../utils/random')",
+        "const Cases = require('../../models/Cases')"
+      ],
+      "clases": []
+    }
+  ]
+}
