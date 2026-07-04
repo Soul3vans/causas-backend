@@ -108,7 +108,7 @@ function startScrapingWorker(models) {
 
       const slot = await acquireInstance()   // ✅ espera/toma un navegador libre
       try {
-		  const result = await updateCaseIfNeeded(caseId, fullRol, searchParams, { Cases, Users })
+		  const result = await updateCaseIfNeeded(caseId, fullRol, searchParams, { Cases, Users }, slot.instance)
 
 		  // Mapear el resultado de updateCaseIfNeeded → ProcessStatus
 		  if (result.success) {

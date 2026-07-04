@@ -12,7 +12,7 @@ const { abstractSendMail } = require('./utils/mail')
 const { GraphQLUpload } = require('graphql-upload')
 
 // Importar desde scrapper.js
-const { scrapRawData, scrapMultipleCauses, scrapeAndUpdateCase, updateMultipleCases, closeScrapeInstance, getScrapeInstance, CaseNotFoundError } = require('./utils/scrapper')
+const { scrapRawData, scrapMultipleCauses, scrapeAndUpdateCase, updateMultipleCases, closeScrapeInstance, CaseNotFoundError } = require('./utils/scrapper')
 const { scrapRawDataAuth, keepSessionAlive, closeAuthScrapeInstance, isSessionAlive } = require('./utils/scrapper-auth')
 
 // Importar utilidades de comparación (NUEVO)
@@ -35,63 +35,6 @@ puppeteer.use(StealthPlugin())
 
 let globalScrape = null;
 let useAuthScraper = false; // Cambiar a true para usar modo autenticado
-
-/**
- * Inicializa la instancia global del navegador (se llama una sola vez al iniciar el servidor)
- * @returns {Promise<ScrapService>}
- */
-async function initGlobalScrape() {
-    // Si ya existe una instancia, reutilizarla
-    if (globalScrape) {
-        console.log('♻️ Reutilizando instancia existente del navegador');
-        
-        // Verificar que la página sigue abierta
-        try {
-            const page = globalScrape.getPage();
-            const url = await page.url();
-            console.log(`📍 URL actual de la instancia: ${url}`);
-            
-            // Si estamos en indexN.php y necesitamos home/index.php, navegar
-            if (url.includes('indexN.php')) {
-                console.log('🔄 Navegando a home/index.php para mantener sesión...');
-                await page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
-                    waitUntil: 'domcontentloaded',
-                    timeout: 60000
-                });
-                await page.evaluate(() => {
-                    localStorage.setItem('InitSitioOld', '0');
-                    localStorage.setItem('InitSitioNew', '1');
-                    localStorage.setItem('logged-in', 'true');
-                    localStorage.setItem('acceso-invitado', 'true');
-                    sessionStorage.setItem('logged-in', 'true');
-                    sessionStorage.setItem('acceso-invitado', 'true');
-                });
-                console.log('✅ Tokens restablecidos en home/index.php');
-            }
-        } catch (error) {
-            console.warn('⚠️ La instancia existente parece cerrada, creando nueva...');
-            // Si la página está cerrada, crear nueva
-            globalScrape = null;
-        }
-        
-        // Si globalScrape no es null, retornarla
-        if (globalScrape) {
-            return globalScrape;
-        }
-    }
-    
-    // Crear nueva instancia solo si no existe
-    console.log('🚀 Creando nueva instancia del navegador...');
-    logger.info('🚀 Inicializando navegador global (solo una vez)...');
-    
-    if (useAuthScraper) {
-        const { getAuthScrapeInstance } = require('./utils/scrapper-auth');
-        globalScrape = await getAuthScrapeInstance();
-    } else {
-        globalScrape = await getScrapeInstance();
-    }
-    return globalScrape;
-}
 
 const createToken = (user, secret, expiresIn) => {
   const { email, rol, name } = user
@@ -984,7 +927,9 @@ const resolvers = {
           };
         }
         
-        const scrapeInstance = await initGlobalScrape();
+        const { acquireInstance, releaseInstance } = require('./utils/scrape-pool');
+        const poolSlot = await acquireInstance();
+        const scrapeInstance = poolSlot.instance;
         
         let scrapData = null;
         try {
@@ -1010,7 +955,9 @@ const resolvers = {
           logger.info('✅ Scraper completado exitosamente');
         } catch (scraperError) {
           logger.error('⚠️ Error en scraper (continuando con causa vacía):', { error: scraperError.message });
+          releaseInstance(poolSlot);
         }
+        releaseInstance(poolSlot)
         
         const caseData = {
           ...(scrapData || {}),
@@ -1429,41 +1376,12 @@ const resolvers = {
           console.warn('⚠️ Error registrando en CasesLogs:', logError.message);
         }
         
-        // 7. INICIAR SCRAPER EN BACKGROUND (SIN await para no bloquear)
-        startScrapingProcess(
-          processId,
-          existingCase._id,
-          input,
-          { 
-            Cases, 
-            CasesUpdated, 
-            CasesReviews, 
-            CasesLogs,
-            ProcessStatus, 
-            Users, 
-            useAuthScraper, 
-            keepSessionAlive 
-          }
-        ).catch(async (fatalError) => {
-          // Red de seguridad: si algo se escapa del try/catch interno de
-          // startScrapingProcess, esto evita que tumbe el proceso de Node entero.
-          console.error(`💥 [Process ${processId}] Error FATAL no controlado:`, fatalError)
-          logger.error('Error fatal no controlado en startScrapingProcess', {
-            processId,
-            caseId: existingCase._id,
-            error: fatalError.message,
-            stack: fatalError.stack
-          })
-
-          try {
-            await ProcessStatus.findByIdAndUpdate(processId, {
-              status: 'error',
-              errorMessage: 'Error interno inesperado. Contacta al administrador.',
-              completedAt: new Date()
-            })
-          } catch (dbError) {
-            console.error('💥 No se pudo ni actualizar ProcessStatus tras el error fatal:', dbError)
-          }
+        // 7. ENCOLAR en el pool (mismo sistema que updateCasesBulk)
+        await enqueueCaseUpdate({
+          caseId: existingCase._id.toString(),
+          fullRol: existingCase.searchParams?.fullRol || existingCase.rol,
+          searchParams: existingCase.searchParams,
+          processId: processId.toString()
         })
         
         // 8. RESPONDER INMEDIATAMENTE
@@ -1825,12 +1743,15 @@ async function startScrapingProcess(processId, caseId, input, models) {
     console.log(`🔄 [Process ${processId}] Iniciando scraping en background...`)
     
     // 1. Obtener instancia del navegador
-    const scrapeInstance = await initGlobalScrape()
+    const { acquireInstance, releaseInstance } = require('./utils/scrape-pool')
+    const poolSlot = await acquireInstance()
+    const scrapeInstance = poolSlot.instance
     
     // 2. Obtener datos de la causa
     const existingCase = await Cases.findById(caseId)
     
     if (!existingCase) {
+      releaseInstance(poolSlot)
       await ProcessStatus.findByIdAndUpdate(processId, {
         status: 'error',
         errorMessage: 'Causa no encontrada',
@@ -2018,6 +1939,7 @@ async function startScrapingProcess(processId, caseId, input, models) {
     if (useAuthScraper && keepSessionAlive) {
       await keepSessionAlive()
     }
+    releaseInstance(poolSlot)
     
   } catch (error) {
     const isNotFound = (typeof CaseNotFoundError === 'function' && error instanceof CaseNotFoundError) || error?.name === 'CaseNotFoundError'   // ✅ fallback por nombre, no depende del import
@@ -2052,14 +1974,12 @@ async function startScrapingProcess(processId, caseId, input, models) {
       errorMessage: error.message || 'Error desconocido en el proceso',
       completedAt: new Date()
     })
+    releaseInstance(poolSlot)
   }
 }
 
 // ========== EXPORTAR ==========
 module.exports = resolvers
-
-// ========== INICIALIZACIÓN DEL NAVEGADOR GLOBAL ==========
-initGlobalScrape().catch(console.error);
 
 // Cerrar navegador cuando el proceso termina
 process.on('SIGINT', async () => {

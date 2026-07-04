@@ -57,6 +57,20 @@ async function acquireInstance() {
   while (true) {
     const free = pool.find(slot => !slot.busy)
     if (free) {
+      const alive = await isInstanceAlive(free)
+      if (!alive) {
+        console.log(`⚠️ Navegador #${free.id} del pool tiene página muerta, reiniciando...`)
+        try {
+          await free.instance.init()  // reinicializa la sesión
+          console.log(`✅ Navegador #${free.id} reiniciado`)
+        } catch (e) {
+          console.error(`❌ No se pudo reiniciar navegador #${free.id}:`, e.message)
+          // Si no puede reiniciar, lo marca busy para que no se use
+          free.busy = true
+          await new Promise(resolve => setTimeout(resolve, 500))
+          continue
+        }
+      }
       free.busy = true
       console.log(`🔓 Navegador #${free.id} del pool asignado`)
       return free
@@ -87,6 +101,16 @@ async function closeAllInstances() {
     }
   }
   pool = []
+}
+
+async function isInstanceAlive(slot) {
+  try {
+    const page = slot.instance.getPage()
+    await page.evaluate(() => true)  // ping rápido a la página
+    return true
+  } catch (error) {
+    return false
+  }
 }
 
 /**
