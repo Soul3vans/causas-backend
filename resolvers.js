@@ -1405,8 +1405,20 @@ const resolvers = {
       }
     },
     
-    updateCasesBulk: async (_, { caseIds, userId }, { Cases, ProcessStatus, ScrapingOverflow }) => {
+    updateCasesBulk: async (_, { caseIds }, { Cases, ProcessStatus, ScrapingOverflow, Users, currentUser }) => {
       console.log(`🔵 [${new Date().toISOString()}] updateCasesBulk llamado con caseIds:`, caseIds)
+      if (!currentUser) {
+        return {
+          messageBody: 'Debes iniciar sesión para actualizar causas',
+          messageType: 'is-danger',
+          messageImage: null,
+          queued: [],
+          rejected: []
+        }
+      }
+
+      const user = await gu(Users, currentUser)
+      const userId = user._id
       try {
         if (!caseIds || caseIds.length === 0) {
           return {

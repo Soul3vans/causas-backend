@@ -13,6 +13,10 @@ const proxyChain = require('proxy-chain')
 const { getProxies } = require('./proxies-free')
 const user_agent_1 = require('./user-agent')
 const StealthPlugin = require('puppeteer-extra-plugin-stealth')();
+StealthPlugin.enabledEvasions.delete('user-agent-override');
+const path = require('path');
+const os = require('os');
+const fs = require('fs');
 puppeteer_extra_1.default.use(StealthPlugin)
 
 class ScrapService extends events_1.default {
@@ -35,6 +39,11 @@ class ScrapService extends events_1.default {
    * Obtiene la ruta del ejecutable de Chrome/Chromium según el sistema operativo
    */
   getExecutablePath() {
+    // Dentro del contenedor: Chrome real instalado explícitamente
+    if (process.env.CHROME_EXECUTABLE_PATH) {
+      console.log(`🔧 Usando Chrome fijo: ${process.env.CHROME_EXECUTABLE_PATH}`);
+      return process.env.CHROME_EXECUTABLE_PATH;
+    }
     if (process.env.NODE_ENV === 'production') {
       console.log('🔧 Modo producción: usando Chromium de Puppeteer');
       return undefined;
@@ -128,24 +137,26 @@ class ScrapService extends events_1.default {
   }
 
   async init(url = 'https://oficinajudicialvirtual.pjud.cl/home/index.php', skipAuth = true) {
-    const customUA = (0, user_agent_1.generateRandomUA)()
+    // const customUA = (0, user_agent_1.generateRandomUA)()
     const isHeadless = process.env.NODE_ENV === 'production' || env_plugin_1.envs.BROWSER_HEADLESS === true ? 'new' : false;
     
     // === ROTACIÓN DE PROXY AL INICIAR ===
     //const proxyServer = await this.rotateProxy();
     const proxyServer = null;
 
+    const PROFILE_DIR = process.env.CHROME_PROFILE_DIR || 
+      path.join(os.homedir(), '.causas-chrome-profile');
+
     const launchOptions = {
       headless: isHeadless,
+      userDataDir: PROFILE_DIR,
       defaultViewport: null,
       slowMo: process.env.NODE_ENV === 'production' ? 0 : 100,
+      ignoreDefaultArgs: ['--enable-automation'],
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-web-security',
-        '--disable-features=IsolateOrigins,site-per-process',
         '--disable-blink-features=AutomationControlled',
         '--disable-features=BlockInsecurePrivateNetworkRequests',
         '--disable-sync',
@@ -165,7 +176,6 @@ class ScrapService extends events_1.default {
         '--disable-sync-types',
         '--disable-translate',
         '--disable-voice-input',
-        '--disable-webgl',
         '--hide-scrollbars',
         '--ignore-certificate-errors',
         '--mute-audio',
@@ -195,52 +205,52 @@ class ScrapService extends events_1.default {
     this.page = await this.browser.newPage();
 
     // Evitar detección de Puppeteer
-    await this.page.evaluateOnNewDocument(() => {
+    // await this.page.evaluateOnNewDocument(() => {
       // Ocultar webdriver
-      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+    //  Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
       
       // Ocultar plugins
-      const originalPlugins = navigator.plugins;
-      Object.defineProperty(navigator, 'plugins', {
-        get: () => {
-          if (originalPlugins.length === 0) {
-            return [1, 2, 3, 4, 5];
-          }
-          return originalPlugins;
-        }
-      });
-      
+    //  const originalPlugins = navigator.plugins;
+    //  Object.defineProperty(navigator, 'plugins', {
+    //    get: () => {
+    //      if (originalPlugins.length === 0) {
+    //        return [1, 2, 3, 4, 5];
+    //      }
+    //      return originalPlugins;
+    //    }
+    //  });
+    
       // Ocultar lenguajes
-      Object.defineProperty(navigator, 'languages', { get: () => ['es-CL', 'es', 'en'] });
+    //  Object.defineProperty(navigator, 'languages', { get: () => ['es-CL', 'es', 'en'] });
       
       // Ocultar Chrome específico
-      delete navigator.__proto__.webdriver;
+    //  delete navigator.__proto__.webdriver;
       
       // Ocultar propiedades de Puppeteer
-      if (window.chrome) {
-        window.chrome.runtime = {};
-      }
+    //  if (window.chrome) {
+    //    window.chrome.runtime = {};
+    //  }
       
       // Modificar permisos
-      const originalQuery = window.navigator.permissions.query;
-      window.navigator.permissions.query = (parameters) => (
-        parameters.name === 'notifications' ?
-          Promise.resolve({ state: Notification.permission }) :
-          originalQuery(parameters)
-      );
-    });
+    //  const originalQuery = window.navigator.permissions.query;
+    //  window.navigator.permissions.query = (parameters) => (
+    //    parameters.name === 'notifications' ?
+    //      Promise.resolve({ state: Notification.permission }) :
+    //      originalQuery(parameters)
+    //  );
+    //});
 
     // Configurar headers
-    await this.page.setExtraHTTPHeaders({
-      'user-agent': `${customUA}`,
-      'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
-      'accept-encoding': 'gzip, deflate, br',
-      'accept-language': 'es-CL,es;q=0.9,en;q=0.8'
-    })
+    //await this.page.setExtraHTTPHeaders({
+    //  'user-agent': `${customUA}`,
+    //  'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
+    //  'accept-encoding': 'gzip, deflate, br',
+    //  'accept-language': 'es-CL,es;q=0.9,en;q=0.8'
+    // }) 
 
-    await this.page.evaluateOnNewDocument(() => {
-      Object.defineProperty(navigator, 'webdriver', { get: () => false })
-    })
+    // await this.page.evaluateOnNewDocument(() => {
+    //  Object.defineProperty(navigator, 'webdriver', { get: () => false })
+    // })
 
     if (skipAuth) {
       console.log('🔓 Accediendo como invitado a consulta de causas...')
@@ -251,7 +261,7 @@ class ScrapService extends events_1.default {
       })
       // Esperar a que la página cargue completamente
       console.log('⏳ Esperando 10 segundos para que cargue la página...');
-      await this.timeout(10000);
+      await this.timeout(15000);
       
       await this.page.evaluate(() => {
         localStorage.setItem('InitSitioOld', '0');

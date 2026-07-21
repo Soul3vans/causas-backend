@@ -78,9 +78,117 @@ class UnifiedQuery {
             
             // Caso 2: Estamos en home/index.php
             if (currentUrl.includes('home/index.php') || this.page.url().includes('home/index.php')) {
-            console.log('🔍 En página de inicio, haciendo clic en "Consulta causas"...');
             
-            // Esperar a que el botón esté presente
+            // Cerrar cualquier modal de "AVISO" que bloquee la interacción
+            console.log('🔍 Verificando si hay modal de aviso bloqueando la página...');
+            try {
+                const modalClosed = await this.page.evaluate(() => {
+                    const modal = document.querySelector('.modal.in') || document.querySelector('.modal.show');
+                    if (!modal) return false;
+
+                    // Cierre manual del modal, sin depender de $.fn.modal
+                    // (replica exactamente lo que Bootstrap haría, pero de forma directa)
+                    modal.classList.remove('in', 'show');
+                    modal.style.display = 'none';
+                    modal.setAttribute('aria-hidden', 'true');
+
+                    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                    document.body.classList.remove('modal-open');
+                    document.body.style.paddingRight = '';
+                    document.body.style.overflow = '';
+
+                    return true;
+                });
+
+                if (modalClosed) {
+                    console.log('✅ Modal cerrado manualmente (DOM directo, sin depender de jQuery/Bootstrap)');
+                    await this.timeout(500);
+                } else {
+                    console.log('ℹ️ No se detectó modal de aviso');
+                }
+                } catch (modalError) {
+                    console.log('⚠️ Error al intentar cerrar modal:', modalError.message);
+                }
+
+                // 🔑 Priming: clic en "Clave Única" + volver a home,
+                // replica el mismo patrón que desbloquea los botones a mano
+                // (interacción real + navegación completa antes de intentar invitado)
+                console.log('🔑 Priming: clic en "Clave Única" para renovar el ciclo del sensor...');
+                const claveUnicaClicked = await this.page.evaluate(() => {
+                    const link = document.querySelector('a[onclick*="AutenticaCUnica"]');
+                    if (link) {
+                        link.click();
+                        return true;
+                    }
+                    return false;
+                });
+
+                if (claveUnicaClicked) {
+                    console.log('✅ Clic en Clave Única realizado, esperando DOM...');
+                    await this.timeout(3000);
+
+                    console.log('↩️ Volviendo a home/index.php para reintentar...');
+                    await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
+                        waitUntil: 'domcontentloaded',
+                        timeout: 60000
+                    });
+                    await this.timeout(2000);
+                } else {
+                    console.log('⚠️ No se encontró el enlace de Clave Única, se continúa sin priming.');
+                }
+            
+                // Esperar a que el botón esté presente
+                console.log('🔍 En página de inicio, haciendo clic en "Consulta causas"...');
+
+                const debugInfo = await this.page.evaluate(() => {
+                const primary = document.querySelector('button.dropbtn[onclick*="accesoConsultaCausas"]');
+                const buttons = Array.from(document.querySelectorAll('button.dropbtn'));
+                const matches = buttons
+                    .filter(b => b.textContent.includes('Consulta causas'))
+                    .map(b => ({ text: b.textContent.trim(), onclick: b.getAttribute('onclick') }));
+                
+                return {
+                    primarySelectorExists: !!primary,
+                    primaryOnclick: primary ? primary.getAttribute('onclick') : null,
+                    totalDropbtnButtons: buttons.length,
+                    matchesConsultaCausas: matches
+                };
+            });
+            console.log('🔍 DEBUG selector Consulta Causas:', JSON.stringify(debugInfo, null, 2));
+
+            // Escuchar la respuesta real del POST que dispara accesoConsultaCausas()
+            // Capturar errores de JavaScript no controlados en la página
+            this.page.on('pageerror', (error) => {
+                console.log('🔴 [PAGE ERROR] Excepción JS no controlada en la página:', error.message);
+            });
+
+            // Capturar todos los console.log/error que la propia página emita
+            // this.page.on('console', (msg) => {
+            //    console.log(`🟡 [PAGE CONSOLE ${msg.type()}]:`, msg.text());
+            //});
+
+            // Capturar la petición saliente
+            this.page.on('request', (request) => {
+                if (request.url().includes('sesion-invitado.php')) {
+                    console.log('📤 [REQUEST] Petición saliente a sesion-invitado.php:', request.method(), request.postData());
+                }
+            });
+
+            // Escuchar la respuesta real del POST que dispara accesoConsultaCausas()
+            this.page.on('response', async (response) => {
+                if (response.url().includes('sesion-invitado.php')) {
+                    try {
+                        const status = response.status();
+                        const body = await response.text();
+                        console.log(`🌐 [RESPONSE] sesion-invitado.php — status: ${status}`);
+                        console.log(`🌐 [RESPONSE] Body: ${body.substring(0, 500)}`);
+                    } catch (e) {
+                        console.log('⚠️ No se pudo leer respuesta de sesion-invitado.php:', e.message);
+                    }
+                }
+            });
+
+
             await this.page.waitForSelector('button.dropbtn[onclick*="accesoConsultaCausas"]', { timeout: 3000 });
             
             // Hacer clic en el botón "Consulta causas"
@@ -97,7 +205,21 @@ class UnifiedQuery {
             
             // Esperar la redirección a indexN.php
             console.log('⏳ Esperando redirección a indexN.php...');
-            await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 });
+            try {
+                await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 });
+            } catch (navError) {
+                const stuckUrl = this.page.url();
+                console.log(`⚠️ Timeout esperando navegación. URL actual real: ${stuckUrl}`);
+                try {
+                    const fs = require('fs');
+                    const screenshotPath = `/tmp/debug-timeout-${Date.now()}.png`;
+                    await this.page.screenshot({ path: screenshotPath, fullPage: true });
+                    console.log(`📸 Captura guardada en: ${screenshotPath}`);
+                } catch (ssError) {
+                    console.log('⚠️ No se pudo guardar captura:', ssError.message);
+                }
+                throw navError;
+            }
             await this.timeout(3000);
             }
             
@@ -127,24 +249,63 @@ class UnifiedQuery {
                 const MAX_ATTEMPTS = 120; // 120 intentos x 1s = 2 minutos máximo
 
                 while (!recaptchaResolved && attempts < MAX_ATTEMPTS) {
-                    await this.timeout(1000); // 1 segundo entre chequeos, no 10s de una
-
-                    recaptchaResolved = await this.page.evaluate(() => {
-                        const competenciaSelect = document.querySelector('select#competencia');
-                        return competenciaSelect !== null;
-                    }).catch(() => false); // si la página navegó/recargó a mitad del check, no explota
-
+                    await this.timeout(1000);
                     attempts++;
 
+                    const urlNow = this.page.url();
+
+                    if (urlNow.includes('indexN.php')) {
+                        // Caso normal: seguimos en indexN.php, chequear si ya está el formulario
+                        recaptchaResolved = await this.page.evaluate(() => {
+                            return document.querySelector('select#competencia') !== null;
+                        }).catch(() => false);
+
+                    } else if (urlNow.includes('home/index.php')) {
+                        // ✅ Caso real que estabas viviendo: PJUD te devolvió al home
+                        // tras resolver el CAPTCHA. Hay que volver a hacer clic en
+                        // "Consulta causas" para regresar a indexN.php.
+                        console.log('🔁 CAPTCHA resuelto, PJUD redirigió a home/index.php. Reintentando navegación...');
+                        // ⏳ Pausa humana antes de actuar — nadie hace clic en 0ms tras resolver un CAPTCHA
+                        const humanDelay = 2000 + Math.floor(Math.random() * 3000); // entre 2s y 5s
+                        console.log(`⏳ Esperando ${humanDelay}ms antes de reintentar (comportamiento humano)...`);
+                        await this.timeout(humanDelay);
+
+                        try {
+                            await this.page.waitForSelector('button.dropbtn[onclick*="accesoConsultaCausas"]', { timeout: 3000 });
+                            await this.page.evaluate(() => {
+                                const btn = document.querySelector('button.dropbtn[onclick*="accesoConsultaCausas"]');
+                                if (btn) {
+                                    btn.click();
+                                } else {
+                                    const buttons = Array.from(document.querySelectorAll('button.dropbtn'));
+                                    const consultaBtn = buttons.find(b => b.textContent.includes('Consulta causas'));
+                                    if (consultaBtn) consultaBtn.click();
+                                }
+                            });
+                            await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+                            await this.timeout(2000);
+
+                            const urlAfter = this.page.url();
+                            if (urlAfter.includes('indexN.php')) {
+                                recaptchaResolved = await this.page.evaluate(() => {
+                                    return document.querySelector('select#competencia') !== null;
+                                }).catch(() => false);
+                            }
+                        } catch (retryError) {
+                            console.log('⚠️ Reintento de navegación tras CAPTCHA falló, se sigue esperando...', retryError.message);
+                        }
+                    }
+                    // Si no es ninguna de las dos (ej. sigue en la página del propio CAPTCHA),
+                    // simplemente se sigue esperando al siguiente ciclo.
+
                     if (attempts % 10 === 0) {
-                        console.log(`⏳ Aún esperando reCAPTCHA... (${attempts}s)`);
+                        console.log(`⏳ Aún esperando reCAPTCHA... (${attempts}s) — URL actual: ${urlNow}`);
                     }
                 }
 
                 if (recaptchaResolved) {
                     console.log(`✅ reCAPTCHA resuelto después de ${attempts}s, continuando...`);
                 } else {
-                    // ❌ No "continuar de todos modos": eso es lo que causaba los crashes
                     throw new Error(
                         `reCAPTCHA no resuelto después de ${MAX_ATTEMPTS}s de espera. ` +
                         `El proceso se marcará como error en vez de continuar a ciegas.`

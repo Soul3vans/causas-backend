@@ -116,10 +116,22 @@ app.use(morgan('combined', {
 }))
 logger.info('📝 Morgan HTTP logging configurado con Winston')
 
-const corsOptions = {
-  credentials: true,
-  origin: process.env.CORS_ORIGIN_URI || '*'
-}
+const allowedOrigins = (process.env.CORS_ORIGIN_URI || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Permite requests sin origin (Postman, curl, apps móviles)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error(`Origen no permitido por CORS: ${origin}`));
+  },
+  credentials: true
+}));
 
 if (process.env.NODE_ENV === 'production') {
   app.disable('x-powered-by')
@@ -175,7 +187,7 @@ async function startServer() {
     logger.info('✅ Apollo Server iniciado')
     console.log('✅ Apollo Server iniciado')
 
-    server.applyMiddleware({ app, cors: corsOptions })
+    server.applyMiddleware({ app, cors: { origin: allowedOrigins, credentials: true }  })
     logger.info('✅ Middleware de Apollo aplicado')
     console.log('✅ Middleware de Apollo aplicado')
 
