@@ -479,14 +479,26 @@ const resolvers = {
       })
       return activities
     },
-    getProcessStatus: async (_, { processId }, { ProcessStatus }) => {
+    getProcessStatus: async (_, { processId }, { ProcessStatus, Users, currentUser }) => {
       try {
+		if (!currentUser) {
+          throw new AuthenticationError('Debes iniciar sesión')
+        }
+        
         const status = await ProcessStatus.findById(processId)
         
         if (!status) {
           return null
         }
         
+        const user = await gu(Users, currentUser)
+        const isOwner = status.userId?.toString() === user?._id?.toString()
+        const isAdmin = user?.role === /* valor a confirmar */ 0
+ 
+        if (!isOwner && !isAdmin) {
+          throw new AuthenticationError('No tienes permiso para ver este proceso')
+        }
+
         return {
           _id: status._id,
           caseId: status.caseId,

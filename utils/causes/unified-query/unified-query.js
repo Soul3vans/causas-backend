@@ -34,7 +34,7 @@ class UnifiedQuery {
         
         this.rit = filters.rol;
         console.log("✅ UnifiedQuery: Usando navegador ya inicializado");
-        await (0, wait_1.wait)(1000);
+        await this.timeout(1000 + Math.floor(Math.random() * 2000));
         await this.goUnifiedQuery();
         await this.applyFilter(filters);
         
@@ -72,7 +72,7 @@ class UnifiedQuery {
                         waitUntil: 'domcontentloaded',
                         timeout: 30000
                     });
-                    await this.timeout(5000);
+                    await this.timeout(3000 + Math.floor(Math.random() * 3000));
                 }
             }
             
@@ -125,14 +125,14 @@ class UnifiedQuery {
 
                 if (claveUnicaClicked) {
                     console.log('✅ Clic en Clave Única realizado, esperando DOM...');
-                    await this.timeout(3000);
+                    await this.timeout(2000 + Math.floor(Math.random() * 2000));
 
                     console.log('↩️ Volviendo a home/index.php para reintentar...');
                     await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
                         waitUntil: 'domcontentloaded',
                         timeout: 60000
                     });
-                    await this.timeout(2000);
+                    await this.timeout(1500 + Math.floor(Math.random() * 2000));
                 } else {
                     console.log('⚠️ No se encontró el enlace de Clave Única, se continúa sin priming.');
                 }
@@ -220,7 +220,7 @@ class UnifiedQuery {
                 }
                 throw navError;
             }
-            await this.timeout(3000);
+            await this.timeout(2000 + Math.floor(Math.random() * 2000));
             }
             
             // Verificar que estamos en indexN.php
@@ -283,7 +283,7 @@ class UnifiedQuery {
                                 }
                             });
                             await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
-                            await this.timeout(2000);
+                            await this.timeout(1500 + Math.floor(Math.random() * 2000));
 
                             const urlAfter = this.page.url();
                             if (urlAfter.includes('indexN.php')) {
@@ -384,25 +384,25 @@ class UnifiedQuery {
             // Seleccionar competencia
             await this.page.select("select#competencia", competenciaValue);
             console.log(`✅ Competencia seleccionada: ${competenciaValue}`);
-            await (0, wait_1.wait)(500);
+            await this.timeout(600 + Math.floor(Math.random() * 1000));
             
             // Seleccionar corte
             await this.page.click("select#conCorte", { delay: 500 });
             await this.page.select("select#conCorte", corteValue.toString());
             console.log(`✅ Corte seleccionada: ${corteValue}`);
-            await (0, wait_1.wait)(500);
+            await this.timeout(600 + Math.floor(Math.random() * 1000));
             
             // Seleccionar tribunal
             await this.page.click("select#conTribunal", { delay: 500 });
             await this.page.select("select#conTribunal", tribuneValue.toString());
             console.log(`✅ Tribunal seleccionado: ${tribuneValue}`);
-            await (0, wait_1.wait)(500);
+            await this.timeout(600 + Math.floor(Math.random() * 1000));
             
             // Seleccionar libro/tipo
             const [type, ...paramsRol] = rol.split("-");
             await this.page.select("select#conTipoCausa", type);
             console.log(`✅ Libro/Tipo seleccionado: ${type}`);
-            await (0, wait_1.wait)(500);
+            await this.timeout(600 + Math.floor(Math.random() * 1000));
             
             // Llenar rol y año
             const roleNumber = paramsRol[0];
@@ -435,7 +435,7 @@ class UnifiedQuery {
     }
 
     async extractAnchors() {
-        await this.scrape.waitForSelector("tbody#verDetalle", 500);
+        await this.scrape.waitForSelector("tbody#verDetalle", 500 + Math.floor(Math.random() * 500));
         
         const text = "No se han encontrado resultados";
         const empty = await this.page.evaluate((text) => {
@@ -486,7 +486,7 @@ class UnifiedQuery {
             await this.scrape.waitForSelector("#modalDetalleCivil", 500, true);
             
             const { book, ...causeDetails } = await this.extractCauseDetails();
-            await (0, wait_1.wait)(500);
+            await this.timeout(400 + Math.floor(Math.random() * 600));
             
             console.log("📖 Datos generales de la causa:");
             console.table(causeDetails);
@@ -672,7 +672,7 @@ class UnifiedQuery {
     async extractLitigants() {
         try {
             await this.page.click('a[href="#litigantesCiv"]');
-            await (0, wait_1.wait)(500);
+            await this.timeout(400 + Math.floor(Math.random() * 600));
             
             const litigants = await this.page.evaluate(() => {
                 const rows = Array.from(document.querySelectorAll("div#litigantesCiv table > tbody > tr") || []);

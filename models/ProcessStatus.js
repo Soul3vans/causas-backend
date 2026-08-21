@@ -14,7 +14,7 @@ const processStatusSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['processing', 'completed', 'error', 'not_found'],
+    enum: ['QUEUED', 'PROCESSING', 'COMPLETED', 'COMPLETED_NOT_FOUND', 'REQUEUED', 'ERROR'],
     default: 'processing'
   },
   startedAt: {

@@ -15,6 +15,7 @@ const user_agent_1 = require('./user-agent')
 const StealthPlugin = require('puppeteer-extra-plugin-stealth')();
 StealthPlugin.enabledEvasions.delete('user-agent-override');
 const path = require('path');
+const { buildLaunchOptions } = require('./chrome-launch-options')
 const os = require('os');
 const fs = require('fs');
 puppeteer_extra_1.default.use(StealthPlugin)
@@ -38,71 +39,14 @@ class ScrapService extends events_1.default {
   /**
    * Obtiene la ruta del ejecutable de Chrome/Chromium según el sistema operativo
    */
-  getExecutablePath() {
-    // Dentro del contenedor: Chrome real instalado explícitamente
-    if (process.env.CHROME_EXECUTABLE_PATH) {
-      console.log(`🔧 Usando Chrome fijo: ${process.env.CHROME_EXECUTABLE_PATH}`);
-      return process.env.CHROME_EXECUTABLE_PATH;
-    }
-    if (process.env.NODE_ENV === 'production') {
-      console.log('🔧 Modo producción: usando Chromium de Puppeteer');
-      return undefined;
-    }
-    
-    const platform = process.platform;
-    
-    if (platform === 'win32') {
-      const possiblePaths = [
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Users\\' + process.env.USERNAME + '\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe'
-      ];
-      
-      for (const path of possiblePaths) {
-        const fs = require('fs');
-        if (fs.existsSync(path)) {
-          console.log(`🔧 Modo desarrollo (Windows): usando Chrome en ${path}`);
-          return path;
-        }
-      }
-      
-      console.warn('⚠️ No se encontró Chrome en Windows, usando Chromium de Puppeteer');
-      return undefined;
-    }
-    
-    if (platform === 'linux') {
-      const { execSync } = require('child_process');
-      const possibleCommands = ['google-chrome', 'google-chrome-stable', 'chromium-browser', 'chromium'];
-      
-      for (const cmd of possibleCommands) {
-        try {
-          const path = execSync(`which ${cmd}`, { stdio: 'pipe' }).toString().trim();
-          if (path && path.length > 0) {
-            console.log(`🔧 Modo desarrollo (Linux): usando ${cmd} en ${path}`);
-            return path;
-          }
-        } catch (e) {}
-      }
-      
-      console.warn('⚠️ No se encontró Chrome/Chromium en Linux, usando Chromium de Puppeteer');
-      return undefined;
-    }
-    
-    if (platform === 'darwin') {
-      const macPath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-      const fs = require('fs');
-      if (fs.existsSync(macPath)) {
-        console.log(`🔧 Modo desarrollo (macOS): usando Chrome en ${macPath}`);
-        return macPath;
-      }
-      
-      console.warn('⚠️ No se encontró Chrome en macOS, usando Chromium de Puppeteer');
-      return undefined;
-    }
-    
-    console.log(`🔧 Plataforma no reconocida (${platform}), usando Chromium de Puppeteer`);
-    return undefined;
-  }
+  // getExecutablePath() eliminado de aquí — ahora vive en
+   // chrome-launch-options.js. Se mantiene como método de instancia
+   // solo por compatibilidad si algo externo lo llamaba directamente
+   // (no encontré ningún caller fuera de esta clase, pero lo dejo
+   // como wrapper delgado por seguridad):
+   getExecutablePath() {
+     return require('./chrome-launch-options').getExecutablePath()
+   }
 
   /**
    * Rotar proxy - selecciona un nuevo proxy de la lista
@@ -138,7 +82,14 @@ class ScrapService extends events_1.default {
 
   async init(url = 'https://oficinajudicialvirtual.pjud.cl/home/index.php', skipAuth = true) {
     // const customUA = (0, user_agent_1.generateRandomUA)()
+    // Si SCRAPER_DEBUG=1, forzar headless: false para ver el navegador vía VNC
+    const isDebugMode = process.env.SCRAPER_DEBUG === '1' || process.env.SCRAPER_DEBUG === 'true';
     const isHeadless = process.env.NODE_ENV === 'production' || env_plugin_1.envs.BROWSER_HEADLESS === true ? 'new' : false;
+
+    if (isDebugMode) {
+      console.log(`🔍 MODO OBSERVACIÓN activo (DISPLAY=${process.env.DISPLAY || 'no definido'})`);
+      console.log('👁️  El navegador será visible vía VNC en http://localhost:6080/vnc.html');
+    }
     
     // === ROTACIÓN DE PROXY AL INICIAR ===
     //const proxyServer = await this.rotateProxy();
@@ -147,51 +98,7 @@ class ScrapService extends events_1.default {
     const PROFILE_DIR = process.env.CHROME_PROFILE_DIR || 
       path.join(os.homedir(), '.causas-chrome-profile');
 
-    const launchOptions = {
-      headless: isHeadless,
-      userDataDir: PROFILE_DIR,
-      defaultViewport: null,
-      slowMo: process.env.NODE_ENV === 'production' ? 0 : 100,
-      ignoreDefaultArgs: ['--enable-automation'],
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-blink-features=AutomationControlled',
-        '--disable-features=BlockInsecurePrivateNetworkRequests',
-        '--disable-sync',
-        '--disable-default-apps',
-        '--disable-extensions',
-        '--disable-component-extensions-with-background-pages',
-        '--disable-breakpad',
-        '--disable-client-side-phishing-detection',
-        '--disable-crash-reporter',
-        '--disable-hang-monitor',
-        '--disable-prompt-on-repost',
-        '--disable-popup-blocking',
-        '--disable-print-preview',
-        '--disable-save-password-bubble',
-        '--disable-search-geolocation-disclosure',
-        '--disable-speech-api',
-        '--disable-sync-types',
-        '--disable-translate',
-        '--disable-voice-input',
-        '--hide-scrollbars',
-        '--ignore-certificate-errors',
-        '--mute-audio',
-        '--no-default-browser-check',
-        '--no-first-run'
-      ]
-    };
-
-    if (proxyServer) {
-      launchOptions.args.push(`--proxy-server=${proxyServer}`);
-    }
-    
-    const executablePath = this.getExecutablePath();
-    if (executablePath) {
-      launchOptions.executablePath = executablePath;
-    }
+	const launchOptions = buildLaunchOptions({ headless: isHeadless, proxyServer });
     
     console.log('🚀 Lanzando navegador con opciones:', {
       headless: launchOptions.headless,
@@ -260,8 +167,8 @@ class ScrapService extends events_1.default {
         timeout: 180000
       })
       // Esperar a que la página cargue completamente
-      console.log('⏳ Esperando 10 segundos para que cargue la página...');
-      await this.timeout(15000);
+      console.log('⏳ Esperando 5 segundos para que cargue la página...');
+      await this.timeout(5000);
       
       await this.page.evaluate(() => {
         localStorage.setItem('InitSitioOld', '0');
@@ -280,12 +187,6 @@ class ScrapService extends events_1.default {
         };
       });
       console.log('✅ Tokens establecidos:', tokens)
-      /*
-      await this.page.goto('https://oficinajudicialvirtual.pjud.cl/indexN.php', {
-        waitUntil: 'domcontentloaded', // Si eso no funciona usar waitUntil: 'networkidle2',
-        timeout: 60000
-      })
-      */
 
        // Esperar adicional
       await this.timeout(5000);
@@ -367,10 +268,10 @@ class ScrapService extends events_1.default {
     
     // PASO 4: Escribir RUT y contraseña automáticamente
     console.log('📝 Escribiendo RUT y contraseña...');
-    await this.page?.type('input#uname', env_plugin_1.envs.RUT, { delay: 100 })
-    await this.timeout(500)
-    await this.page?.type('input[type="password"]', env_plugin_1.envs.PASS, { delay: 100 })
-    await this.timeout(500)
+    await this.page?.type('input#uname', env_plugin_1.envs.RUT, { delay: 100 + Math.random() * 50 })
+    await this.randomDelay(500, 1500);
+    await this.page?.type('input[type="password"]', env_plugin_1.envs.PASS, { delay: 100 + Math.random() * 50 })
+    await this.randomDelay(800, 2000);
     
     // PASO 5: Hacer clic en el botón de ingresar
     console.log('🔘 Haciendo clic en el botón de ingresar...');
@@ -569,27 +470,80 @@ async getRecaptchaTokens() {
     }
   }
 
-  async clickElement(selector, delay = 1000, otherPage) {
+  async clickElement(selector, delay = null, otherPage) {
     await (otherPage || this.page)?.waitForSelector(selector, { timeout: 0 })
     await (otherPage || this.page)?.click(selector)
-    await this.timeout(delay)
+    // Delay aleatorio si no se especifica uno fijo
+    if (delay === null) {
+      await this.randomDelay(600, 2000);
+    } else {
+      await this.timeout(delay);
+    }
   }
 
-  async waitForSelector(selector, delay = 1000, visible = true, otherPage) {
+  async waitForSelector(selector, delay = null, visible = true, otherPage) {
     await (otherPage || this.page)?.waitForSelector(selector, {
       timeout: 0,
       visible
     })
-    await this.timeout(delay)
+    // Delay aleatorio si no se especifica
+    if (delay === null) {
+      await this.randomDelay(600, 2000);
+    } else {
+      await this.timeout(delay);
+    }
   }
 
-  async execute(script, delay = 4000) {
+  async execute(script, delay = null) {
     await this.page?.evaluate(script => eval(script), script)
-    await this.timeout(delay)
+    // Delay aleatorio si no se especifica
+    if (delay === null) {
+      await this.randomDelay(1000, 3000);
+    } else {
+      await this.timeout(delay);
+    }
   }
 
   timeout(ms) {
     return new Promise(resolve => setTimeout(resolve, ms))
+  }
+
+  // === NUEVA FUNCIÓN: Delay aleatorio anti-detección ===
+  async randomDelay(min = 600, max = 3000) {
+    const delays = [600, 800, 1000, 1200, 1400, 1600, 2000, 3000];
+    const randomDelay = delays[Math.floor(Math.random() * delays.length)];
+    await this.timeout(randomDelay);
+  }
+
+  // === NUEVO: Movimiento de mouse aleatorio ===
+  async randomMouseMove() {
+    const page = this.page;
+    const width = 1920;
+    const height = 1080;
+    
+    // Mover el mouse a una posición aleatoria
+    const randomX = Math.floor(Math.random() * width);
+    const randomY = Math.floor(Math.random() * height);
+    
+    await page.mouse.move(randomX, randomY);
+    await this.randomDelay(100, 500);
+  }
+
+  // === NUEVO: Scroll aleatorio ===
+  async randomScroll() {
+    const page = this.page;
+    const scrollAmount = Math.floor(Math.random() * 200) + 50;
+    
+    await page.evaluate((amount) => {
+      window.scrollBy(0, amount);
+    }, scrollAmount);
+    
+    await this.randomDelay(200, 800);
+    
+    // Scroll de vuelta
+    await page.evaluate((amount) => {
+      window.scrollBy(0, -amount);
+    }, scrollAmount);
   }
 
   // ========== KEEP-ALIVE ==========
@@ -621,7 +575,7 @@ async getRecaptchaTokens() {
             timeout: 30000
           });
           
-          await this.timeout(3000);
+          await this.randomDelay(3000, 4000);
           
           await this.page.evaluate(() => {
             localStorage.setItem('InitSitioOld', '0');
@@ -770,7 +724,7 @@ async clearForm() {
     console.log('🧹 Limpiando formulario de búsqueda...');
     
     // Esperar a que el botón exista
-    await this.page.waitForSelector('#btnConLimpiar', { timeout: 10000 });
+    await this.page.waitForSelector('#btnConLimpiar', { timeout: 6000 });
     
     // Hacer clic en el botón Limpiar
     await this.page.click('#btnConLimpiar');

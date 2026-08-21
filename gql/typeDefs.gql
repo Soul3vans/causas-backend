@@ -329,6 +329,19 @@ type CasesPage {
   hasMore: Boolean!
 }
 
+# ========== SCRAPER MODE CONFIG (admin/superuser) ==========
+
+enum ScraperMode {
+  AUTH
+  GUEST
+}
+
+type ScraperConfigResult {
+  mode: ScraperMode!
+  updatedBy: ID
+  updatedAt: String
+}
+
 # ========== INPUTS EXISTENTES ==========
 
 input UsersInput {
@@ -453,6 +466,8 @@ type Query {
   getActivitiesByDate(days: Int!): [Activity]!
 
   getProcessStatus(processId: ID!): ProcessStatus
+  # Solo admin/superuser (role: 0) — mismo criterio ya usado en el resto del sistema
+  getScraperMode: ScraperMode!
 }
 
 # ========== MUTATION ==========
@@ -490,4 +505,7 @@ type Mutation {
   updateMultipleCases(cases: [UpdateMultipleCaseInput!]!): UpdateMultipleCasesResponse!
   
   scrapeMultipleNewCases(causes: [NewCauseBatchInput!]!, createdBy: ID!): ScrapeMultipleNewCasesResponse!
+  # Solo admin/superuser (role: 0)
+  setScraperMode(mode: ScraperMode!): ScraperConfigResult!
+  
 }

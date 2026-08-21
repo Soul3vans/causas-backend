@@ -50,7 +50,8 @@ const ProcessStatus = require('./models/ProcessStatus')
   }
 })()
 
-startScrapingWorker({ Cases, Users, ProcessStatus, ScrapingOverflow })
+await scrapePool.initialize({ Cases, Users, ProcessStatus, ScrapingOverflow })
+startScrapingWorker({ ScrapingOverflow }) // ya no necesita Cases/Users, scrape-pool los tiene
 
 const getUser = async token => {
   if (token) {
@@ -84,8 +85,8 @@ process.on('unhandledRejection', (reason, promise) => {
 async function gracefulShutdown(signal) {
   logger.info(`📍 Señal ${signal} recibida, cerrando navegador del scraper...`)
   try {
-    const { closeScrapeInstance } = require('./utils/scrapper')
-    await closeScrapeInstance()
+    const scrapePool = require('./utils/scrape-pool')
+    await scrapePool.closeAllInstances()
   } catch (e) {
     console.error('Error cerrando navegador en shutdown:', e.message)
   }

@@ -16,11 +16,16 @@ echo "🛑 Deteniendo contenedor anterior (si existe)..."
 podman rm -f "$CONTAINER_NAME" 2>/dev/null || true
 
 echo "🚀 Lanzando contenedor..."
+# Modo debug: pon 1 para ver el navegador vía VNC, 0 para producción normal
+SCRAPER_DEBUG=${SCRAPER_DEBUG:-0}
+
 podman run -d \
   --name "$CONTAINER_NAME" \
   --restart=always \
   -p 4000:4000 \
+  -p 6080:6080 \
   -v "${HOST_PROFILE_DIR}:/data/chrome-profile" \
+  -e SCRAPER_DEBUG="$SCRAPER_DEBUG" \
   --env-file .env \
   "$IMAGE_NAME"
 
