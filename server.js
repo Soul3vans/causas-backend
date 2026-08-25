@@ -50,8 +50,15 @@ const ProcessStatus = require('./models/ProcessStatus')
   }
 })()
 
-await scrapePool.initialize({ Cases, Users, ProcessStatus, ScrapingOverflow })
-startScrapingWorker({ ScrapingOverflow }) // ya no necesita Cases/Users, scrape-pool los tiene
+;(async function initScrapePool() {
+  try {
+    const scrapePool = require('./utils/scrape-pool')
+    await scrapePool.initialize({ Cases, Users, ProcessStatus, ScrapingOverflow })
+    startScrapingWorker({ ScrapingOverflow }) // ya no necesita Cases/Users, scrape-pool los tiene
+  } catch (err) {
+    console.error('❌ Error inicializando scrapePool:', err)
+  }
+})()
 
 const getUser = async token => {
   if (token) {
