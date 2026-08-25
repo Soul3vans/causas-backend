@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 const { AuthenticationError } = require('apollo-server-express')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
@@ -514,16 +515,15 @@ const resolvers = {
           summary: status.summary || { newMovements: 0, litigantsChanged: false, mainFieldsChanged: [] }
         }
       } catch (error) {
-		if (error instanceof AuthenticationError) {
+        if (error instanceof AuthenticationError) {
           throw error // no lo absorbas como null, debe llegar al cliente como error real
         }
         console.error('❌ Error en getProcessStatus:', error)
         return null
       }
-    }
-  },
-  
-  getScraperMode: async (_, args, { Users, currentUser }) => {
+    },
+    
+    getScraperMode: async (_, args, { Users, currentUser }) => {
       if (!currentUser) {
         throw new AuthenticationError('Debes iniciar sesión')
       }
@@ -534,9 +534,8 @@ const resolvers = {
 
       return scraperModeConfig.getMode()
     }
-  },  
-  Upload: GraphQLUpload,
-  
+  },
+
   Mutation: {
     updateUser: async (_, { userId, name, username, service, card, role }, { Users }) => {
       const checkUser = await Users.findOne({ $or: [{ username }, { card }] })
@@ -703,8 +702,8 @@ const resolvers = {
 		  messageImage: null
 		};
 	  }
-	},
-    deleteActivity: async (_, { id }, { Activity }) => {
+  },
+  deleteActivity: async (_, { id }, { Activity }) => {
       try {
         await Activity.findOneAndRemove({
           _id: id
@@ -2040,6 +2039,7 @@ async function startScrapingProcess(processId, caseId, input, models) {
 }
 
 // ========== EXPORTAR ==========
+resolvers.Upload = GraphQLUpload
 module.exports = resolvers
 
 // Cerrar navegador cuando el proceso termina
