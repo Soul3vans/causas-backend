@@ -10,6 +10,7 @@ const { enqueueCaseUpdate, getPendingCount, MAX_QUEUE_SIZE } = require('./utils/
 const { config } = require('./config/mail')
 const { abstractSendMail } = require('./utils/mail')
 const { GraphQLUpload } = require('graphql-upload')
+const scraperModeConfig = require('./utils/scraper-mode-config')
 
 // Importar desde scrapper.js
 const { scrapRawData, scrapMultipleCauses, scrapeAndUpdateCase, updateMultipleCases, closeScrapeInstance, CaseNotFoundError } = require('./utils/scrapper')
@@ -35,6 +36,7 @@ puppeteer.use(StealthPlugin())
 
 let globalScrape = null;
 let useAuthScraper = false; // Cambiar a true para usar modo autenticado
+const ADMIN_ROLE = 1
 
 const createToken = (user, secret, expiresIn) => {
   const { email, rol, name } = user
@@ -480,6 +482,9 @@ const resolvers = {
       return activities
     },
     getProcessStatus: async (_, { processId }, { ProcessStatus, Users, currentUser }) => {
+	  if (!currentUser) {
+        throw new AuthenticationError('Debes iniciar sesión')
+      }
       try {
 		if (!currentUser) {
           throw new AuthenticationError('Debes iniciar sesión')
@@ -493,7 +498,7 @@ const resolvers = {
         
         const user = await gu(Users, currentUser)
         const isOwner = status.userId?.toString() === user?._id?.toString()
-        const isAdmin = user?.role === /* valor a confirmar */ 0
+        const isAdmin = user?.role === ADMIN_ROLE
  
         if (!isOwner && !isAdmin) {
           throw new AuthenticationError('No tienes permiso para ver este proceso')
@@ -509,12 +514,27 @@ const resolvers = {
           summary: status.summary || { newMovements: 0, litigantsChanged: false, mainFieldsChanged: [] }
         }
       } catch (error) {
+		if (error instanceof AuthenticationError) {
+          throw error // no lo absorbas como null, debe llegar al cliente como error real
+        }
         console.error('❌ Error en getProcessStatus:', error)
         return null
       }
     }
   },
   
+  getScraperMode: async (_, args, { Users, currentUser }) => {
+      if (!currentUser) {
+        throw new AuthenticationError('Debes iniciar sesión')
+      }
+      const user = await gu(Users, currentUser)
+      if (user?.role !== ADMIN_ROLE) {
+        throw new AuthenticationError('No tienes permiso para ver esta configuración')
+      }
+
+      return scraperModeConfig.getMode()
+    }
+  },  
   Upload: GraphQLUpload,
   
   Mutation: {
@@ -1746,7 +1766,24 @@ const resolvers = {
           }
         }
       }
-    }
+    },
+    setScraperMode: async (_, { mode }, { Users, currentUser }) => {
+      if (!currentUser) {
+        throw new AuthenticationError('Debes iniciar sesión')
+      }
+      const user = await gu(Users, currentUser)
+      if (user?.role !== ADMIN_ROLE) {
+        throw new AuthenticationError('No tienes permiso para modificar esta configuración')
+      }
+ 
+      const doc = await scraperModeConfig.setMode(mode, user._id)
+ 
+      return {
+        mode: doc.mode,
+        updatedBy: doc.updatedBy,
+        updatedAt: doc.updatedAt ? doc.updatedAt.toISOString() : null
+      }
+    },
   }
 }
 
