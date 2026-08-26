@@ -894,7 +894,7 @@ const resolvers = {
             } else {
               savedResults.push({ 
                 rol: `${causeInput.libroTipo}-${causeInput.rolNumber}-${causeInput.year}`, 
-                status: 'error', 
+                status: 'ERROR', 
                 error: scrapResult.error 
               });
             }
@@ -1118,7 +1118,7 @@ const resolvers = {
           
           const existingCase = await Cases.findById(caseId);
           if (!existingCase) {
-            results.push({ caseId, fullRol, status: 'not_found', error: 'Causa no encontrada' });
+            results.push({ caseId, fullRol, status: 'COMPLETED_NOT_FOUND', error: 'Causa no encontrada' });
             continue;
           }
           
@@ -1276,7 +1276,7 @@ const resolvers = {
           } else {
             savedCases.push({
               rol: `${causeInput.libroTipo}-${causeInput.rolNumber}-${causeInput.year}`,
-              status: 'error',
+              status: 'ERROR',
               error: scrapResult.error
             });
           }
@@ -1339,7 +1339,7 @@ const resolvers = {
         // 2. Verificar si ya hay un proceso en curso para esta causa
         const existingProcess = await ProcessStatus.findOne({
           caseId: existingCase._id,
-          status: 'processing'
+          status: { $in: ['QUEUED', 'PROCESSING'] }
         })
 
         if (existingProcess) {
@@ -1359,7 +1359,7 @@ const resolvers = {
             // Proceso abandonado (crash/timeout) — lo liberamos y dejamos pasar uno nuevo
             console.warn(`⚠️ Proceso huérfano detectado (${Math.round(ageMs / 1000)}s), liberando...`)
             await ProcessStatus.findByIdAndUpdate(existingProcess._id, {
-              status: 'error',
+              status: 'ERROR',
               errorMessage: 'Proceso abandonado (timeout o caída del servidor)',
               completedAt: new Date()
             })
@@ -1390,7 +1390,7 @@ const resolvers = {
           _id: processId,
           caseId: existingCase._id,
           userId: userId,
-          status: 'processing',
+          status: 'QUEUED',
           startedAt: new Date()
         })
         
@@ -1483,7 +1483,7 @@ const resolvers = {
 			const processStatus = await ProcessStatus.create({
 			  caseId: existingCase._id,
 			  userId: userId,
-			  status: 'processing'
+			  status: 'QUEUED'
 			})
 
 			console.log(`📥 [${new Date().toISOString()}] Creando entrada en overflow para ${existingCase.rol} (caseId: ${existingCase._id})`)
@@ -1513,7 +1513,7 @@ const resolvers = {
 
           const alreadyProcessing = await ProcessStatus.findOne({
             caseId: existingCase._id,
-            status: 'processing'
+            status: { $in: ['QUEUED', 'PROCESSING'] }
           })
           if (alreadyProcessing) {
             rejected.push({
@@ -1537,7 +1537,7 @@ const resolvers = {
           const processStatus = await ProcessStatus.create({
             caseId: existingCase._id,
             userId: userId,
-            status: 'processing'
+            status: 'QUEUED'
           })
 
           await enqueueCaseUpdate({
@@ -1813,7 +1813,7 @@ async function startScrapingProcess(processId, caseId, input, models) {
     if (!existingCase) {
       releaseInstance(poolSlot)
       await ProcessStatus.findByIdAndUpdate(processId, {
-        status: 'error',
+        status: 'ERROR',
         errorMessage: 'Causa no encontrada',
         completedAt: new Date()
       })
@@ -1978,7 +1978,7 @@ async function startScrapingProcess(processId, caseId, input, models) {
     
     // 9. Actualizar estado del proceso
     await ProcessStatus.findByIdAndUpdate(processId, {
-      status: 'completed',
+      status: 'COMPLETED',
       completedAt: new Date(),
       summary: summary
     })
@@ -2021,7 +2021,7 @@ async function startScrapingProcess(processId, caseId, input, models) {
     if (review) {
       try {
         await CasesReviews.findByIdAndUpdate(review._id, {
-          status: isNotFound ? 'NOT_FOUND' : 'ERROR',
+          status: isNotFound ? 'COMPLETED_NOT_FOUND' : 'ERROR',
           errorMessage: error.message
         });
       } catch (updateError) {
@@ -2030,7 +2030,7 @@ async function startScrapingProcess(processId, caseId, input, models) {
     }
 
     await ProcessStatus.findByIdAndUpdate(processId, {
-      status: isNotFound ? 'not_found' : 'error',   // ✅ status distinto
+      status: isNotFound ? 'COMPLETED_NOT_FOUND' : 'ERROR',   // ✅ status distinto
       errorMessage: error.message || 'Error desconocido en el proceso',
       completedAt: new Date()
     })
