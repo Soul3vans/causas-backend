@@ -1412,7 +1412,8 @@ const resolvers = {
           caseId: existingCase._id.toString(),
           fullRol: existingCase.searchParams?.fullRol || existingCase.rol,
           searchParams: existingCase.searchParams,
-          processId: processId.toString()
+          processId: processId.toString(),
+          userId: userId.toString(),
         })
         
         // 8. RESPONDER INMEDIATAMENTE
@@ -1544,7 +1545,8 @@ const resolvers = {
             caseId: existingCase._id.toString(),
             fullRol: existingCase.searchParams?.fullRol || existingCase.rol,
             searchParams: existingCase.searchParams,
-            processId: processStatus._id.toString()
+            processId: processStatus._id.toString(),
+            userId: userId.toString(),
           })
 
           queued.push(processStatus._id.toString())
