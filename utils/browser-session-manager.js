@@ -492,8 +492,43 @@ class BrowserSessionManager extends EventEmitter {
       logger.info('✅ BrowserSessionManager: sesión recuperada, POOL RUNNING')
     } catch (error) {
       logger.error('❌ BrowserSessionManager: recovery falló', { error: error.message })
+      this._notifyRecoveryFailure(error) // fire-and-forget, ver nota arriba
       // se deja _recoveryInFlight=true a propósito, sin reintento automático
     }
+  }
+  
+  /**
+   * Notifica por correo cuando el recovery agota sus 3 intentos y el pool
+   * queda bloqueado indefinidamente hasta reinicio manual. Reutiliza el
+   * mismo mecanismo de envío ya usado en el resto del sistema.
+   */
+  async _notifyRecoveryFailure(error) {
+    const { abstractSendMail } = require('./mail')
+    const { config } = require('../config/mail')
+    const adminEmail = process.env.ADMIN_ALERT_EMAIL
+
+    if (!adminEmail) {
+      logger.warn('⚠️ ADMIN_ALERT_EMAIL no configurado, no se puede notificar el fallo de recovery')
+      return
+    }
+
+    // NOTA: abstractSendMail es fire-and-forget (no retorna Promise, no hay
+    // forma de confirmar el envío real) — mismo patrón ya usado en el resto
+    // de resolvers.js. No se puede garantizar entrega, solo el disparo.
+    abstractSendMail({
+      from: config.from,
+      to: adminEmail,
+      subject: '🔴 Scraper: recuperación de sesión falló — intervención manual requerida',
+      html: `
+        <h2>El pool de scraping quedó bloqueado</h2>
+        <p>El sistema intentó recuperar la sesión (AUTH/GUEST) tras perderla, pero los 3 intentos de bootstrap fallaron.</p>
+        <p><strong>Error:</strong> ${error.message}</p>
+        <p><strong>Momento:</strong> ${new Date().toISOString()}</p>
+        <p>El servicio requiere un reinicio manual para volver a funcionar.</p>
+      `
+    })
+
+    logger.info(`📧 Correo de alerta disparado hacia ${adminEmail} por fallo de recovery (envío fire-and-forget, sin confirmación)`)
   }
 
   // ================== KEEP-ALIVE / FULL CHECK ==================
@@ -503,7 +538,10 @@ class BrowserSessionManager extends EventEmitter {
     this._fullCheckTimer = setInterval(async () => {
       if (this.poolState !== POOL_STATE.RUNNING) return
       if (this.anchorTab.isResting) return // en reposo en home/index.php, no hay formulario que validar
-      await this.sessionGuard.fullCheck(this.anchorTab)
+      const state = await this.sessionGuard.fullCheck(this.anchorTab)
+        if (state === 'VALID') {
+          await browserProfileState.exportState(this.anchorTab.getPage())
+        }
     }, this.fullCheckIntervalMs)
   }
 

@@ -208,7 +208,13 @@ async function startServer() {
     })
 
     app.get('/health', (req, res) => {
-      res.status(200).send('OK')
+      const scrapePool = require('./utils/scrape-pool')
+      const poolState = scrapePool.getPoolState()
+        res.status(200).json({
+          status: 'OK',
+          poolState,
+          timestamp: new Date().toISOString()
+        })
     })
 
     const PORT = process.env.PORT || 4000
