@@ -1,3 +1,7 @@
+.github/
+.vscode/
+.yarn/
+compodoc/
 node_modules/
 .env
 variables.env
@@ -10,7 +14,13 @@ test-result-error.json
 test-result.json
 mapa_inicial.json
 ngrok
+ngrok-v3-stable-linux-amd64/
 ngrok-v3-stable-linux-amd64.tgz
+diagrama rotacion IP.txt
+flujo autenticacion.txt
+flujo invitado.txt
+flujo scraper unificado.txt
+
 
 /ngrok.exe
 /scriptstest_dns.js
