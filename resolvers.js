@@ -59,8 +59,69 @@ async function gu(um, cu) {
   if (!cu) {
     return null
   }
-  const user = await um.findOne({ email: cu.email }, { password: false })
+  const safeEmail = sanitizeStringValue(cu.email, 'email', { maxLength: 255 })
+  const user = await um.findOne({ email: safeEmail }, { password: false })
   return user
+}
+
+function sanitizeStringValue(value, fieldName, { maxLength = 200, allowEmpty = false } = {}) {
+  if (value === null || value === undefined) {
+    throw new Error(`${fieldName} es obligatorio`)
+  }
+
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    throw new Error(`${fieldName} tiene un formato inválido`)
+  }
+
+  const str = String(value).trim()
+
+  if (!allowEmpty && str.length === 0) {
+    throw new Error(`${fieldName} no puede estar vacío`)
+  }
+
+  if (str.length > maxLength) {
+    throw new Error(`${fieldName} supera la longitud máxima permitida`)
+  }
+
+  if (/[\$\{\}\[\]\u0000]/.test(str)) {
+    throw new Error(`${fieldName} contiene caracteres no permitidos`)
+  }
+
+  return str
+}
+
+function sanitizeMongoId(value, fieldName) {
+  return sanitizeObjectId(value, fieldName)
+}
+
+function sanitizeObjectId(value, fieldName) {
+  const str = sanitizeStringValue(value, fieldName, { maxLength: 64 })
+
+  if (!/^[a-fA-F0-9]{24}$/.test(str)) {
+    throw new Error(`${fieldName} no es un ObjectId válido`)
+  }
+
+  return new mongoose.Types.ObjectId(str)
+}
+
+function sanitizeNumericId(value, fieldName, { maxLength = 20 } = {}) {
+  const str = sanitizeStringValue(value, fieldName, { maxLength })
+
+  if (!/^\d+$/.test(str)) {
+    throw new Error(`${fieldName} debe ser numérico`)
+  }
+
+  return Number(str)
+}
+
+function sanitizeCourtName(value) {
+  const name = sanitizeStringValue(value, 'court', { maxLength: 200 })
+
+  if (!/^[a-zA-Z0-9ÁÉÍÓÚáéíóúÑñÜü\s,.-]+$/.test(name)) {
+    throw new Error('court contiene caracteres no permitidos')
+  }
+
+  return name
 }
 
 // ========== CONSTRUIR EL OBJETO RESOLVERS ==========
@@ -73,11 +134,12 @@ const resolvers = {
     },
     getInvolvedUsers: async (_, { caseId }, { Users, InvolvedUsersCase }) => {
       try {
+        const safeCaseId = sanitizeMongoId(caseId, 'caseId')
         const usersResult = await Users.find({}, { password: false }).sort({ createdAt: 1 })
         
         // Buscar el documento de InvolvedUsersCase para esta causa
         const usersInvResult = await InvolvedUsersCase.findOne(
-          { case: caseId },
+          { case: safeCaseId },
           'involved'
         ).populate('involved.userIn', '-password')
         
@@ -100,7 +162,8 @@ const resolvers = {
       }
     },
     getUser: async (_, { userId }, { Users }) => {
-      const user = await Users.findOne({ _id: userId }, { password: false })
+      const safeUserId = sanitizeMongoId(userId, 'userId')
+      const user = await Users.findOne({ _id: safeUserId }, { password: false })
       return user
     },
     /**
@@ -108,7 +171,8 @@ const resolvers = {
      * Devuelve un objeto CasesPage con cases, total y hasMore
      */
     getCase: async (_, { id }, { Cases }) => {
-	  const caseDoc = await Cases.findById(id).populate('createdBy', '-password')
+	  const safeId = sanitizeObjectId(id, 'id')
+	  const caseDoc = await Cases.findById(safeId).populate('createdBy', '-password')
 	  if (!caseDoc) {
 		throw new Error('Causa no encontrada')
 	  }
@@ -162,7 +226,8 @@ const resolvers = {
       }
     },
     getCaseViewed: async (_, args, { Users, CasesViewed, currentUser }) => {
-      const user = await Users.findOne({ email: currentUser.email }, { _id: 1 })
+      const safeEmail = sanitizeStringValue(currentUser?.email, 'email', { maxLength: 255 })
+      const user = await Users.findOne({ email: safeEmail }, { _id: 1 })
       const cc = await CasesViewed.find(
         { viewedBy: user._id },
         'caseBankruptcy viewedBy'
@@ -176,21 +241,24 @@ const resolvers = {
       return cc
     },
     getCasesByUser: async (_, { userId }, { Cases }) => {
+      const safeUserId = sanitizeMongoId(userId, 'userId')
       const cc = await Cases.find(
-        { createdBy: userId },
+        { createdBy: safeUserId },
         '_id rol cover admission court stage debtor'
       ).populate('createdBy')
       return cc
     },
     getUserUnreadMessages: async (_, { userId }, { Messages }) => {
+      const safeUserId = sanitizeObjectId(userId, 'userId')
       const userMessages = await Messages.find({
-        to: userId,
+        to: safeUserId,
         status: false
       }).populate('to', '-password')
       return userMessages
     },
     getUserMessages: async (_, { userId }, { Messages }) => {
-      const userMessages = await Messages.find({ to: userId }).populate(
+      const safeUserId = sanitizeObjectId(userId, 'userId')
+      const userMessages = await Messages.find({ to: safeUserId }).populate(
         'to',
         '-password'
       )
@@ -211,12 +279,13 @@ const resolvers = {
     },
     searchUsers: async (_, { searchTerm }, { Users }) => {
       if (searchTerm) {
+        const safeSearchTerm = sanitizeStringValue(searchTerm, 'searchTerm', { maxLength: 100 })
         const searchResult = await Users.find(
           {
             $or: [
-              { username: searchTerm },
-              { name: searchTerm },
-              { card: searchTerm }
+              { username: safeSearchTerm },
+              { name: safeSearchTerm },
+              { card: safeSearchTerm }
             ]
           },
           'name username'
@@ -491,7 +560,8 @@ const resolvers = {
           throw new AuthenticationError('Debes iniciar sesión')
         }
         
-        const status = await ProcessStatus.findById(processId)
+        const safeProcessId = sanitizeObjectId(processId, 'processId')
+        const status = await ProcessStatus.findById(safeProcessId)
         
         if (!status) {
           return null
@@ -538,13 +608,16 @@ const resolvers = {
 
   Mutation: {
     updateUser: async (_, { userId, name, username, service, card, role }, { Users }) => {
-      const checkUser = await Users.findOne({ $or: [{ username }, { card }] })
-      if (checkUser && checkUser._id.toString() !== userId.toString()) {
+      const safeUserId = sanitizeObjectId(userId, 'userId')
+      const safeUsername = sanitizeStringValue(username, 'username', { maxLength: 100 })
+      const safeCard = sanitizeStringValue(card, 'card', { maxLength: 50 })
+      const checkUser = await Users.findOne({ $or: [{ username: safeUsername }, { card: safeCard }] })
+      if (checkUser && checkUser._id.toString() !== safeUserId.toString()) {
         throw new Error('El usuario o la tarjeta estan en uso')
       }
       const user = await Users.findOneAndUpdate(
-        { _id: userId },
-        { $set: { userId, name, username, service, card, role } },
+        { _id: safeUserId },
+        { $set: { userId: safeUserId, name, username: safeUsername, service, card: safeCard, role } },
         { new: true }
       )
       console.log(user)
@@ -552,13 +625,14 @@ const resolvers = {
     },
     updateUsers: async (_, { input }, { Users }) => {
       const { userId, email } = input
-      const userID = new mongoose.Types.ObjectId(userId)
-      const checkUser = await Users.findOne({ email: email })
-      if (checkUser && checkUser._id.toString() !== userId.toString()) {
+      const safeUserId = sanitizeMongoId(userId, 'userId')
+      const safeEmail = sanitizeStringValue(email, 'email', { maxLength: 255 })
+      const checkUser = await Users.findOne({ email: safeEmail })
+      if (checkUser && checkUser._id.toString() !== safeUserId.toString()) {
         throw new Error('El usuario esta en uso')
       }
       await Users.findOneAndUpdate(
-        { _id: userID },
+        { _id: safeUserId },
         {
           $set: {
             ...input
@@ -573,15 +647,17 @@ const resolvers = {
       }
     },
     updateUserPassword: async (_, { params: { userId, currentPassword, password } }, { Users }) => {
-      const userID = new mongoose.Types.ObjectId(userId)
-      const checkUser = await Users.findById({ _id: userID })
-      const isMatch = await checkUser.comparePassword(currentPassword)
+      const safeUserId = sanitizeMongoId(userId, 'userId')
+      const safeCurrentPassword = sanitizeStringValue(currentPassword, 'currentPassword', { maxLength: 255 })
+      const safePassword = sanitizeStringValue(password, 'password', { maxLength: 255 })
+      const checkUser = await Users.findById({ _id: safeUserId })
+      const isMatch = await checkUser.comparePassword(safeCurrentPassword)
       if (!isMatch) {
         throw new Error('La contraseña anterior es incorrecta')
       }
       await Users.findOneAndUpdate(
-        { _id: userID },
-        { $set: { userID, password } },
+        { _id: safeUserId },
+        { $set: { userID: safeUserId, password: safePassword } },
         { new: true }
       )
       return {
@@ -591,10 +667,11 @@ const resolvers = {
       }
     },
     updateUsersPassword: async (_, { input: { userId, password } }, { Users }) => {
-      const userID = new mongoose.Types.ObjectId(userId)
+      const safeUserId = sanitizeMongoId(userId, 'userId')
+      const safePassword = sanitizeStringValue(password, 'password', { maxLength: 255 })
       await Users.findOneAndUpdate(
-        { _id: userID },
-        { $set: { userID, password } },
+        { _id: safeUserId },
+        { $set: { userID: safeUserId, password: safePassword } },
         { new: true }
       )
       return {
@@ -604,14 +681,16 @@ const resolvers = {
       }
     },
     deleteUserPost: async (_, { postId }, { Posts }) => {
+      const safePostId = sanitizeMongoId(postId, 'postId')
       const post = await Posts.findOneAndRemove({
-        _id: postId
+        _id: safePostId
       })
       return post
     },
     deleteUser: async (_, { userId }, { Users }) => {
+      const safeUserId = sanitizeMongoId(userId, 'userId')
       await Users.findOneAndRemove({
-        _id: userId
+        _id: safeUserId
       })
       return {
         messageBody: 'El usuario fue eliminado de manera satisfactoria',
@@ -621,10 +700,11 @@ const resolvers = {
     },
     deleteCase: async (_, { caseId }, { Cases, InvolvedUsersCase, CasesViewed, CasesUpdated }) => {
 	  try {
-		console.log(`🗑️ Eliminando causa: ${caseId}`);
+		const safeCaseId = sanitizeObjectId(caseId, 'caseId')
+		console.log(`🗑️ Eliminando causa: ${safeCaseId}`);
 		
 		// ✅ 1. Verificar que la causa existe
-		const existingCase = await Cases.findById(caseId);
+		const existingCase = await Cases.findById(safeCaseId);
 		if (!existingCase) {
 		  console.warn(`⚠️ Causa no encontrada: ${caseId}`);
 		  return {
@@ -635,24 +715,24 @@ const resolvers = {
 		}
 		
 		// ✅ 2. Eliminar de Cases (principal)
-		await Cases.findOneAndDelete({ _id: caseId });
-		console.log(`✅ Causa eliminada de Cases: ${caseId}`);
+		await Cases.findOneAndDelete({ _id: safeCaseId });
+		console.log(`✅ Causa eliminada de Cases: ${safeCaseId}`);
 		
 		// ✅ 3. Eliminar de CasesViewed (vistas)
-		await CasesViewed.findOneAndDelete({ caseBankruptcy: caseId });
-		console.log(`✅ Eliminado de CasesViewed: ${caseId}`);
+		await CasesViewed.findOneAndDelete({ caseBankruptcy: safeCaseId });
+		console.log(`✅ Eliminado de CasesViewed: ${safeCaseId}`);
 		
 		// ✅ 4. Eliminar de InvolvedUsersCase (usuarios involucrados)
-		await InvolvedUsersCase.findOneAndDelete({ case: caseId });
-		console.log(`✅ Eliminado de InvolvedUsersCase: ${caseId}`);
+		await InvolvedUsersCase.findOneAndDelete({ case: safeCaseId });
+		console.log(`✅ Eliminado de InvolvedUsersCase: ${safeCaseId}`);
 		
 		// ✅ 5. Eliminar de CasesUpdated (datos del scraper) - con manejo de error
 		try {
-		  const result = await CasesUpdated.findOneAndDelete({ caseId: caseId });
+		  const result = await CasesUpdated.findOneAndDelete({ caseId: safeCaseId });
 		  if (result) {
-			console.log(`✅ Eliminado de CasesUpdated: ${caseId}`);
+			console.log(`✅ Eliminado de CasesUpdated: ${safeCaseId}`);
 		  } else {
-			console.log(`ℹ️ No había registro en CasesUpdated para: ${caseId}`);
+			console.log(`ℹ️ No había registro en CasesUpdated para: ${safeCaseId}`);
 		  }
 		} catch (updatedError) {
 		  // Si el modelo no existe o hay error, solo loguear y continuar
@@ -662,8 +742,8 @@ const resolvers = {
 		// ✅ 6. También eliminar de ProcessStatus si existe
 		try {
 		  const ProcessStatus = require('./models/ProcessStatus');
-		  await ProcessStatus.findOneAndDelete({ caseId: caseId });
-		  console.log(`✅ Eliminado de ProcessStatus: ${caseId}`);
+		  await ProcessStatus.findOneAndDelete({ caseId: safeCaseId });
+		  console.log(`✅ Eliminado de ProcessStatus: ${safeCaseId}`);
 		} catch (processError) {
 		  console.warn(`⚠️ Error eliminando de ProcessStatus: ${processError.message}`);
 		}
@@ -671,8 +751,8 @@ const resolvers = {
 		// ✅ 7. También eliminar de CasesReviews si existe
 		try {
 		  const CasesReviews = require('./models/CasesReviews');
-		  await CasesReviews.findOneAndDelete({ caseId: caseId });
-		  console.log(`✅ Eliminado de CasesReviews: ${caseId}`);
+		  await CasesReviews.findOneAndDelete({ caseId: safeCaseId });
+		  console.log(`✅ Eliminado de CasesReviews: ${safeCaseId}`);
 		} catch (reviewError) {
 		  console.warn(`⚠️ Error eliminando de CasesReviews: ${reviewError.message}`);
 		}
@@ -680,8 +760,8 @@ const resolvers = {
 		// ✅ 8. También eliminar de CasesLogs si existe
 		try {
 		  const CasesLogs = require('./models/CasesLogs');
-		  await CasesLogs.findOneAndDelete({ caseId: caseId });
-		  console.log(`✅ Eliminado de CasesLogs: ${caseId}`);
+		  await CasesLogs.findOneAndDelete({ caseId: safeCaseId });
+		  console.log(`✅ Eliminado de CasesLogs: ${safeCaseId}`);
 		} catch (logError) {
 		  console.warn(`⚠️ Error eliminando de CasesLogs: ${logError.message}`);
 		}
@@ -705,8 +785,9 @@ const resolvers = {
   },
   deleteActivity: async (_, { id }, { Activity }) => {
       try {
+        const safeId = sanitizeObjectId(id, 'id')
         await Activity.findOneAndRemove({
-          _id: id
+          _id: safeId
         })
         return {
           messageBody: 'La actividad fue eliminada de manera satisfactoria',
@@ -718,12 +799,15 @@ const resolvers = {
       }
     },
     addPostMessage: async (_, { messageBody, userId, postId }, { Posts }) => {
+      const safeUserId = sanitizeObjectId(userId, 'userId')
+      const safePostId = sanitizeObjectId(postId, 'postId')
+      const safeMessageBody = sanitizeStringValue(messageBody, 'messageBody', { maxLength: 2000 })
       const newMessage = {
-        messageBody,
-        messageUser: userId
+        messageBody: safeMessageBody,
+        messageUser: safeUserId
       }
       const post = await Posts.findOneAndUpdate(
-        { _id: postId },
+        { _id: safePostId },
         { $push: { message: { $each: [newMessage], $position: 0 } } },
         { new: true }
       ).populate({
@@ -733,11 +817,13 @@ const resolvers = {
       return post.message[0]
     },
     signinUsers: async (_, { email, password }, { Users }) => {
-      const user = await Users.findOne({ email })
+      const safeEmail = sanitizeStringValue(email, 'email', { maxLength: 255 })
+      const safePassword = sanitizeStringValue(password, 'password', { maxLength: 255 })
+      const user = await Users.findOne({ email: safeEmail })
       if (!user) {
         throw new AuthenticationError('El usuario no existe')
       }
-      const isValidPassword = await bcrypt.compare(password, user.password)
+      const isValidPassword = await bcrypt.compare(safePassword, user.password)
       console.log(isValidPassword)
       if (!isValidPassword) {
         throw new AuthenticationError('La contraseña es incorrecta')
@@ -745,7 +831,8 @@ const resolvers = {
       return { token: createToken(user, process.env.SECRET, '1hr') }
     },
     signupUsers: async (_, { params }, { Users }) => {
-      const user = await Users.findOne({ email: params.email })
+      const safeEmail = sanitizeStringValue(params?.email, 'email', { maxLength: 255 })
+      const user = await Users.findOne({ email: safeEmail })
       if (user) {
         throw new Error('La cuenta de correo existe')
       }
@@ -940,10 +1027,20 @@ const resolvers = {
           involved = []
         } = input;
         
-        const fullRol = `${libroTipo}-${rolNumber}-${year}`;
-        const tribunalName = courtNameById(tribunalId);
+        const safeTribunalId = sanitizeNumericId(tribunalId, 'tribunalId')
+        const safeCourtName = sanitizeCourtName(courtNameById(safeTribunalId))
+        const safeRolNumber = sanitizeStringValue(rolNumber, 'rolNumber', { maxLength: 50 })
+        const safeYear = sanitizeStringValue(year, 'year', { maxLength: 20 })
+        const safeLibroTipo = sanitizeStringValue(libroTipo, 'libroTipo', { maxLength: 50 })
+        const safeCompetencia = sanitizeStringValue(competencia, 'competencia', { maxLength: 50 })
+        const safeCorteId = sanitizeStringValue(corteId, 'corteId', { maxLength: 50 })
+        const safeCreatedBy = sanitizeObjectId(createdBy, 'createdBy')
+        const safeTypeSearch = sanitizeStringValue(typeSearch, 'typeSearch', { maxLength: 50 })
         
-        logger.info('📋 Creando nueva causa:', { fullRol, competencia, corteId, tribunalId, tribunalName });
+        const fullRol = `${safeLibroTipo}-${safeRolNumber}-${safeYear}`;
+        const tribunalName = safeCourtName;
+        
+        logger.info('📋 Creando nueva causa:', { fullRol, competencia: safeCompetencia, corteId: safeCorteId, tribunalId: safeTribunalId, tribunalName });
         
         const existingCase = await Cases.findOne({
           rol: fullRol,
@@ -969,17 +1066,17 @@ const resolvers = {
           if (useAuthScraper) {
             scrapData = await scrapRawDataAuth({
               rol: fullRol,
-              tribune: tribunalId,
-              competencia: competencia,
-              corteId: corteId
+              tribune: safeTribunalId,
+              competencia: safeCompetencia,
+              corteId: safeCorteId
             });
           } else {
             scrapData = await scrapRawData({
-              typeSearch,
+              typeSearch: safeTypeSearch,
               rol: fullRol,
-              tribune: tribunalId,
-              competencia: competencia,
-              corteId: corteId
+              tribune: safeTribunalId,
+              competencia: safeCompetencia,
+              corteId: safeCorteId
             }, scrapeInstance);
           }
           
@@ -994,16 +1091,16 @@ const resolvers = {
           ...(scrapData || {}),
           rol: fullRol,
           court: tribunalName,
-          createdBy: new mongoose.Types.ObjectId(createdBy),
-          typeSearch: typeSearch,
+          createdBy: safeCreatedBy,
+          typeSearch: safeTypeSearch,
           status: 'ACTIVE',
           searchParams: {
-            competencia: competencia,
-            corteId: corteId,
-            tribunalId: tribunalId,
-            libroTipo: libroTipo,
-            rolNumber: rolNumber,
-            year: year,
+            competencia: safeCompetencia,
+            corteId: safeCorteId,
+            tribunalId: safeTribunalId,
+            libroTipo: safeLibroTipo,
+            rolNumber: safeRolNumber,
+            year: safeYear,
             fullRol: fullRol
           },
           scrapedData: {
@@ -1115,10 +1212,11 @@ const resolvers = {
         
         for (const caseItem of cases) {
           const { caseId, fullRol, searchParams } = caseItem;
+          const safeCaseId = sanitizeObjectId(caseId, 'caseId')
           
-          const existingCase = await Cases.findById(caseId);
+          const existingCase = await Cases.findById(safeCaseId);
           if (!existingCase) {
-            results.push({ caseId, fullRol, status: 'COMPLETED_NOT_FOUND', error: 'Causa no encontrada' });
+            results.push({ caseId: safeCaseId.toString(), fullRol, status: 'COMPLETED_NOT_FOUND', error: 'Causa no encontrada' });
             continue;
           }
           
@@ -1191,10 +1289,16 @@ const resolvers = {
         for (let i = 0; i < scrapResults.length; i++) {
           const scrapResult = scrapResults[i];
           const causeInput = causes[i];
+          const safeCreatedBy = sanitizeObjectId(createdBy, 'createdBy')
           
           if (scrapResult.status === 'success' && scrapResult.data) {
-            const tribunalName = courtNameById(causeInput.tribunalId);
-            const fullRol = `${causeInput.libroTipo}-${causeInput.rolNumber}-${causeInput.year}`;
+            const safeTribunalId = sanitizeNumericId(causeInput.tribunalId, 'tribunalId')
+            const safeCourtName = sanitizeCourtName(courtNameById(safeTribunalId));
+            const safeLibroTipo = sanitizeStringValue(causeInput.libroTipo, 'libroTipo', { maxLength: 50 })
+            const safeRolNumber = sanitizeStringValue(causeInput.rolNumber, 'rolNumber', { maxLength: 50 })
+            const safeYear = sanitizeStringValue(causeInput.year, 'year', { maxLength: 20 })
+            const safeTypeSearch = sanitizeStringValue(causeInput.typeSearch || 'UNIFICADA', 'typeSearch', { maxLength: 50 })
+            const fullRol = `${safeLibroTipo}-${safeRolNumber}-${safeYear}`;
             
             const existing = await Cases.findOne({ rol: fullRol });
             if (existing) {
@@ -1205,9 +1309,9 @@ const resolvers = {
             const caseData = {
               ...scrapResult.data,
               rol: fullRol,
-              court: tribunalName,
-              createdBy: new mongoose.Types.ObjectId(createdBy),
-              typeSearch: causeInput.typeSearch || 'UNIFICADA',
+              court: safeCourtName,
+              createdBy: safeCreatedBy,
+              typeSearch: safeTypeSearch,
               status: 'ACTIVE',
               searchParams: {
                 competencia: causeInput.competencia,
@@ -1234,7 +1338,7 @@ const resolvers = {
               const userInvolved = causeInput.involved.map(a => ({
                 status: 'COOPERADOR',
                 notification: false,
-                userIn: new mongoose.Types.ObjectId(a._id)
+                userIn: sanitizeObjectId(a?._id, 'involved._id')
               }));
               await new InvolvedUsersCase({
                 case: newCase._id,
@@ -1321,10 +1425,13 @@ const resolvers = {
       console.log('Input recibido:', JSON.stringify(input, null, 2))
       
       try {
+        const safeRol = sanitizeStringValue(input?.rol, 'rol', { maxLength: 100 })
+        const safeCourt = sanitizeStringValue(input?.court, 'court', { maxLength: 200 })
+
         // 1. Verificar que la causa existe
         const existingCase = await Cases.findOne({
-          rol: input.rol,
-          court: input.court
+          rol: safeRol,
+          court: safeCourt
         })
         
         if (!existingCase) {
@@ -1501,11 +1608,12 @@ const resolvers = {
 		}
 
         for (const caseId of idsToProcess) {
-          const existingCase = await Cases.findById(caseId)
+          const safeCaseId = sanitizeObjectId(caseId, 'caseId')
+          const existingCase = await Cases.findById(safeCaseId)
 
           if (!existingCase) {
             rejected.push({
-              caseId,
+              caseId: safeCaseId.toString(),
               rol: 'Desconocida',
               reason: 'no_encontrada'
             })
@@ -1577,16 +1685,21 @@ const resolvers = {
     
     addInvUsers: async (_, { input }, { InvolvedUsersCase, Users, Cases, Messages }) => {
       try {
+        const safeCaseId = sanitizeObjectId(input.caseId, 'caseId')
+        const safeInvUsers = Array.isArray(input.invUsers) ? input.invUsers.map((u) => ({
+          ...u,
+          userIn: u?.userIn ? sanitizeObjectId(u.userIn._id || u.userIn, 'userIn._id') : null
+        })) : []
         const updtInvUsers = await InvolvedUsersCase.findOneAndUpdate(
-          { case: input.caseId },
-          { $set: { involved: input.invUsers } },
+          { case: safeCaseId },
+          { $set: { involved: safeInvUsers } },
           { new: true, upsert: true }
         )
         
-        input.invUsers.forEach(async e => {
-          const userCase = await Cases.findById(input.caseId, '_id createdBy')
+        safeInvUsers.forEach(async e => {
+          const userCase = await Cases.findById(safeCaseId, '_id createdBy')
           const userToSend = await Users.findById(
-            e.userIn._id,
+            e.userIn,
             '_id name email'
           )
           const userPropietary = await Users.findById(
@@ -1594,7 +1707,7 @@ const resolvers = {
             'name'
           )
           const po = updtInvUsers.involved.filter(
-            a => a.userIn.toString() === e.userIn._id.toString()
+            a => a.userIn.toString() === e.userIn.toString()
           )
           const pps = {
             name: userToSend.name,
@@ -1629,8 +1742,9 @@ const resolvers = {
     
     updateVisibilityCase: async (_, { id, visibility }, { Cases }) => {
       try {
+        const safeCaseId = sanitizeObjectId(id, 'id')
         await Cases.findOneAndUpdate(
-          { _id: id },
+          { _id: safeCaseId },
           { $set: { visibility: visibility } },
           { new: true, upsert: true }
         )
@@ -1651,9 +1765,11 @@ const resolvers = {
     addPriority: async (_, { input }, { Priority }) => {
       try {
         const { id, name } = input
+        const safeId = sanitizeObjectId(id, 'id')
+        const safeName = sanitizeStringValue(name, 'name', { maxLength: 200 })
         const priority = await Priority.findOneAndUpdate(
-          { _id: new mongoose.Types.ObjectId(id) },
-          { $set: { name } },
+          { _id: safeId },
+          { $set: { name: safeName } },
           { new: true }
         )
         return {
@@ -1675,9 +1791,9 @@ const resolvers = {
     addActivity: async (_, { input }, { Activity }) => {
       try {
         const { id, priority, caseId } = input
-        input.id = new mongoose.Types.ObjectId(id)
-        input.priority = new mongoose.Types.ObjectId(priority)
-        input.caseId = new mongoose.Types.ObjectId(caseId)
+        input.id = sanitizeObjectId(id, 'id')
+        input.priority = sanitizeObjectId(priority, 'priority')
+        input.caseId = sanitizeObjectId(caseId, 'caseId')
         let activity = await new Activity({
           ...input
         }).save()
@@ -1709,14 +1825,14 @@ const resolvers = {
       try {
         const { _id } = input
         const upInput = {
-          name: input.name,
-          priority: new mongoose.Types.ObjectId(input.priority),
-          caseId: input.caseId,
+          name: sanitizeStringValue(input.name, 'name', { maxLength: 200 }),
+          priority: sanitizeObjectId(input.priority, 'priority'),
+          caseId: sanitizeObjectId(input.caseId, 'caseId'),
           startTime: input.startTime,
           endTime: input.endTime
         }
         let upActivity = await Activity.findOneAndUpdate(
-          { _id: new mongoose.Types.ObjectId(_id) },
+          { _id: sanitizeObjectId(_id, '_id') },
           { $set: { ...upInput } },
           { new: true }
         )
