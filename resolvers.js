@@ -1489,14 +1489,15 @@ const resolvers = {
         }
         
         // 4. Obtener el userId del input (si no viene, usar el creador de la causa)
-        const userId = input.userId || existingCase.createdBy
+        const rawUserId = input.userId || existingCase.createdBy
+        const userId = sanitizeObjectId(rawUserId?.toString?.() || rawUserId, 'userId')
         
         // 5. Crear registro de proceso
         const processId = new mongoose.Types.ObjectId()
         await ProcessStatus.create({
           _id: processId,
           caseId: existingCase._id,
-          userId: userId,
+          userId,
           status: 'QUEUED',
           startedAt: new Date()
         })
