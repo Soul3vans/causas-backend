@@ -141,10 +141,9 @@ async function _processJob(workerId, job) {
     // con afinidad a este mismo worker, se reintentará cuando el pool
     // vuelva a RUNNING.
     await jobDispatcher.markRequeued(jobId, error.message)
+    await _delay(5000) // respiro antes de que el runner loop vuelva a intentar
     return
   }
-
-  await jobDispatcher.markProcessing(jobId, workerId)
 
   try {
     const { Cases, Users } = models // inyectados en initialize(models), ver abajo

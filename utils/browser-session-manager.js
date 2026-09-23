@@ -10,6 +10,7 @@ const logger = require('./logger')
 const { buildLaunchOptions } = require('./plugins/chrome-launch-options')
 const { TabWorker } = require('./tab-worker')
 const { SessionGuard } = require('./session-guard')
+const browserProfileState = require('./browser-profile-state')
 
 /**
  * BrowserSessionManager — "jefe de operaciones" de los TabWorkers.
@@ -236,12 +237,7 @@ class BrowserSessionManager extends EventEmitter {
 
     if (worker) {
       if (worker.isAnchor && worker.isResting) {
-        try {
-          await this._runBootstrapWithRetry()
-        } catch (error) {
-          logger.error('❌ No se pudo reanudar sesión desde reposo:', error.message)
-          return null
-        }
+        return this._wakeAnchorFromRest()
       }
       if (worker.isAnchor) this._clearAnchorRestTimer()
       return worker // el runner loop es dueño exclusivo de este workerId, no compite con nadie
@@ -296,6 +292,50 @@ class BrowserSessionManager extends EventEmitter {
       await worker.close().catch(() => {})
       throw error
     }
+  }
+
+  /**
+   * Despierta al AnchorTab desde RESTING, con protección contra
+   * reintentos anidados: si ya hay un despertar en curso, las llamadas
+   * concurrentes (del mismo polling en scrape-pool.js) esperan ese
+   * MISMO intento en vez de disparar uno nuevo cada vez -- eso es lo
+   * que causaba el bucle de 90s+ por cada tick de 500ms.
+   * Si el despertar falla, se trata EXACTAMENTE igual que un SESSION_LOST:
+   * pool a PAUSED, notificación por correo, sin reintento automático
+   * indefinido -- requiere intervención, en vez de reintentar cada 500ms
+   * para siempre en silencio.
+   */
+  async _wakeAnchorFromRest() {
+    if (this._wakingInFlight) {
+      return this._wakingInFlight
+    }
+ 
+    this._wakingInFlight = (async () => {
+      const WAKE_MAX_CYCLES = 2 // el ciclo completo de _runBootstrapWithRetry (ya con sus 3 intentos internos) se repite hasta 2 veces antes de rendirse
+      let lastError = null
+
+      for (let cycle = 1; cycle <= WAKE_MAX_CYCLES; cycle++) {
+        try {
+          await this._runBootstrapWithRetry()
+          await browserProfileState.exportState(this.anchorTab.getPage())
+          return this.anchorTab
+        } catch (error) {
+          lastError = error
+          logger.warn(`⚠️ Ciclo de despertar ${cycle}/${WAKE_MAX_CYCLES} falló: ${error.message}`)
+          if (cycle < WAKE_MAX_CYCLES) continue 
+          logger.error(`❌ No se pudo reanudar sesión desde reposo tras ${WAKE_MAX_CYCLES} ciclos completos, tratando como sesión perdida:`, lastError.message)    
+          // Reutiliza el mismo mecanismo de pausa+notificación que ya
+          // existe para SESSION_LOST, en vez de un camino de fallo aparte
+          // y silencioso.
+          this.poolState = POOL_STATE.PAUSED
+          await this._notifyRecoveryFailure(lastError)
+          return null
+        }
+      }
+      this._wakingInFlight = null
+    })()
+
+    return this._wakingInFlight
   }
 
   /**

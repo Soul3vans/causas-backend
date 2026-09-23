@@ -132,23 +132,31 @@ class JobDispatcher extends EventEmitter {
   // ================== ASIGNACIÓN A UN WORKER LIBRE ==================
 
   /**
-   * Devuelve el siguiente job que debe tomar un worker específico.
-   * Prioridad: REQUEUED con afinidad a este worker > QUEUED de este worker.
-   * (Los REQUEUED huérfanos ya se reasignan a W1 en handleWorkerClosed(),
-   * así que no hace falta una segunda búsqueda "sin dueño" aquí.)
-   *
-   * @param {number} workerId
-   * @returns {Promise<object|null>} documento de ScraperJobs, o null
+   * Lee Y reclama atómicamente en una sola operación de Mongo — evita
+   * la ventana de carrera entre "leer candidato" y "marcarlo PROCESSING"
+   * que existía al ser dos pasos separados. findOneAndUpdate es atómico
+   * a nivel de documento: si dos llamadas concurrentes compiten por el
+   * mismo filtro, Mongo garantiza que solo UNA la obtiene.
    */
   async getNextJob(workerId) {
-    let job = await ScraperJobs.findOne({ ownerWorkerId: workerId, status: 'REQUEUED' })
-      .sort({ priority: -1, createdAt: 1 })
+    let job = await ScraperJobs.findOneAndUpdate(
+      { ownerWorkerId: workerId, status: 'REQUEUED' },
+      { status: 'PROCESSING', startedAt: new Date() },
+      { sort: { priority: -1, createdAt: 1 }, new: true }
+    )
 
-    if (job) return job
+    if (job) {
+      await this._mirrorToProcessStatus(job)
+      return job
+    }
 
-    job = await ScraperJobs.findOne({ ownerWorkerId: workerId, status: 'QUEUED' })
-      .sort({ priority: -1, createdAt: 1 })
+    job = await ScraperJobs.findOneAndUpdate(
+      { ownerWorkerId: workerId, status: 'QUEUED' },
+      { status: 'PROCESSING', startedAt: new Date() },
+      { sort: { priority: -1, createdAt: 1 }, new: true }
+    )
 
+    if (job) await this._mirrorToProcessStatus(job)
     return job
   }
 

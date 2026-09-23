@@ -1,0 +1,49 @@
+flowchart TB
+  Frontend["Frontend: Crear causa\n(`payload`)"]
+  API["Backend API\nPOST /causes\n(`validate`, `auth`)"]
+  Validate["Validación\n(schema, auth)"]
+  Queue["Pool / Queue\n(enqueue job)"]
+  WorkerScheduler["Worker Scheduler"]
+  Worker["Worker / Worker instance\n(`tab-worker.js`, `job-dispatcher.js`)"]
+  Acquire["Adquiere job (lock)"]
+  Scraper["Scraper / Scrapper\n(`scrap.js`, `scrapper.js`, `scrap-civil-one.js`, `scrap-civil-all.js`)"]
+  Parse["Parseo & Normalización\n(`compareCaseData.js`, `parse-string.js`)"]
+  UpdateDB["Actualizar DB\n(`case-updater.js`, `Cases.js`, `CasesLogs.js`)"]
+  EmitEvent["Emitir eventos internos\n(`unified.js`, `dailystatus.js`)"]
+  MailQueue["Cola de emails"]
+  MailSender["Mailer service\n(`mail.js`)"]
+  Users["Usuarios (email)"]
+  Success["Job: Success"]
+  Retry["Retry Policy\n(retries, backoff)"]
+  FailedQueue["Failed Queue / Overflow\n(`ScrapingOverflow.js`)"]
+  Logs["CasesLogs / Monitoring\n(`CasesLogs.js`, `logger.js`)"]
+  AdminNotify["Notificar admins / alertas\n(`mail.js`)"]
+
+  Frontend -->|POST causa| API
+  API --> Validate
+  Validate -->|OK| Queue
+  Validate -->|KO: 4xx| APIError["Rechazar al frontend\n(400/422)"] --> Logs
+  Queue --> WorkerScheduler
+  WorkerScheduler --> Worker
+  Worker --> Acquire
+  Acquire --> Scraper
+  Scraper --> Parse
+  Parse -->|OK| UpdateDB
+  UpdateDB --> EmitEvent
+  EmitEvent --> MailQueue
+  MailQueue --> MailSender
+  MailSender --> Users
+  UpdateDB --> Success
+  Success --> Logs
+
+  Scraper -->|error| Retry
+  Parse -->|error| Retry
+  UpdateDB -->|error| Retry
+  MailSender -->|error| MailRetry["Retry emails"] -->|max attempts| MailFailedQueue["Mail Failed Queue"] --> AdminNotify
+
+  Retry -->|attempt < max| WorkerScheduler
+  Retry -->|attempt >= max| FailedQueue
+  FailedQueue --> Logs
+  FailedQueue --> AdminNotify
+  AdminNotify --> Logs
+  Logs -->|audit/vis| AdminUI["Dashboard / Investigacion"]
