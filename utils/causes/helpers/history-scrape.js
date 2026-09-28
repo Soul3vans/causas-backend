@@ -101,7 +101,7 @@ class HistoryScrape {
             await this.folderExtract();
         }
 
-        const persist = new document_persist_helper_1.DocumentAnnexPersistHelper(this.cause, this.anexs, this.issue);
+        const persist = new document_persist_helper_1.DocumentAnnexPersistHelper(this.cause, this.anexs, this.issue, this.trackingRefs || {});
         persist.annexsEvaluate();
         return persist.makeFilenames();
     }

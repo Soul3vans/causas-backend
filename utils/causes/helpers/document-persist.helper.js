@@ -4,12 +4,15 @@ exports.DocumentAnnexPersistHelper = void 0;
 const parse_string_1 = require("../parse-string");
 const worker_launch_document_1 = require("../workers/worker-launch-document");
 const code_calc_1 = require("./code-calc");
+const tracker = require("./document-processing-tracker");
 
 class DocumentAnnexPersistHelper {
-    constructor(cause, annexs, issue) {
+    constructor(cause, annexs, issue, trackingRefs = {}) {
         this.cause = cause;
         this.annexs = annexs;
         this.issue = issue;
+        // { caseId, processId, fullRol } — opcional, si no vienen no se trackea
+		this.trackingRefs = trackingRefs;
     }
 
     makeFilenames() {
@@ -31,61 +34,66 @@ class DocumentAnnexPersistHelper {
     annexsEvaluate() {
         const total = this.annexs.length;
         console.log(`📥 Iniciando procesamiento de ${total} documentos...`);
-        
-        // Si no hay documentos, salir
+
         if (total === 0) {
             console.log('📭 No hay documentos para procesar');
-            return;
+            return Promise.resolve();
         }
 
-        // ✅ Si hay pocos documentos (≤ 5), procesar en un solo lote
-        if (total <= 5) {
-            console.log(`📥 Procesando ${total} documentos en un solo lote...`);
-            (0, worker_launch_document_1.runWorkerDocument)(
-                this.annexs.map((item) => this.evaluateAnnex(item)),
-                this.issue,
-                "annex"
-            );
-            return;
-        }
+        // Devuelve la promesa, pero history-scrape.js sigue SIN esperarla (fire-and-forget):
+        // el seguimiento vive en DocumentProcessingStatus, no bloquea el pool.
+        return (async () => {
+            const trackerDoc = await tracker.startTracking({ fullRol: this.cause, totalDocuments: total });
+            let hadErrors = false;
 
-        // ✅ Dividir en lotes de 5
-        const BATCH_SIZE = 5;
-        const batches = [];
-        
-        for (let i = 0; i < total; i += BATCH_SIZE) {
-            const batch = this.annexs.slice(i, i + BATCH_SIZE);
-            batches.push(batch);
-        }
-
-        console.log(`📦 Procesando ${batches.length} lotes de ${BATCH_SIZE} documentos...`);
-
-        // ✅ Procesar cada lote secuencialmente (pero cada lote en paralelo)
-        // Usamos una función asíncrona para esperar a que cada lote termine
-        (async () => {
-            for (let i = 0; i < batches.length; i++) {
-                const batch = batches[i];
-                const batchNumber = i + 1;
-                console.log(`🔄 Procesando lote ${batchNumber}/${batches.length} (${batch.length} documentos)...`);
-                
+            if (total <= 5) {
+                console.log(`📥 Procesando ${total} documentos en un solo lote...`);
                 try {
                     await (0, worker_launch_document_1.runWorkerDocument)(
-                        batch.map((item) => this.evaluateAnnex(item)),
+                        this.annexs.map((item) => this.evaluateAnnex(item)),
                         this.issue,
-                        `annex-batch-${batchNumber}`
+                        "annex"
                     );
-                    console.log(`✅ Lote ${batchNumber} procesado exitosamente`);
+                    await tracker.incrementProcessed(trackerDoc?._id, total);
                 } catch (error) {
-                    console.error(`❌ Error en lote ${batchNumber}:`, error.message);
+                    console.error(`❌ Error procesando documentos:`, error.message);
+                    hadErrors = true;
+                    await tracker.recordBatchError(trackerDoc?._id, 1, error.message);
                 }
-                
-                // ✅ Esperar 0.5 segundos entre lotes para no saturar
-                if (i < batches.length - 1) {
-                    console.log(`⏳ Esperando 0.5 segundos antes del siguiente lote...`);
-                    await new Promise(resolve => setTimeout(resolve, 500));
+            } else {
+                const BATCH_SIZE = 5;
+                const batches = [];
+                for (let i = 0; i < total; i += BATCH_SIZE) {
+                    batches.push(this.annexs.slice(i, i + BATCH_SIZE));
+                }
+                console.log(`📦 Procesando ${batches.length} lotes de ${BATCH_SIZE} documentos...`);
+
+                for (let i = 0; i < batches.length; i++) {
+                    const batch = batches[i];
+                    const batchNumber = i + 1;
+                    console.log(`🔄 Procesando lote ${batchNumber}/${batches.length} (${batch.length} documentos)...`);
+                    try {
+                        await (0, worker_launch_document_1.runWorkerDocument)(
+                            batch.map((item) => this.evaluateAnnex(item)),
+                            this.issue,
+                            `annex-batch-${batchNumber}`
+                        );
+                        console.log(`✅ Lote ${batchNumber} procesado exitosamente`);
+                        await tracker.incrementProcessed(trackerDoc?._id, batch.length);
+                    } catch (error) {
+                        console.error(`❌ Error en lote ${batchNumber}:`, error.message);
+                        hadErrors = true;
+                        await tracker.recordBatchError(trackerDoc?._id, batchNumber, error.message);
+                    }
+                    if (i < batches.length - 1) {
+                        console.log(`⏳ Esperando 0.5 segundos antes del siguiente lote...`);
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
                 }
             }
+
             console.log(`✅ Todos los documentos han sido procesados exitosamente.`);
+            await tracker.finishTracking(trackerDoc?._id, { hadErrors });
         })();
     }
 

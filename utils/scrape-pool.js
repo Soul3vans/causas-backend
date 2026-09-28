@@ -4,9 +4,10 @@ const logger = require('./logger')
 const { BrowserSessionManager } = require('./browser-session-manager')
 const { JobDispatcher } = require('./job-dispatcher')
 const { updateCaseIfNeeded } = require('./case-updater')
+const { jobContext } = require('./job-context')
 
 const DEFAULTS = {
-  acquireTimeoutMs: 180 * 1000 // 180s, confirmado
+  acquireTimeoutMs: 360 * 1000 // 360s, aumentado para tolerar reanudación lenta
 }
 
 class PoolRecoveryError extends Error {
@@ -148,7 +149,10 @@ async function _processJob(workerId, job) {
   try {
     const { Cases, Users } = models // inyectados en initialize(models), ver abajo
 
-    const result = await updateCaseIfNeeded(caseId, fullRol, searchParams, { Cases, Users }, tabWorker)
+    const result = await jobContext.run(
+      { jobId, caseId, processId, fullRol },
+      () => updateCaseIfNeeded(caseId, fullRol, searchParams, { Cases, Users }, tabWorker)
+    )
 
     if (result.success) {
       await jobDispatcher.markCompleted(jobId, {
@@ -191,10 +195,17 @@ async function _processJob(workerId, job) {
  */
 async function _acquireWithTimeout(workerId, timeoutMs = DEFAULTS.acquireTimeoutMs) {
   const start = Date.now()
+  let lastHeartbeat = start
 
   while (true) {
     const tabWorker = await sessionManager.getOrCreateWorker(workerId)
     if (tabWorker) return tabWorker
+
+    if (Date.now() - lastHeartbeat > 15000) {
+      lastHeartbeat = Date.now()
+      const anchor = sessionManager.anchorTab
+      logger.warn(`⏳ [W${workerId + 1}] Esperando tab disponible... (${Math.round((Date.now() - start) / 1000)}s) — anchorState=${anchor?.state}, isResting=${anchor?.isResting}, poolState=${sessionManager.getPoolState()}`)
+    }
 
     if (Date.now() - start > timeoutMs) {
       throw new PoolRecoveryError(`Timeout (${timeoutMs}ms) esperando tab disponible para W${workerId + 1}`)
