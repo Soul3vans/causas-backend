@@ -99,6 +99,7 @@ function _ensureRunnerLoop(workerId) {
   _runnerLoop(workerId).catch(err => {
     logger.error(`💥 runner loop W${workerId + 1} terminó con error inesperado:`, err.message)
     activeRunners.delete(workerId)
+    setTimeout(() => _ensureRunnerLoop(workerId), 2000)
   })
 }
 
@@ -112,6 +113,11 @@ function _ensureRunnerLoop(workerId) {
  */
 async function _runnerLoop(workerId) {
   while (true) {
+    // Validar ANTES de reclamar: sin pool RUNNING no se toma trabajo.
+    if (getPoolState() !== 'RUNNING') {
+      await _delay(2000)
+      continue
+    }
     const job = await jobDispatcher.getNextJob(workerId)
 
     if (!job) {

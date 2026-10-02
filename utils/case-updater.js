@@ -130,13 +130,19 @@ async function updateCaseIfNeeded(caseId, fullRol, searchParams, models, scrapeI
       'scrapedData.retryCount': 0
     }
 
+    let pushOps = null
     if (changes.newMovementsCount > 0) {
-      const newMovementsSorted = sortMovementsByDate(changes.newMovements)
-      updateData['$push'] = {
-        movementsHistory: { $each: newMovementsSorted, $position: 0 }
+      pushOps = {
+        movementsHistory: {
+          $each: sortMovementsByDate(changes.newMovements),
+          $position: 0
+        }
       }
       logger.info(`➕ Agregando ${changes.newMovementsCount} movimientos nuevos`)
     }
+    const update = { $set: updateData }
+    if (pushOps) update.$push = pushOps
+    await Cases.findByIdAndUpdate(caseId, update)
 
     if (changes.litigantsChanged) {
       updateData.litigants = scrapResult.litigants

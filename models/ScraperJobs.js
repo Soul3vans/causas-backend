@@ -89,5 +89,22 @@ ScraperJobSchema.index({ status: 1, priority: -1, createdAt: 1 })
 // Búsqueda directa por processId (para actualizar cuando termina un job)
 ScraperJobSchema.index({ processId: 1 })
 
+// DIAGNÓSTICO TEMPORAL: quién cambia el estado de un job
+if (process.env.TRACE_JOB_TRANSITIONS === '1') {
+  const logger = require('../utils/logger')
+  const trace = op =>
+    function () {
+      const raw = this.getUpdate() || {}
+      const set = raw.$set || raw
+      if (set.status === undefined && set.ownerWorkerId === undefined) return
+      const caller = (new Error().stack || '')
+        .split('\n')
+        .filter(l => l.includes(process.cwd()) && !l.includes('node_modules'))
+        .slice(0, 4).map(l => l.trim()).join(' <- ')
+      logger.info(`🔎 [ScraperJobs.${op}] filter=${JSON.stringify(this.getFilter())} set=${JSON.stringify(set)} caller=${caller}`)
+    }
+  ;['findOneAndUpdate', 'updateOne', 'updateMany'].forEach(op => ScraperJobSchema.pre(op, trace(op)))
+}
+
 module.exports = mongoose.model('ScraperJobs', ScraperJobSchema)
 module.exports.CAUSE_STATES = CAUSE_STATES

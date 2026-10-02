@@ -48,13 +48,15 @@ async function randomDelay(min = 600, max = 3000) {
 async function performLogin(page) {
   logger.info('🔐 Iniciando sesión con Clave Única...')
 
-  // PASO 1: Abrir el modal de Clave Única
-  await page.evaluate(() => {
-    eval('AutenticaCUnica();')
-  })
+  if (!isClaveUnicaLoginPage(page)) {
+    // PASO 1: Abrir el modal de Clave Única
+    await page.evaluate(() => {
+      eval('AutenticaCUnica();')
+    })
 
-  console.log('⏳ Esperando que cargue el modal de autenticación...')
-  await timeout(4000)
+    console.log('⏳ Esperando que cargue el modal de autenticación...')
+    await timeout(4000)
+  }
 
   // PASO 2: Esperar a que los campos estén disponibles
   await page.waitForSelector('input#uname', { timeout: 30000 })
@@ -196,6 +198,36 @@ async function waitForSearchForm(page) {
   }
 }
 
+function isAuthenticatedSearchPage(page) {
+  let currentUrl
+  try {
+    currentUrl = new URL(page.url())
+  } catch {
+    return false
+  }
+
+  if (
+    currentUrl.origin !== 'https://oficinajudicialvirtual.pjud.cl' ||
+    !currentUrl.pathname.endsWith('/indexN.php')
+  ) {
+    return false
+  }
+
+  return true
+}
+
+function isClaveUnicaLoginPage(page) {
+  let currentUrl
+  try {
+    currentUrl = new URL(page.url())
+  } catch {
+    return false
+  }
+
+  return currentUrl.origin === 'https://accounts.claveunica.gob.cl' &&
+    currentUrl.pathname.startsWith('/accounts/login/')
+}
+
 // ---------- contrato exigido por BrowserSessionManager ----------
 
 /**
@@ -204,18 +236,25 @@ async function waitForSearchForm(page) {
 async function bootstrap(page) {
   logger.info('🔐 auth-strategy: iniciando bootstrap AUTH sobre AnchorTab')
 
-  // Navegación inicial a home/index.php.
-  // NOTA: el original (ScrapService.pageGoto) incluye 3 reintentos con
-  // espera de 10 MINUTOS entre cada uno, y emite eventos ('retryPage',
-  // 'closeBrowser') consumidos en otra parte del sistema. No lo
-  // reproduzco tal cual aquí porque BrowserSessionManager no es un
-  // EventEmitter hacia esos consumidores — ver pregunta 1 al final.
-  await page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
-    waitUntil: 'domcontentloaded',
-    timeout: 5 * 60 * 1000
-  })
+  let sessionAlreadyActive = await isAuthenticatedSearchPage(page)
+  let alreadyAtClaveUnicaLogin = isClaveUnicaLoginPage(page)
 
-  await performLogin(page)
+  if (!sessionAlreadyActive && !alreadyAtClaveUnicaLogin) {
+    await page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
+      waitUntil: 'domcontentloaded',
+      timeout: 5 * 60 * 1000
+    })
+
+    sessionAlreadyActive = await isAuthenticatedSearchPage(page)
+  }
+
+  if (!sessionAlreadyActive) {
+    await performLogin(page)
+  }
+
+  if (sessionAlreadyActive) {
+    logger.info('✅ auth-strategy: sesión ya activa en indexN.php, omitiendo login')
+  }
 
   const currentUrl = page.url()
   console.log(`📍 URL actual después de autenticación: ${currentUrl}`)
