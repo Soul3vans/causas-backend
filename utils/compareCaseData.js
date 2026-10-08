@@ -66,6 +66,24 @@ function getMovementTimestamp(movement) {
 }
 
 /**
+ * Una fecha de tribunal es medianoche local de Chile (UTC con min/seg/ms = 0).
+ * Si trae milisegundos, es una marca de extracción (new Date()), no una fecha real.
+ * PARCHE TEMPORAL: la causa raíz está en la extracción (history-scrape).
+ */
+function hasReliableDate(movement) {
+  const ts = getMovementTimestamp(movement);
+  if (ts === 0) return false;
+  const d = new Date(ts);
+  return d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0 && d.getUTCMilliseconds() === 0;
+}
+
+/** Clave de contenido para movimientos sin fecha fiable. */
+function movementKey(m) {
+  const norm = v => String(v ?? '').trim().toLowerCase();
+  return [m.invoice, m.stage, m.procedure, m.descProcedure, m.page].map(norm).join('|');
+}
+
+/**
  * Obtiene la fecha del movimiento más reciente
  * @param {Array} movements - Array de movimientos
  * @returns {number|null} - Timestamp o null
@@ -75,6 +93,7 @@ function getLatestMovementTimestamp(movements) {
   
   let latestTimestamp = 0;
   for (const movement of movements) {
+	if (!hasReliableDate(movement)) continue; // la fecha inventada no cuenta como "última"
     const timestamp = getMovementTimestamp(movement);
     if (timestamp > latestTimestamp) {
       latestTimestamp = timestamp;
@@ -119,9 +138,9 @@ function getNewMovements(existingMovements, newMovements) {
   const latestTimestamp = getLatestMovementTimestamp(existingMovements);
   
   // Si no hay timestamp válido en BD (todos los movimientos tienen fecha inválida)
+  const existingKeys = new Set(existingMovements.map(movementKey));
   if (latestTimestamp === null || latestTimestamp === 0) {
-    logger.debug(`No hay fecha válida en BD, todos los ${newMovements.length} movimientos se consideran nuevos`);
-    return sortMovementsByDate(newMovements);
+    return sortMovementsByDate(newMovements.filter(m => !existingKeys.has(movementKey(m))));
   }
   
   // Filtrar movimientos con fecha posterior a la última fecha conocida
@@ -130,9 +149,8 @@ function getNewMovements(existingMovements, newMovements) {
     const movementTimestamp = getMovementTimestamp(movement);
     
     // Si el movimiento tiene fecha inválida (0), lo incluimos como precaución
-    if (movementTimestamp === 0) {
-      logger.debug(`Movimiento con fecha inválida, incluyendo como nuevo: ${movement.descProcedure?.substring(0, 50)}`);
-      newMovementsList.push(movement);
+    if (!hasReliableDate(movement)) {
+      if (!existingKeys.has(movementKey(movement))) newMovementsList.push(movement);
     } 
     // Si la fecha del movimiento es posterior a la última fecha en BD
     else if (movementTimestamp > latestTimestamp) {

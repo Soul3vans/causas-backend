@@ -129,8 +129,16 @@ const allowedOrigins = (process.env.CORS_ORIGIN_URI || '')
   .map(o => o.trim())
   .filter(Boolean);
 
+console.log('🔍 DEBUG CORS - allowedOrigins:', allowedOrigins);
+console.log('🔍 DEBUG CORS - process.env.CORS_ORIGIN_URI:', process.env.CORS_ORIGIN_URI);
+
 app.use(cors({
   origin: (origin, callback) => {
+	// ======= DESCOMENTAR PARA DEBUG DE CORS ========
+    // console.log(`🔍 DEBUG CORS - Checking origin: "${origin}"`);
+    // console.log(`🔍 DEBUG CORS - Against allowedOrigins: ${JSON.stringify(allowedOrigins)}`);
+    // console.log(`🔍 DEBUG CORS - Is included: ${allowedOrigins.includes(origin)}`);
+    
     // Permite requests sin origin (Postman, curl, apps móviles)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
@@ -140,10 +148,6 @@ app.use(cors({
   },
   credentials: true
 }));
-
-if (process.env.NODE_ENV === 'production') {
-  app.disable('x-powered-by')
-}
 
 // ========== APOLLO SERVER CON TIMEOUT ==========
 const server = new ApolloServer({
@@ -195,7 +199,19 @@ async function startServer() {
     logger.info('✅ Apollo Server iniciado')
     console.log('✅ Apollo Server iniciado')
 
-    server.applyMiddleware({ app, cors: { origin: allowedOrigins, credentials: true }  })
+    server.applyMiddleware({ 
+	  app, 
+	  cors: { 
+		origin: (origin, callback) => {
+		  if (!origin) return callback(null, true);
+		  if (allowedOrigins.includes(origin)) {
+			return callback(null, true);
+		  }
+		  callback(new Error(`Origen no permitido por CORS: ${origin}`));
+		},
+		credentials: true 
+	  }  
+	})
     logger.info('✅ Middleware de Apollo aplicado')
     console.log('✅ Middleware de Apollo aplicado')
 

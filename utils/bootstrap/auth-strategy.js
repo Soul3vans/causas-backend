@@ -22,11 +22,11 @@ const { envs } = require('../plugins/env.plugin')
 
 // ---------- helpers, copia literal de ScrapService.timeout()/randomDelay() ----------
 
-function timeout(ms) {
+function timeout (ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function randomDelay(min = 600, max = 3000) {
+async function randomDelay (min = 600, max = 3000) {
   const delays = [600, 800, 1000, 1200, 1400, 1600, 2000, 3000]
   const d = delays[Math.floor(Math.random() * delays.length)]
   await timeout(d)
@@ -45,7 +45,7 @@ async function randomDelay(min = 600, max = 3000) {
  * nota en bootstrap() sobre por qué se omite aquí (pregunta pendiente
  * al final de este archivo).
  */
-async function performLogin(page) {
+async function performLogin (page) {
   logger.info('🔐 Iniciando sesión con Clave Única...')
 
   if (!isClaveUnicaLoginPage(page)) {
@@ -129,7 +129,7 @@ async function performLogin(page) {
 
 // ---------- extracción literal de scrapper-auth.js ----------
 
-async function clickConsultaUnificada(page) {
+async function clickConsultaUnificada (page) {
   try {
     console.log('🔍 Buscando enlace "Consulta Unificada" en el nav...')
 
@@ -185,7 +185,7 @@ async function clickConsultaUnificada(page) {
   }
 }
 
-async function waitForSearchForm(page) {
+async function waitForSearchForm (page) {
   console.log('⏳ Esperando a que cargue el formulario de búsqueda...')
 
   try {
@@ -198,7 +198,7 @@ async function waitForSearchForm(page) {
   }
 }
 
-function isAuthenticatedSearchPage(page) {
+function isAuthenticatedSearchPage (page) {
   let currentUrl
   try {
     currentUrl = new URL(page.url())
@@ -216,7 +216,7 @@ function isAuthenticatedSearchPage(page) {
   return true
 }
 
-function isClaveUnicaLoginPage(page) {
+function isClaveUnicaLoginPage (page) {
   let currentUrl
   try {
     currentUrl = new URL(page.url())
@@ -233,11 +233,11 @@ function isClaveUnicaLoginPage(page) {
 /**
  * @param {import('puppeteer').Page} page - la Page del AnchorTab
  */
-async function bootstrap(page) {
+async function bootstrap (page) {
   logger.info('🔐 auth-strategy: iniciando bootstrap AUTH sobre AnchorTab')
 
   let sessionAlreadyActive = await isAuthenticatedSearchPage(page)
-  let alreadyAtClaveUnicaLogin = isClaveUnicaLoginPage(page)
+  const alreadyAtClaveUnicaLogin = isClaveUnicaLoginPage(page)
 
   if (!sessionAlreadyActive && !alreadyAtClaveUnicaLogin) {
     await page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
