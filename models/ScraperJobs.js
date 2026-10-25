@@ -7,12 +7,12 @@ const mongoose = require('mongoose')
  * El frontend sigue consumiendo únicamente ProcessStatus.
  */
 const CAUSE_STATES = [
-  'QUEUED',              // esperando turno, aún no le toca
-  'PROCESSING',          // siendo trabajada activamente por un worker
-  'COMPLETED',           // terminó con éxito
+  'QUEUED', // esperando turno, aún no le toca
+  'PROCESSING', // siendo trabajada activamente por un worker
+  'COMPLETED', // terminó con éxito
   'COMPLETED_NOT_FOUND', // terminal válido: la causa no existe en el sitio
-  'REQUEUED',            // se detuvo por PoolRecoveryError, espera reanudación con prioridad
-  'ERROR'                // fallo real, no relacionado a sesión/infraestructura
+  'REQUEUED', // se detuvo por PoolRecoveryError, espera reanudación con prioridad
+  'ERROR' // fallo real, no relacionado a sesión/infraestructura
 ]
 
 const ScraperJobSchema = new mongoose.Schema(
@@ -73,7 +73,10 @@ const ScraperJobSchema = new mongoose.Schema(
     },
 
     startedAt: { type: Date, default: null },
-    completedAt: { type: Date, default: null }
+    completedAt: { type: Date, default: null },
+    // Trazabilidad y recuperación: quién reclamó el job y su último latido.
+    claimedBy: { type: String, default: null },
+    heartbeatAt: { type: Date, default: null }
   },
   { timestamps: true }
 )

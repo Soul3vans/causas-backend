@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 'use strict'
 Object.defineProperty(exports, '__esModule', { value: true })
 exports.DocumentAnnexPersistHelper = void 0

@@ -131,7 +131,7 @@ class HistoryScrape {
     console.log(`📂 Carpetas a procesar (solo enlaces): ${this.folders.length}`)
 
     const ANNEX_ROWS = '#modalAnexoSolicitudCivil .modal-body table tbody tr'
-    const previousSignature = null
+    let previousSignature = null
 
     for (const folder of this.folders) {
       try {

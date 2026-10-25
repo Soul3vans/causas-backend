@@ -11,7 +11,7 @@ const DEFAULTS = {
 }
 
 class PoolRecoveryError extends Error {
-  constructor(message) {
+  constructor (message) {
     super(message)
     this.name = 'PoolRecoveryError'
   }
@@ -28,7 +28,7 @@ const activeRunners = new Set()
 mismo patrón de inyección que ya usa server.js con
 startScrapingWorker({ Cases, Users, ProcessStatus, ScrapingOverflow })
 */
-async function initialize(injectedModels) {
+async function initialize (injectedModels) {
   models = injectedModels
   const concurrency = parseInt(process.env.SCRAPING_CONCURRENCY) || 2
 
@@ -62,6 +62,11 @@ async function initialize(injectedModels) {
 
   await sessionManager.initialize()
 
+  // Recuperar jobs huérfanos al arrancar y revisar cada minuto (libera cupos)
+  const reap = () => jobDispatcher.recoverOrphans().catch(err => logger.error('recoverOrphans:', err.message))
+  await reap()
+  setInterval(reap, 60 * 1000).unref()
+
   // el AnchorTab (worker 0) siempre tiene loop activo desde el arranque,
   // ya que su tab nunca se cierra — el resto son bajo demanda
   _ensureRunnerLoop(0)
@@ -69,7 +74,7 @@ async function initialize(injectedModels) {
   logger.info(`🚀 scrape-pool inicializado (concurrency=${concurrency})`)
 }
 
-function getPoolState() {
+function getPoolState () {
   return sessionManager?.getPoolState() ?? 'BOOTSTRAPPING'
 }
 
@@ -78,22 +83,22 @@ function getPoolState() {
  * ScraperJobs (reparto en cascada) y dispara los runner loops
  * necesarios vía el evento 'jobsAssigned'.
  */
-async function enqueueCaseUpdate(jobData) {
+async function enqueueCaseUpdate (jobData) {
   return jobDispatcher.enqueueBatch([jobData])
 }
 
-async function enqueueBatch(causesData) {
+async function enqueueBatch (causesData) {
   return jobDispatcher.enqueueBatch(causesData)
 }
 
-async function closeAllInstances() {
+async function closeAllInstances () {
   activeRunners.clear()
   if (sessionManager) await sessionManager.closeAll()
 }
 
 // ================== RUNNER LOOPS ==================
 
-function _ensureRunnerLoop(workerId) {
+function _ensureRunnerLoop (workerId) {
   if (activeRunners.has(workerId)) return // ya corriendo, nada que hacer
   activeRunners.add(workerId)
   _runnerLoop(workerId).catch(err => {
@@ -111,7 +116,7 @@ function _ensureRunnerLoop(workerId) {
  * encuentra motivo para "no existir", así que su ciclo de espera es
  * más económico dejarlo corriendo indefinidamente.
  */
-async function _runnerLoop(workerId) {
+async function _runnerLoop (workerId) {
   while (true) {
     // Validar ANTES de reclamar: sin pool RUNNING no se toma trabajo.
     if (getPoolState() !== 'RUNNING') {
@@ -134,12 +139,13 @@ async function _runnerLoop(workerId) {
   }
 }
 
-async function _processJob(workerId, job) {
+async function _processJob (workerId, job) {
   const { _id: jobId, caseId, fullRol, searchParams, processId } = job
 
   logger.info(`🕷️ [W${workerId + 1}] Procesando causa ${fullRol} (job ${jobId})...`)
 
   let tabWorker
+  let heartbeat = null
   try {
     tabWorker = await _acquireWithTimeout(workerId)
   } catch (error) {
@@ -154,7 +160,7 @@ async function _processJob(workerId, job) {
 
   try {
     const { Cases, Users } = models // inyectados en initialize(models), ver abajo
-
+    heartbeat = setInterval(() => jobDispatcher.touch(jobId), 30 * 1000)
     const result = await jobContext.run(
       { jobId, caseId, processId, fullRol },
       () => updateCaseIfNeeded(caseId, fullRol, searchParams, { Cases, Users }, tabWorker)
@@ -182,8 +188,7 @@ async function _processJob(workerId, job) {
       }
     }
   } catch (error) {
-	// Red de seguridad para fallos genuinamente no controlados (ej.
-    // Mongo caído, excepción fuera del try interno de updateCaseIfNeeded
+    // Red de seguridad para fallos genuinamente no controlados (ej.
     // Mongo caído, excepción fuera del try interno de updateCaseIfNeeded
     if (getPoolState() === 'PAUSED' || getPoolState() === 'RECOVERING') {
       await jobDispatcher.markRequeued(jobId, error.message)
@@ -191,6 +196,7 @@ async function _processJob(workerId, job) {
       await jobDispatcher.markError(jobId, error.message)
     }
   } finally {
+    clearInterval(heartbeat)
     sessionManager.releaseTab(tabWorker)
   }
 }
@@ -199,7 +205,7 @@ async function _processJob(workerId, job) {
  * Envuelve getOrCreateWorker() con el timeout de 180s -> PoolRecoveryError,
  * tal como se diseñó en las rondas anteriores.
  */
-async function _acquireWithTimeout(workerId, timeoutMs = DEFAULTS.acquireTimeoutMs) {
+async function _acquireWithTimeout (workerId, timeoutMs = DEFAULTS.acquireTimeoutMs) {
   const start = Date.now()
   let lastHeartbeat = start
 
@@ -220,7 +226,7 @@ async function _acquireWithTimeout(workerId, timeoutMs = DEFAULTS.acquireTimeout
   }
 }
 
-function _delay(ms) {
+function _delay (ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 

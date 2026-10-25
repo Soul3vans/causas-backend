@@ -71,8 +71,8 @@ class TabWorker {
     return this.page
   }
 
-  async waitForSelector(selector, delay = 1000, visible = true) {
-    await this.page.waitForSelector(selector, { timeout: 0, visible })
+  async waitForSelector(selector, delay = 1000, visible = true, timeout = 45000) {
+    await this.page.waitForSelector(selector, { timeout, visible })
     await this.timeout(delay)
   }
 

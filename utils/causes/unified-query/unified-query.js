@@ -1,635 +1,634 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.UnifiedQuery = void 0;
-const wait_1 = require("../../plugins/wait");
-const code_calc_1 = require("../helpers/code-calc");
-const history_scrape_1 = require("../helpers/history-scrape");
-const parse_string_1 = require("../parse-string");
-const document_all_helper_1 = require("../helpers/document-all.helper");
-const date_calc_1 = require("../helpers/date-calc");
+/* eslint-disable camelcase */
+'use strict'
+Object.defineProperty(exports, '__esModule', { value: true })
+exports.UnifiedQuery = void 0
+const wait_1 = require('../../plugins/wait')
+const code_calc_1 = require('../helpers/code-calc')
+const history_scrape_1 = require('../helpers/history-scrape')
+const parse_string_1 = require('../parse-string')
+const document_all_helper_1 = require('../helpers/document-all.helper')
+const date_calc_1 = require('../helpers/date-calc')
 
 class UnifiedQuery {
-    constructor(scrape, storage) {
-        this.scrape = scrape;
-        this.storage = storage;
-        this.anchors = [];
-        this.civils = [];
-        this.histories = [];
-        this.litigants = [];
-        this.annex = [];
-        this.rit = null;
-        this.evaluateDocument = (doc) => {
-            const { url, dateProcedure, descProcedure, index, procedure, rol } = doc;
-            const filename = `${(0, parse_string_1.parseStringToCode)(procedure)}_${(0, parse_string_1.parseStringToCode)(descProcedure)}_${(0, code_calc_1.codeUnique)(dateProcedure)}_${index}`;
-            return {
-                url,
-                cause: rol,
-                filename,
-            };
-        };
+  constructor (scrape, storage) {
+    this.scrape = scrape
+    this.storage = storage
+    this.anchors = []
+    this.civils = []
+    this.histories = []
+    this.litigants = []
+    this.annex = []
+    this.rit = null
+    this.evaluateDocument = (doc) => {
+      const { url, dateProcedure, descProcedure, index, procedure, rol } = doc
+      const filename = `${(0, parse_string_1.parseStringToCode)(procedure)}_${(0, parse_string_1.parseStringToCode)(descProcedure)}_${(0, code_calc_1.codeUnique)(dateProcedure)}_${index}`
+      return {
+        url,
+        cause: rol,
+        filename
+      }
+    }
+  }
+
+  async factory (filters, options = {}) {
+    const { autoCloseModal = true, maxResults = 1 } = options
+
+    this.rit = filters.rol
+    console.log('✅ UnifiedQuery: Usando navegador ya inicializado')
+    await this.timeout(1000 + Math.floor(Math.random() * 2000))
+    await this.goUnifiedQuery()
+    await this.applyFilter(filters)
+
+    // Extraer anchors (resultados de búsqueda)
+    await this.extractAnchors()
+
+    // Verificar si hay resultados
+    if (this.anchors.length === 0) {
+      console.log('📭 No se encontraron resultados para la causa:', this.rit)
+      return null
     }
 
-    async factory(filters, options = {}) {
-        const { autoCloseModal = true, maxResults = 1 } = options;
-        
-        this.rit = filters.rol;
-        console.log("✅ UnifiedQuery: Usando navegador ya inicializado");
-        await this.timeout(1000 + Math.floor(Math.random() * 2000));
-        await this.goUnifiedQuery();
-        await this.applyFilter(filters);
-        
-        // Extraer anchors (resultados de búsqueda)
-        await this.extractAnchors();
-        
-        // Verificar si hay resultados
-        if (this.anchors.length === 0) {
-            console.log("📭 No se encontraron resultados para la causa:", this.rit);
-            return null;
+    // Procesar SOLO la primera causa (maxResults = 1)
+    await this.collectDetails({ autoCloseModal, maxResults })
+  }
+
+  async goUnifiedQuery (otherPage) {
+    try {
+      const currentUrl = await this.page.url()
+      console.log(`📍 URL actual: ${currentUrl}`)
+
+      // Caso 1: Estamos en indexN.php — verificar si el formulario ya está disponible
+      if (currentUrl.includes('indexN.php')) {
+        const formVisible = (await this.page.$('select#competencia')) !== null
+
+        if (formVisible) {
+          // ✅ Sesión y tokens aún vigentes: solo limpiar el formulario,
+          // mucho más rápido que el viaje completo a home/index.php
+          console.log('🧹 Formulario disponible en indexN.php, limpiando con botón "Limpiar"...')
+          await this.clearSearchForm()
+        } else {
+          // Caso real de pérdida de sesión/tokens vencidos
+          console.log('⚠️ indexN.php sin formulario visible. Navegando a home/index.php...')
+          await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
+            waitUntil: 'domcontentloaded',
+            timeout: 30000
+          })
+          await this.timeout(3000 + Math.floor(Math.random() * 3000))
         }
-        
-        // Procesar SOLO la primera causa (maxResults = 1)
-        await this.collectDetails({ autoCloseModal, maxResults });
-    }
+      }
 
-    async goUnifiedQuery(otherPage) {
+      // Caso 2: Estamos en home/index.php
+      if (currentUrl.includes('home/index.php') || this.page.url().includes('home/index.php')) {
+        // Cerrar cualquier modal de "AVISO" que bloquee la interacción
+        console.log('🔍 Verificando si hay modal de aviso bloqueando la página...')
         try {
-            const currentUrl = await this.page.url();
-            console.log(`📍 URL actual: ${currentUrl}`);
-            
-            // Caso 1: Estamos en indexN.php — verificar si el formulario ya está disponible
-            if (currentUrl.includes('indexN.php')) {
-                const formVisible = (await this.page.$('select#competencia')) !== null;
+          const modalClosed = await this.page.evaluate(() => {
+            const modal = document.querySelector('.modal.in') || document.querySelector('.modal.show')
+            if (!modal) return false
 
-                if (formVisible) {
-                    // ✅ Sesión y tokens aún vigentes: solo limpiar el formulario,
-                    // mucho más rápido que el viaje completo a home/index.php
-                    console.log('🧹 Formulario disponible en indexN.php, limpiando con botón "Limpiar"...');
-                    await this.clearSearchForm();
-                } else {
-                    // Caso real de pérdida de sesión/tokens vencidos
-                    console.log('⚠️ indexN.php sin formulario visible. Navegando a home/index.php...');
-                    await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
-                        waitUntil: 'domcontentloaded',
-                        timeout: 30000
-                    });
-                    await this.timeout(3000 + Math.floor(Math.random() * 3000));
-                }
-            }
-            
-            // Caso 2: Estamos en home/index.php
-            if (currentUrl.includes('home/index.php') || this.page.url().includes('home/index.php')) {
-            
-            // Cerrar cualquier modal de "AVISO" que bloquee la interacción
-            console.log('🔍 Verificando si hay modal de aviso bloqueando la página...');
+            // Cierre manual del modal, sin depender de $.fn.modal
+            // (replica exactamente lo que Bootstrap haría, pero de forma directa)
+            modal.classList.remove('in', 'show')
+            modal.style.display = 'none'
+            modal.setAttribute('aria-hidden', 'true')
+
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove())
+            document.body.classList.remove('modal-open')
+            document.body.style.paddingRight = ''
+            document.body.style.overflow = ''
+
+            return true
+          })
+
+          if (modalClosed) {
+            console.log('✅ Modal cerrado manualmente (DOM directo, sin depender de jQuery/Bootstrap)')
+            await this.timeout(500)
+          } else {
+            console.log('ℹ️ No se detectó modal de aviso')
+          }
+        } catch (modalError) {
+          console.log('⚠️ Error al intentar cerrar modal:', modalError.message)
+        }
+
+        // 🔑 Priming: clic en "Clave Única" + volver a home,
+        // replica el mismo patrón que desbloquea los botones a mano
+        // (interacción real + navegación completa antes de intentar invitado)
+        console.log('🔑 Priming: clic en "Clave Única" para renovar el ciclo del sensor...')
+        const claveUnicaClicked = await this.page.evaluate(() => {
+          const link = document.querySelector('a[onclick*="AutenticaCUnica"]')
+          if (link) {
+            link.click()
+            return true
+          }
+          return false
+        })
+
+        if (claveUnicaClicked) {
+          console.log('✅ Clic en Clave Única realizado, esperando DOM...')
+          await this.timeout(2000 + Math.floor(Math.random() * 2000))
+
+          console.log('↩️ Volviendo a home/index.php para reintentar...')
+          await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
+            waitUntil: 'domcontentloaded',
+            timeout: 60000
+          })
+          await this.timeout(1500 + Math.floor(Math.random() * 2000))
+        } else {
+          console.log('⚠️ No se encontró el enlace de Clave Única, se continúa sin priming.')
+        }
+
+        // Esperar a que el botón esté presente
+        console.log('🔍 En página de inicio, haciendo clic en "Consulta causas"...')
+
+        const debugInfo = await this.page.evaluate(() => {
+          const primary = document.querySelector('button.dropbtn[onclick*="accesoConsultaCausas"]')
+          const buttons = Array.from(document.querySelectorAll('button.dropbtn'))
+          const matches = buttons
+            .filter(b => b.textContent.includes('Consulta causas'))
+            .map(b => ({ text: b.textContent.trim(), onclick: b.getAttribute('onclick') }))
+
+          return {
+            primarySelectorExists: !!primary,
+            primaryOnclick: primary ? primary.getAttribute('onclick') : null,
+            totalDropbtnButtons: buttons.length,
+            matchesConsultaCausas: matches
+          }
+        })
+        console.log('🔍 DEBUG selector Consulta Causas:', JSON.stringify(debugInfo, null, 2))
+
+        // Escuchar la respuesta real del POST que dispara accesoConsultaCausas()
+        // Capturar errores de JavaScript no controlados en la página
+        this.page.on('pageerror', (error) => {
+          console.log('🔴 [PAGE ERROR] Excepción JS no controlada en la página:', error.message)
+        })
+
+        // Capturar todos los console.log/error que la propia página emita
+        // this.page.on('console', (msg) => {
+        //    console.log(`🟡 [PAGE CONSOLE ${msg.type()}]:`, msg.text());
+        // });
+
+        // Capturar la petición saliente
+        this.page.on('request', (request) => {
+          if (request.url().includes('sesion-invitado.php')) {
+            console.log('📤 [REQUEST] Petición saliente a sesion-invitado.php:', request.method(), request.postData())
+          }
+        })
+
+        // Escuchar la respuesta real del POST que dispara accesoConsultaCausas()
+        this.page.on('response', async (response) => {
+          if (response.url().includes('sesion-invitado.php')) {
             try {
-                const modalClosed = await this.page.evaluate(() => {
-                    const modal = document.querySelector('.modal.in') || document.querySelector('.modal.show');
-                    if (!modal) return false;
-
-                    // Cierre manual del modal, sin depender de $.fn.modal
-                    // (replica exactamente lo que Bootstrap haría, pero de forma directa)
-                    modal.classList.remove('in', 'show');
-                    modal.style.display = 'none';
-                    modal.setAttribute('aria-hidden', 'true');
-
-                    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-                    document.body.classList.remove('modal-open');
-                    document.body.style.paddingRight = '';
-                    document.body.style.overflow = '';
-
-                    return true;
-                });
-
-                if (modalClosed) {
-                    console.log('✅ Modal cerrado manualmente (DOM directo, sin depender de jQuery/Bootstrap)');
-                    await this.timeout(500);
-                } else {
-                    console.log('ℹ️ No se detectó modal de aviso');
-                }
-                } catch (modalError) {
-                    console.log('⚠️ Error al intentar cerrar modal:', modalError.message);
-                }
-
-                // 🔑 Priming: clic en "Clave Única" + volver a home,
-                // replica el mismo patrón que desbloquea los botones a mano
-                // (interacción real + navegación completa antes de intentar invitado)
-                console.log('🔑 Priming: clic en "Clave Única" para renovar el ciclo del sensor...');
-                const claveUnicaClicked = await this.page.evaluate(() => {
-                    const link = document.querySelector('a[onclick*="AutenticaCUnica"]');
-                    if (link) {
-                        link.click();
-                        return true;
-                    }
-                    return false;
-                });
-
-                if (claveUnicaClicked) {
-                    console.log('✅ Clic en Clave Única realizado, esperando DOM...');
-                    await this.timeout(2000 + Math.floor(Math.random() * 2000));
-
-                    console.log('↩️ Volviendo a home/index.php para reintentar...');
-                    await this.page.goto('https://oficinajudicialvirtual.pjud.cl/home/index.php', {
-                        waitUntil: 'domcontentloaded',
-                        timeout: 60000
-                    });
-                    await this.timeout(1500 + Math.floor(Math.random() * 2000));
-                } else {
-                    console.log('⚠️ No se encontró el enlace de Clave Única, se continúa sin priming.');
-                }
-            
-                // Esperar a que el botón esté presente
-                console.log('🔍 En página de inicio, haciendo clic en "Consulta causas"...');
-
-                const debugInfo = await this.page.evaluate(() => {
-                const primary = document.querySelector('button.dropbtn[onclick*="accesoConsultaCausas"]');
-                const buttons = Array.from(document.querySelectorAll('button.dropbtn'));
-                const matches = buttons
-                    .filter(b => b.textContent.includes('Consulta causas'))
-                    .map(b => ({ text: b.textContent.trim(), onclick: b.getAttribute('onclick') }));
-                
-                return {
-                    primarySelectorExists: !!primary,
-                    primaryOnclick: primary ? primary.getAttribute('onclick') : null,
-                    totalDropbtnButtons: buttons.length,
-                    matchesConsultaCausas: matches
-                };
-            });
-            console.log('🔍 DEBUG selector Consulta Causas:', JSON.stringify(debugInfo, null, 2));
-
-            // Escuchar la respuesta real del POST que dispara accesoConsultaCausas()
-            // Capturar errores de JavaScript no controlados en la página
-            this.page.on('pageerror', (error) => {
-                console.log('🔴 [PAGE ERROR] Excepción JS no controlada en la página:', error.message);
-            });
-
-            // Capturar todos los console.log/error que la propia página emita
-            // this.page.on('console', (msg) => {
-            //    console.log(`🟡 [PAGE CONSOLE ${msg.type()}]:`, msg.text());
-            //});
-
-            // Capturar la petición saliente
-            this.page.on('request', (request) => {
-                if (request.url().includes('sesion-invitado.php')) {
-                    console.log('📤 [REQUEST] Petición saliente a sesion-invitado.php:', request.method(), request.postData());
-                }
-            });
-
-            // Escuchar la respuesta real del POST que dispara accesoConsultaCausas()
-            this.page.on('response', async (response) => {
-                if (response.url().includes('sesion-invitado.php')) {
-                    try {
-                        const status = response.status();
-                        const body = await response.text();
-                        console.log(`🌐 [RESPONSE] sesion-invitado.php — status: ${status}`);
-                        console.log(`🌐 [RESPONSE] Body: ${body.substring(0, 500)}`);
-                    } catch (e) {
-                        console.log('⚠️ No se pudo leer respuesta de sesion-invitado.php:', e.message);
-                    }
-                }
-            });
-
-
-            await this.page.waitForSelector('button.dropbtn[onclick*="accesoConsultaCausas"]', { timeout: 3000 });
-            
-            // Hacer clic en el botón "Consulta causas"
-            await this.page.evaluate(() => {
-                const btn = document.querySelector('button.dropbtn[onclick*="accesoConsultaCausas"]');
-                if (btn) {
-                btn.click();
-                } else {
-                const buttons = Array.from(document.querySelectorAll('button.dropbtn'));
-                const consultaBtn = buttons.find(b => b.textContent.includes('Consulta causas'));
-                if (consultaBtn) consultaBtn.click();
-                }
-            });
-            
-            // Esperar la redirección a indexN.php
-            console.log('⏳ Esperando redirección a indexN.php...');
-            try {
-                await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 });
-            } catch (navError) {
-                const stuckUrl = this.page.url();
-                console.log(`⚠️ Timeout esperando navegación. URL actual real: ${stuckUrl}`);
-                try {
-                    const fs = require('fs');
-                    const screenshotPath = `/tmp/debug-timeout-${Date.now()}.png`;
-                    await this.page.screenshot({ path: screenshotPath, fullPage: true });
-                    console.log(`📸 Captura guardada en: ${screenshotPath}`);
-                } catch (ssError) {
-                    console.log('⚠️ No se pudo guardar captura:', ssError.message);
-                }
-                throw navError;
+              const status = response.status()
+              const body = await response.text()
+              console.log(`🌐 [RESPONSE] sesion-invitado.php — status: ${status}`)
+              console.log(`🌐 [RESPONSE] Body: ${body.substring(0, 500)}`)
+            } catch (e) {
+              console.log('⚠️ No se pudo leer respuesta de sesion-invitado.php:', e.message)
             }
-            await this.timeout(2000 + Math.floor(Math.random() * 2000));
-            }
-            
-            // Verificar que estamos en indexN.php
-            const newUrl = await this.page.url();
-            console.log(`📍 Nueva URL: ${newUrl}`);
-            
-            if (!newUrl.includes('indexN.php')) {
-            throw new Error(`No se pudo navegar a indexN.php. URL actual: ${newUrl}`);
-            }
+          }
+        })
 
-            // ✅ Verificar si hay reCAPTCHA o bloqueo
-            const pageContent = await this.page.content();
-            const hasRecaptcha = pageContent.includes('recaptcha') || 
+        await this.page.waitForSelector('button.dropbtn[onclick*="accesoConsultaCausas"]', { timeout: 3000 })
+
+        // Hacer clic en el botón "Consulta causas"
+        await this.page.evaluate(() => {
+          const btn = document.querySelector('button.dropbtn[onclick*="accesoConsultaCausas"]')
+          if (btn) {
+            btn.click()
+          } else {
+            const buttons = Array.from(document.querySelectorAll('button.dropbtn'))
+            const consultaBtn = buttons.find(b => b.textContent.includes('Consulta causas'))
+            if (consultaBtn) consultaBtn.click()
+          }
+        })
+
+        // Esperar la redirección a indexN.php
+        console.log('⏳ Esperando redirección a indexN.php...')
+        try {
+          await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 })
+        } catch (navError) {
+          const stuckUrl = this.page.url()
+          console.log(`⚠️ Timeout esperando navegación. URL actual real: ${stuckUrl}`)
+          try {
+            const fs = require('fs')
+            const screenshotPath = `/tmp/debug-timeout-${Date.now()}.png`
+            await this.page.screenshot({ path: screenshotPath, fullPage: true })
+            console.log(`📸 Captura guardada en: ${screenshotPath}`)
+          } catch (ssError) {
+            console.log('⚠️ No se pudo guardar captura:', ssError.message)
+          }
+          throw navError
+        }
+        await this.timeout(2000 + Math.floor(Math.random() * 2000))
+      }
+
+      // Verificar que estamos en indexN.php
+      const newUrl = await this.page.url()
+      console.log(`📍 Nueva URL: ${newUrl}`)
+
+      if (!newUrl.includes('indexN.php')) {
+        throw new Error(`No se pudo navegar a indexN.php. URL actual: ${newUrl}`)
+      }
+
+      // ✅ Verificar si hay reCAPTCHA o bloqueo
+      const pageContent = await this.page.content()
+      const hasRecaptcha = pageContent.includes('recaptcha') ||
                                 pageContent.includes('reCAPTCHA') ||
                                 pageContent.includes('verification') ||
                                 pageContent.includes('verifica') ||
-                                pageContent.includes('captcha');
-            
-            if (hasRecaptcha) {
-                console.log('🔐 Se detectó reCAPTCHA o verificación humana.');
-                console.log('📋 Por favor, resuélvelo manualmente en el navegador del servidor.');
-                console.log('⏳ Esperando hasta 120 segundos a que sea resuelto...');
+                                pageContent.includes('captcha')
 
-                let recaptchaResolved = false;
-                let attempts = 0;
-                const MAX_ATTEMPTS = 120; // 120 intentos x 1s = 2 minutos máximo
+      if (hasRecaptcha) {
+        console.log('🔐 Se detectó reCAPTCHA o verificación humana.')
+        console.log('📋 Por favor, resuélvelo manualmente en el navegador del servidor.')
+        console.log('⏳ Esperando hasta 120 segundos a que sea resuelto...')
 
-                while (!recaptchaResolved && attempts < MAX_ATTEMPTS) {
-                    await this.timeout(1000);
-                    attempts++;
+        let recaptchaResolved = false
+        let attempts = 0
+        const MAX_ATTEMPTS = 120 // 120 intentos x 1s = 2 minutos máximo
 
-                    const urlNow = this.page.url();
+        while (!recaptchaResolved && attempts < MAX_ATTEMPTS) {
+          await this.timeout(1000)
+          attempts++
 
-                    if (urlNow.includes('indexN.php')) {
-                        // Caso normal: seguimos en indexN.php, chequear si ya está el formulario
-                        recaptchaResolved = await this.page.evaluate(() => {
-                            return document.querySelector('select#competencia') !== null;
-                        }).catch(() => false);
+          const urlNow = this.page.url()
 
-                    } else if (urlNow.includes('home/index.php')) {
-                        // ✅ Caso real que estabas viviendo: PJUD te devolvió al home
-                        // tras resolver el CAPTCHA. Hay que volver a hacer clic en
-                        // "Consulta causas" para regresar a indexN.php.
-                        console.log('🔁 CAPTCHA resuelto, PJUD redirigió a home/index.php. Reintentando navegación...');
-                        // ⏳ Pausa humana antes de actuar — nadie hace clic en 0ms tras resolver un CAPTCHA
-                        const humanDelay = 2000 + Math.floor(Math.random() * 3000); // entre 2s y 5s
-                        console.log(`⏳ Esperando ${humanDelay}ms antes de reintentar (comportamiento humano)...`);
-                        await this.timeout(humanDelay);
+          if (urlNow.includes('indexN.php')) {
+            // Caso normal: seguimos en indexN.php, chequear si ya está el formulario
+            recaptchaResolved = await this.page.evaluate(() => {
+              return document.querySelector('select#competencia') !== null
+            }).catch(() => false)
+          } else if (urlNow.includes('home/index.php')) {
+            // ✅ Caso real que estabas viviendo: PJUD te devolvió al home
+            // tras resolver el CAPTCHA. Hay que volver a hacer clic en
+            // "Consulta causas" para regresar a indexN.php.
+            console.log('🔁 CAPTCHA resuelto, PJUD redirigió a home/index.php. Reintentando navegación...')
+            // ⏳ Pausa humana antes de actuar — nadie hace clic en 0ms tras resolver un CAPTCHA
+            const humanDelay = 2000 + Math.floor(Math.random() * 3000) // entre 2s y 5s
+            console.log(`⏳ Esperando ${humanDelay}ms antes de reintentar (comportamiento humano)...`)
+            await this.timeout(humanDelay)
 
-                        try {
-                            await this.page.waitForSelector('button.dropbtn[onclick*="accesoConsultaCausas"]', { timeout: 3000 });
-                            await this.page.evaluate(() => {
-                                const btn = document.querySelector('button.dropbtn[onclick*="accesoConsultaCausas"]');
-                                if (btn) {
-                                    btn.click();
-                                } else {
-                                    const buttons = Array.from(document.querySelectorAll('button.dropbtn'));
-                                    const consultaBtn = buttons.find(b => b.textContent.includes('Consulta causas'));
-                                    if (consultaBtn) consultaBtn.click();
-                                }
-                            });
-                            await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
-                            await this.timeout(1500 + Math.floor(Math.random() * 2000));
-
-                            const urlAfter = this.page.url();
-                            if (urlAfter.includes('indexN.php')) {
-                                recaptchaResolved = await this.page.evaluate(() => {
-                                    return document.querySelector('select#competencia') !== null;
-                                }).catch(() => false);
-                            }
-                        } catch (retryError) {
-                            console.log('⚠️ Reintento de navegación tras CAPTCHA falló, se sigue esperando...', retryError.message);
-                        }
-                    }
-                    // Si no es ninguna de las dos (ej. sigue en la página del propio CAPTCHA),
-                    // simplemente se sigue esperando al siguiente ciclo.
-
-                    if (attempts % 10 === 0) {
-                        console.log(`⏳ Aún esperando reCAPTCHA... (${attempts}s) — URL actual: ${urlNow}`);
-                    }
-                }
-
-                if (recaptchaResolved) {
-                    console.log(`✅ reCAPTCHA resuelto después de ${attempts}s, continuando...`);
-                } else {
-                    throw new Error(
-                        `reCAPTCHA no resuelto después de ${MAX_ATTEMPTS}s de espera. ` +
-                        `El proceso se marcará como error en vez de continuar a ciegas.`
-                    );
-                }
-            }
-            
-            // Esperar a que el formulario esté visible
-            let retries = 3;
-            let selectorFound = false;
-            while (retries > 0 && !selectorFound) {
             try {
-                await this.page.waitForSelector('select#competencia', { timeout: 60000, visible: true });
-                selectorFound = true;
-                console.log('✅ Selector select#competencia encontrado');
-            } catch (err) {
-                retries--;
-                console.log(`⚠️ Intento fallido, quedan ${retries} reintentos...`);
-
-                // Tomar captura de pantalla para debuggear
-                try {
-                    const screenshot = await this.page.screenshot({ encoding: 'base64' });
-                    console.log(`📸 Captura de pantalla (base64): ${screenshot.substring(0, 100)}...`);
-                } catch (screenshotError) {
-                    console.log('⚠️ No se pudo tomar captura de pantalla');
+              await this.page.waitForSelector('button.dropbtn[onclick*="accesoConsultaCausas"]', { timeout: 3000 })
+              await this.page.evaluate(() => {
+                const btn = document.querySelector('button.dropbtn[onclick*="accesoConsultaCausas"]')
+                if (btn) {
+                  btn.click()
+                } else {
+                  const buttons = Array.from(document.querySelectorAll('button.dropbtn'))
+                  const consultaBtn = buttons.find(b => b.textContent.includes('Consulta causas'))
+                  if (consultaBtn) consultaBtn.click()
                 }
-                
-                if (retries === 0) throw err;
-                await this.timeout(5000);
-                await this.page.reload({ waitUntil: 'domcontentloaded' });
-                await this.timeout(1500);
+              })
+              await this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {})
+              await this.timeout(1500 + Math.floor(Math.random() * 2000))
+
+              const urlAfter = this.page.url()
+              if (urlAfter.includes('indexN.php')) {
+                recaptchaResolved = await this.page.evaluate(() => {
+                  return document.querySelector('select#competencia') !== null
+                }).catch(() => false)
+              }
+            } catch (retryError) {
+              console.log('⚠️ Reintento de navegación tras CAPTCHA falló, se sigue esperando...', retryError.message)
             }
-            }
-            
-            console.log("✅ Navegación completada, listo para buscar");
-            
-        } catch (error) {
-            console.error("Error en goUnifiedQuery:", error);
-            throw error;
+          }
+          // Si no es ninguna de las dos (ej. sigue en la página del propio CAPTCHA),
+          // simplemente se sigue esperando al siguiente ciclo.
+
+          if (attempts % 10 === 0) {
+            console.log(`⏳ Aún esperando reCAPTCHA... (${attempts}s) — URL actual: ${urlNow}`)
+          }
         }
-    }
 
-    // Helper para timeout
-    timeout(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
+        if (recaptchaResolved) {
+          console.log(`✅ reCAPTCHA resuelto después de ${attempts}s, continuando...`)
+        } else {
+          throw new Error(
+                        `reCAPTCHA no resuelto después de ${MAX_ATTEMPTS}s de espera. ` +
+                        'El proceso se marcará como error en vez de continuar a ciegas.'
+          )
+        }
+      }
 
-    /**
+      // Esperar a que el formulario esté visible
+      let retries = 3
+      let selectorFound = false
+      while (retries > 0 && !selectorFound) {
+        try {
+          await this.page.waitForSelector('select#competencia', { timeout: 60000, visible: true })
+          selectorFound = true
+          console.log('✅ Selector select#competencia encontrado')
+        } catch (err) {
+          retries--
+          console.log(`⚠️ Intento fallido, quedan ${retries} reintentos...`)
+
+          // Tomar captura de pantalla para debuggear
+          try {
+            const screenshot = await this.page.screenshot({ encoding: 'base64' })
+            console.log(`📸 Captura de pantalla (base64): ${screenshot.substring(0, 100)}...`)
+          } catch (screenshotError) {
+            console.log('⚠️ No se pudo tomar captura de pantalla')
+          }
+
+          if (retries === 0) throw err
+          await this.timeout(5000)
+          await this.page.reload({ waitUntil: 'domcontentloaded' })
+          await this.timeout(1500)
+        }
+      }
+
+      console.log('✅ Navegación completada, listo para buscar')
+    } catch (error) {
+      console.error('Error en goUnifiedQuery:', error)
+      throw error
+    }
+  }
+
+  // Helper para timeout
+  timeout (ms) {
+    return new Promise(resolve => setTimeout(resolve, ms))
+  }
+
+  /**
      * Aplica los filtros de búsqueda en el formulario de Búsqueda por RIT
      */
-    async applyFilter(options) {
-        const { court, tribune, rol, competencia = "3", corteId } = options;
-        
-        try {
-            // Verificar tokens de reCAPTCHA antes de interactuar
-            console.log('🔐 Verificando tokens de reCAPTCHA antes de aplicar filtros...');
-            if (this.scrape.ensureRecaptchaTokens) {
-                const tokensReady = await this.scrape.ensureRecaptchaTokens();
-                if (!tokensReady) {
-                    console.warn('⚠️ Tokens de reCAPTCHA no listos, continuando de todos modos...');
-                }
-            }
-            
-            const competenciaValue = competencia || "3";
-            const corteValue = corteId || court || "90";
-            const tribuneValue = tribune;
-            
-            console.log(`🔍 Aplicando filtros - Competencia: ${competenciaValue}, Corte: ${corteValue}, Tribunal: ${tribuneValue}`);
-            
-            // Esperar a que el selector exista
-            await this.page.waitForSelector("select#competencia", {
-                timeout: 30000,
-                visible: true,
-            });
-            
-            // Seleccionar competencia
-            await this.page.select("select#competencia", competenciaValue);
-            console.log(`✅ Competencia seleccionada: ${competenciaValue}`);
-            await this.timeout(600 + Math.floor(Math.random() * 1000));
-            
-            // Seleccionar corte
-            await this.page.click("select#conCorte", { delay: 500 });
-            await this.page.select("select#conCorte", corteValue.toString());
-            console.log(`✅ Corte seleccionada: ${corteValue}`);
-            await this.timeout(600 + Math.floor(Math.random() * 1000));
-            
-            // Seleccionar tribunal
-            await this.page.click("select#conTribunal", { delay: 500 });
-            await this.page.select("select#conTribunal", tribuneValue.toString());
-            console.log(`✅ Tribunal seleccionado: ${tribuneValue}`);
-            await this.timeout(600 + Math.floor(Math.random() * 1000));
-            
-            // Seleccionar libro/tipo
-            const [type, ...paramsRol] = rol.split("-");
-            await this.page.select("select#conTipoCausa", type);
-            console.log(`✅ Libro/Tipo seleccionado: ${type}`);
-            await this.timeout(600 + Math.floor(Math.random() * 1000));
-            
-            // Llenar rol y año
-            const roleNumber = paramsRol[0];
-            const year = paramsRol[1];
-            
-            await this.page.evaluate(([role, yearValue]) => {
-                const rolInput = document.querySelector("input#conRolCausa");
-                const yearInput = document.querySelector("input#conEraCausa");
-                const searchBtn = document.querySelector("button#btnConConsulta");
-                if (rolInput && yearInput) {
-                    rolInput.value = role;
-                    yearInput.value = yearValue;
-                    console.log(`📝 Rol: ${role}, Año: ${yearValue}`);
-                    if (searchBtn) {
-                        console.log('🔍 Haciendo clic en botón de búsqueda');
-                        searchBtn.click();
-                    }
-                }
-            }, [roleNumber, year]);
-            
-            console.log("✅ Filtro aplicado correctamente, esperando resultados...");
-            
-            // Esperar a que la tabla de resultados aparezca o mensaje de error
-            await this.page.waitForSelector('tbody#verDetalle, .alert-danger, .alert-warning', { timeout: 30000 });
-            
-        } catch (error) {
-            console.error("Error aplicando filtros:", error);
-            throw error;
+  async applyFilter (options) {
+    const { court, tribune, rol, competencia = '3', corteId } = options
+
+    try {
+      // Verificar tokens de reCAPTCHA antes de interactuar
+      console.log('🔐 Verificando tokens de reCAPTCHA antes de aplicar filtros...')
+      if (this.scrape.ensureRecaptchaTokens) {
+        const tokensReady = await this.scrape.ensureRecaptchaTokens()
+        if (!tokensReady) {
+          console.warn('⚠️ Tokens de reCAPTCHA no listos, continuando de todos modos...')
         }
+      }
+
+      const competenciaValue = competencia || '3'
+      const corteValue = corteId || court || '90'
+      const tribuneValue = tribune
+
+      console.log(`🔍 Aplicando filtros - Competencia: ${competenciaValue}, Corte: ${corteValue}, Tribunal: ${tribuneValue}`)
+
+      // Esperar a que el selector exista
+      await this.page.waitForSelector('select#competencia', {
+        timeout: 30000,
+        visible: true
+      })
+
+      // Seleccionar competencia
+      await this.page.select('select#competencia', competenciaValue)
+      console.log(`✅ Competencia seleccionada: ${competenciaValue}`)
+      await this.timeout(600 + Math.floor(Math.random() * 1000))
+
+      // Seleccionar corte
+      await this.page.click('select#conCorte', { delay: 500 })
+      await this.page.select('select#conCorte', corteValue.toString())
+      console.log(`✅ Corte seleccionada: ${corteValue}`)
+      await this.timeout(600 + Math.floor(Math.random() * 1000))
+
+      // Seleccionar tribunal
+      await this.page.click('select#conTribunal', { delay: 500 })
+      await this.page.select('select#conTribunal', tribuneValue.toString())
+      console.log(`✅ Tribunal seleccionado: ${tribuneValue}`)
+      await this.timeout(600 + Math.floor(Math.random() * 1000))
+
+      // Seleccionar libro/tipo
+      const [type, ...paramsRol] = rol.split('-')
+      await this.page.select('select#conTipoCausa', type)
+      console.log(`✅ Libro/Tipo seleccionado: ${type}`)
+      await this.timeout(600 + Math.floor(Math.random() * 1000))
+
+      // Llenar rol y año
+      const roleNumber = paramsRol[0]
+      const year = paramsRol[1]
+
+      await this.page.evaluate(([role, yearValue]) => {
+        const rolInput = document.querySelector('input#conRolCausa')
+        const yearInput = document.querySelector('input#conEraCausa')
+        const searchBtn = document.querySelector('button#btnConConsulta')
+        if (rolInput && yearInput) {
+          rolInput.value = role
+          yearInput.value = yearValue
+          console.log(`📝 Rol: ${role}, Año: ${yearValue}`)
+          if (searchBtn) {
+            console.log('🔍 Haciendo clic en botón de búsqueda')
+            searchBtn.click()
+          }
+        }
+      }, [roleNumber, year])
+
+      console.log('✅ Filtro aplicado correctamente, esperando resultados...')
+
+      // Esperar a que la tabla de resultados aparezca o mensaje de error
+      await this.page.waitForSelector('tbody#verDetalle, .alert-danger, .alert-warning', { timeout: 30000 })
+    } catch (error) {
+      console.error('Error aplicando filtros:', error)
+      throw error
+    }
+  }
+
+  async extractAnchors () {
+    await this.page.waitForFunction(() => document.querySelector('tbody#verDetalle') !== null ||
+            document.body.innerText.includes('No se han encontrado resultados'),
+    { timeout: 45000 }
+    )
+    await this.timeout(500 + Math.floor(Math.random() * 500))
+
+    const text = 'No se han encontrado resultados'
+    const empty = await this.page.evaluate((text) => {
+      return document.body.innerText.includes(text)
+    }, text)
+
+    if (empty) {
+      console.log('📭 No se encontraron resultados para la búsqueda')
+      this.anchors = []
+      return
     }
 
-    async extractAnchors() {
-        await this.scrape.waitForSelector("tbody#verDetalle", 500 + Math.floor(Math.random() * 500));
-        
-        const text = "No se han encontrado resultados";
-        const empty = await this.page.evaluate((text) => {
-            return document.body.innerText.includes(text);
-        }, text);
-        
-        if (empty) {
-            console.log("📭 No se encontraron resultados para la búsqueda");
-            this.anchors = [];
-            return;
-        }
-        
-        const anchorsOnPage = await this.page.evaluate(() => {
-            const rows = Array.from(document.querySelectorAll("tbody#verDetalle>tr")) || [];
-            return rows
-                .map((row) => row
-                    .querySelector('a[href="#modalDetalleCivil"]')
-                    ?.getAttribute("onclick") || "")
-                .filter((script) => script.length > 0);
-        });
-        
-        const formattedAnchors = anchorsOnPage.map((script) => ({ script }));
-        this.anchors.push(...formattedAnchors);
-        console.log(`📋 Encontrados ${formattedAnchors.length} resultados para la búsqueda`);
-    }
+    const anchorsOnPage = await this.page.evaluate(() => {
+      const rows = Array.from(document.querySelectorAll('tbody#verDetalle>tr')) || []
+      return rows
+        .map((row) => row
+          .querySelector('a[href="#modalDetalleCivil"]')
+          ?.getAttribute('onclick') || '')
+        .filter((script) => script.length > 0)
+    })
 
-    /**
+    const formattedAnchors = anchorsOnPage.map((script) => ({ script }))
+    this.anchors.push(...formattedAnchors)
+    console.log(`📋 Encontrados ${formattedAnchors.length} resultados para la búsqueda`)
+  }
+
+  /**
      * Extrae los detalles de la causa desde el modal
      * MODIFICADO: Procesa SOLO la primera causa (no itera sobre todos los anchors)
      * @param {Object} options - Opciones de extracción
      * @param {boolean} options.autoCloseModal - Si debe cerrar el modal automáticamente
      * @param {number} options.maxResults - Máximo de resultados a procesar (default 1)
      */
-    async collectDetails(options = {}) {
-        const { autoCloseModal = true, maxResults = 1 } = options;
-        
-        try {
-            if (this.anchors.length === 0) {
-                console.log("📭 No hay causas para extraer");
-                return null;
-            }
-            
-            const anchor = this.anchors[0];
-            
-            console.log(`📋 Procesando causa única: ${this.rit || 'desconocida'}`);
-            
-            await this.scrape.execute(anchor.script);
-            await this.scrape.waitForSelector("#modalDetalleCivil", 500, true);
-            
-            const { book, ...causeDetails } = await this.extractCauseDetails();
-            await this.timeout(400 + Math.floor(Math.random() * 600));
-            
-            console.log("📖 Datos generales de la causa:");
-            console.table(causeDetails);
-            
-            // ✅ PARALELIZAR: extraer movimientos, litigantes y enlaces al mismo tiempo
-            console.log('🔄 Extrayendo movimientos, litigantes y enlaces en paralelo...');
-            
-            const [movementsHistory, litigants, documentLinks] = await Promise.all([
-                this.extractMovementsHistory(causeDetails.rol),
-                this.extractLitigants(),
-                this.extractDocumentLinks()
-            ]);
-            
-            // ✅ Procesar movimientos
-            const movements = movementsHistory.map((item) => ({
-                ...item,
-                book: book || '0 Principal',
-            }));
-            
-            console.log(`📜 Movimientos extraídos: ${movements.length}`);
-            console.log(`👥 Litigantes extraídos: ${litigants.length}`);
-            console.log(`🔗 Enlaces a documentos extraídos: ${documentLinks.length}`);
-            
-            this.civils.push({
-                ...causeDetails,
-                documentLinks,
-                extractedAt: new Date().toISOString(),
-                source: 'unified-query-scraper',
-                movementsHistory: movements,
-                litigants: litigants
-            });
-            
-            this.histories.push(...movements);
-            this.litigants.push(...litigants);
-            
-            console.log(`✅ Resumen - Movimientos: ${movements.length}, Litigantes: ${litigants.length}, Enlaces: ${documentLinks.length}`);
-            
-            if (autoCloseModal) {
-                await this.closeCurrentModal();
-            }
-            
-            return this.getccivil();
-            
-        } catch (error) {
-            console.error("❌ Error recopilando detalles:", error);
-            
-            try {
-                await this.closeCurrentModal();
-            } catch (closeError) {
-                console.warn("Error cerrando modal después de error:", closeError.message);
-            }
-            
-            throw error;
-        }
-    }
+  async collectDetails (options = {}) {
+    const { autoCloseModal = true, maxResults = 1 } = options
 
-    /**
+    try {
+      if (this.anchors.length === 0) {
+        console.log('📭 No hay causas para extraer')
+        return null
+      }
+
+      const anchor = this.anchors[0]
+
+      console.log(`📋 Procesando causa única: ${this.rit || 'desconocida'}`)
+
+      await this.scrape.execute(anchor.script)
+      await this.scrape.waitForSelector('#modalDetalleCivil', 500, true)
+
+      const { book, ...causeDetails } = await this.extractCauseDetails()
+      await this.timeout(400 + Math.floor(Math.random() * 600))
+
+      console.log('📖 Datos generales de la causa:')
+      console.table(causeDetails)
+
+      // ✅ PARALELIZAR: extraer movimientos, litigantes y enlaces al mismo tiempo
+      console.log('🔄 Extrayendo movimientos, litigantes y enlaces en paralelo...')
+
+      const [movementsHistory, litigants, documentLinks] = await Promise.all([
+        this.extractMovementsHistory(causeDetails.rol),
+        this.extractLitigants(),
+        this.extractDocumentLinks()
+      ])
+
+      // ✅ Procesar movimientos
+      const movements = movementsHistory.map((item) => ({
+        ...item,
+        book: book || '0 Principal'
+      }))
+
+      console.log(`📜 Movimientos extraídos: ${movements.length}`)
+      console.log(`👥 Litigantes extraídos: ${litigants.length}`)
+      console.log(`🔗 Enlaces a documentos extraídos: ${documentLinks.length}`)
+
+      this.civils.push({
+        ...causeDetails,
+        documentLinks,
+        extractedAt: new Date().toISOString(),
+        source: 'unified-query-scraper',
+        movementsHistory: movements,
+        litigants: litigants
+      })
+
+      this.histories.push(...movements)
+      this.litigants.push(...litigants)
+
+      console.log(`✅ Resumen - Movimientos: ${movements.length}, Litigantes: ${litigants.length}, Enlaces: ${documentLinks.length}`)
+
+      if (autoCloseModal) {
+        await this.closeCurrentModal()
+      }
+
+      return this.getccivil()
+    } catch (error) {
+      console.error('❌ Error recopilando detalles:', error)
+
+      try {
+        await this.closeCurrentModal()
+      } catch (closeError) {
+        console.warn('Error cerrando modal después de error:', closeError.message)
+      }
+
+      throw error
+    }
+  }
+
+  /**
      * Cierra el modal de detalle de causa usando el ScrapService
      * @returns {Promise<boolean>}
      */
-    async closeCurrentModal() {
-        try {
-            if (this.scrape && typeof this.scrape.closeModal === 'function') {
-                const result = await this.scrape.closeModal();
-                console.log('✅ Modal cerrado correctamente');
-                return result;
-            } else {
-                // Fallback: método directo
-                console.log('⚠️ Usando fallback para cerrar modal');
-                await this.page.evaluate(() => {
-                    const closeBtn = document.querySelector('#modalDetalleCivil .close');
-                    if (closeBtn) closeBtn.click();
-                });
-                await this.timeout(1000);
-                return true;
-            }
-        } catch (error) {
-            console.error('❌ Error cerrando modal:', error.message);
-            return false;
-        }
+  async closeCurrentModal () {
+    try {
+      if (this.scrape && typeof this.scrape.closeModal === 'function') {
+        const result = await this.scrape.closeModal()
+        console.log('✅ Modal cerrado correctamente')
+        return result
+      } else {
+        // Fallback: método directo
+        console.log('⚠️ Usando fallback para cerrar modal')
+        await this.page.evaluate(() => {
+          const closeBtn = document.querySelector('#modalDetalleCivil .close')
+          if (closeBtn) closeBtn.click()
+        })
+        await this.timeout(1000)
+        return true
+      }
+    } catch (error) {
+      console.error('❌ Error cerrando modal:', error.message)
+      return false
     }
+  }
 
-    /**
+  /**
      * Limpia el formulario de búsqueda usando el ScrapService
      * @returns {Promise<boolean>}
      */
-    async clearSearchForm() {
-        try {
-            if (this.scrape && typeof this.scrape.clearForm === 'function') {
-                return await this.scrape.clearForm();
-            } else {
-                // Fallback: clic directo en botón Limpiar
-                console.log('⚠️ Usando fallback para limpiar formulario');
-                await this.page.click('#btnConLimpiar');
-                await this.timeout(1500);
-                return true;
-            }
-        } catch (error) {
-            console.error('❌ Error limpiando formulario:', error.message);
-            return false;
-        }
+  async clearSearchForm () {
+    try {
+      if (this.scrape && typeof this.scrape.clearForm === 'function') {
+        return await this.scrape.clearForm()
+      } else {
+        // Fallback: clic directo en botón Limpiar
+        console.log('⚠️ Usando fallback para limpiar formulario')
+        await this.page.click('#btnConLimpiar')
+        await this.timeout(1500)
+        return true
+      }
+    } catch (error) {
+      console.error('❌ Error limpiando formulario:', error.message)
+      return false
     }
+  }
 
-    async extractCauseDetails() {
-        try {
-            const causeDetails = await this.page.evaluate(() => {
-                const getTextContent = (selector) => document.querySelector(selector)?.textContent?.trim() || "";
-                const cells = Array.from(document.querySelectorAll("div.modal-body>div.with-nav-tabs>div.panel-default>table:nth-child(1) td")).map((cell) => cell.textContent?.trim() || "");
-                
-                return {
-                    rol: cells[0]?.replace("ROL:", "").trim() || "",
-                    admission: cells[1]?.replace("F. Ing.:", "").trim() || "",
-                    cover: cells[2]?.trim() || "",
-                    estAdmin: cells[3]?.replace("Est. Adm.:", "").trim() || "",
-                    process: cells[4]?.replace("Proc.:", "").trim() || "",
-                    location: cells[5]?.replace("Ubicación:", "").trim() || "",
-                    processState: cells[6]?.replace("Estado Proc.:", "").trim() || "",
-                    stage: cells[7]?.replace("Etapa:", "").trim() || "",
-                    court: cells[8]?.replace("Tribunal:", "").trim() || "",
-                    book: getTextContent("select#selCuaderno>option[selected]"),
-                };
-            });
-            
-            return {
-                ...causeDetails,
-                admission: (0, date_calc_1.dateCalc)(causeDetails.admission),
-            };
-        } catch (error) {
-            console.error("Error extrayendo detalles de la causa:", error);
-            throw error;
+  async extractCauseDetails () {
+    try {
+      const causeDetails = await this.page.evaluate(() => {
+        const getTextContent = (selector) => document.querySelector(selector)?.textContent?.trim() || ''
+        const cells = Array.from(document.querySelectorAll('div.modal-body>div.with-nav-tabs>div.panel-default>table:nth-child(1) td')).map((cell) => cell.textContent?.trim() || '')
+
+        return {
+          rol: cells[0]?.replace('ROL:', '').trim() || '',
+          admission: cells[1]?.replace('F. Ing.:', '').trim() || '',
+          cover: cells[2]?.trim() || '',
+          estAdmin: cells[3]?.replace('Est. Adm.:', '').trim() || '',
+          process: cells[4]?.replace('Proc.:', '').trim() || '',
+          location: cells[5]?.replace('Ubicación:', '').trim() || '',
+          processState: cells[6]?.replace('Estado Proc.:', '').trim() || '',
+          stage: cells[7]?.replace('Etapa:', '').trim() || '',
+          court: cells[8]?.replace('Tribunal:', '').trim() || '',
+          book: getTextContent('select#selCuaderno>option[selected]')
         }
-    }
+      })
 
-    async extractDocumentLinks() {
-        try {
-            await this.scrape.waitForSelector("#modalDetalleCivil", 1500, true);
-            
-            const documentLinks = await this.page.evaluate(() => {
-                const links = [];
-                const modal = document.querySelector("#modalDetalleCivil");
-                if (!modal) return links;
-                
-                const anchors = modal.querySelectorAll(`
+      return {
+        ...causeDetails,
+        admission: (0, date_calc_1.dateCalc)(causeDetails.admission)
+      }
+    } catch (error) {
+      console.error('Error extrayendo detalles de la causa:', error)
+      throw error
+    }
+  }
+
+  async extractDocumentLinks () {
+    try {
+      await this.scrape.waitForSelector('#modalDetalleCivil', 1500, true)
+
+      const documentLinks = await this.page.evaluate(() => {
+        const links = []
+        const modal = document.querySelector('#modalDetalleCivil')
+        if (!modal) return links
+
+        const anchors = modal.querySelectorAll(`
                     a[onclick*="anexo"], 
                     a[onclick*="detalle"], 
                     a[onclick*="geoReferencia"], 
@@ -637,117 +636,117 @@ class UnifiedQuery {
                     a[onclick*="receptorCivil"],
                     form a[onclick*="submit"],
                     a[data-toggle="modal"]
-                `);
-                
-                anchors.forEach((anchor, idx) => {
-                    const parentForm = anchor.closest('form');
-                    const formHtml = parentForm ? parentForm.outerHTML : null;
-                    
-                    links.push({
-                        id: idx,
-                        html: anchor.outerHTML,
-                        outerHtml: anchor.outerHTML,
-                        onclick: anchor.getAttribute('onclick') || '',
-                        href: anchor.getAttribute('href') || '',
-                        title: anchor.getAttribute('title') || '',
-                        text: anchor.textContent?.trim() || '',
-                        parentFormHtml: formHtml,
-                        type: anchor.querySelector('i')?.className?.includes('fa-file-pdf-o') ? 'pdf' :
-                              anchor.querySelector('i')?.className?.includes('fa-folder-open') ? 'folder' :
-                              anchor.querySelector('i')?.className?.includes('fa-globe') ? 'georef' : 'link'
-                    });
-                });
-                
-                return links;
-            });
-            
-            console.log(`📎 Extraídos ${documentLinks.length} enlaces a documentos desde el modal (Sin descargar)`);
-            return documentLinks;
-        } catch (error) {
-            console.error("Error extrayendo enlaces a documentos:", error);
-            return [];
-        }
-    }
+                `)
 
-    async extractLitigants() {
-        try {
-            await this.page.click('a[href="#litigantesCiv"]');
-            await this.timeout(400 + Math.floor(Math.random() * 600));
-            
-            const litigants = await this.page.evaluate(() => {
-                const rows = Array.from(document.querySelectorAll("div#litigantesCiv table > tbody > tr") || []);
-                return rows.map((row) => {
-                    const cells = Array.from(row.querySelectorAll("td"));
-                    return {
-                        participant: cells[0]?.textContent?.trim() || "",
-                        rut: cells[1]?.textContent?.trim() || "",
-                        person: cells[2]?.textContent?.trim() || "",
-                        name: cells[3]?.textContent?.trim() || "",
-                    };
-                });
-            });
-            
-            return litigants;
-        } catch (error) {
-            console.error("Error extrayendo litigantes:", error);
-            throw error;
-        }
-    }
+        anchors.forEach((anchor, idx) => {
+          const parentForm = anchor.closest('form')
+          const formHtml = parentForm ? parentForm.outerHTML : null
 
-    async extractMovementsHistory(cause) {
-        try {
-            await this.scrape.waitForSelector("div#loadHistCuadernoCiv", 500);
-            const historyScrape = new history_scrape_1.HistoryScrape(this.page, cause, "one");
-            const annexDocs = await historyScrape.start({ skipDocumentDownload: true });
-            this.annex.push(...annexDocs);
-            return historyScrape.getmovementsHistories();
-        } catch (error) {
-            console.error("Error extrayendo el historial de movimientos:", error);
-            throw error;
-        }
-    }
+          links.push({
+            id: idx,
+            html: anchor.outerHTML,
+            outerHtml: anchor.outerHTML,
+            onclick: anchor.getAttribute('onclick') || '',
+            href: anchor.getAttribute('href') || '',
+            title: anchor.getAttribute('title') || '',
+            text: anchor.textContent?.trim() || '',
+            parentFormHtml: formHtml,
+            type: anchor.querySelector('i')?.className?.includes('fa-file-pdf-o') ? 'pdf'
+              : anchor.querySelector('i')?.className?.includes('fa-folder-open') ? 'folder'
+                : anchor.querySelector('i')?.className?.includes('fa-globe') ? 'georef' : 'link'
+          })
+        })
 
-    get URLs() {
-        const documents = [];
-        this.histories.forEach((movement) => {
-            movement.document.forEach((url, index) => {
-                documents.push({
-                    index,
-                    url,
-                    dateProcedure: movement.dateProcedure,
-                    descProcedure: movement.descProcedure,
-                    procedure: movement.procedure,
-                    rol: this.civils[0]?.rol || this.rit,
-                });
-            });
-        });
-        return documents;
-    }
+        return links
+      })
 
-    getccivil() {
-        const civilcause = this.civils[0];
-        if (!civilcause) return null;
-        
-        return {
-            ...civilcause,
-            litigants: this.litigants,
-            documentLinks: civilcause.documentLinks || [],
-            movementsHistory: this.histories.map(({ guid, document, ...history }) => ({
-                ...history,
-                document: document.map((_doc, index) => {
-                    return {
-                        file: `${(0, parse_string_1.parseStringToCode)(history.procedure)}_${(0, parse_string_1.parseStringToCode)(history.descProcedure)}_${(0, code_calc_1.codeUnique)(history.dateProcedure)}_${index}.pdf`,
-                        name: `${history.procedure} ${history.descProcedure}`,
-                        annexs: this.annex.filter((item) => item.guid === guid),
-                    };
-                }),
-            })),
-        };
+      console.log(`📎 Extraídos ${documentLinks.length} enlaces a documentos desde el modal (Sin descargar)`)
+      return documentLinks
+    } catch (error) {
+      console.error('Error extrayendo enlaces a documentos:', error)
+      return []
     }
+  }
 
-    get page() {
-        return this.scrape.getPage();
+  async extractLitigants () {
+    try {
+      await this.page.click('a[href="#litigantesCiv"]')
+      await this.timeout(400 + Math.floor(Math.random() * 600))
+
+      const litigants = await this.page.evaluate(() => {
+        const rows = Array.from(document.querySelectorAll('div#litigantesCiv table > tbody > tr') || [])
+        return rows.map((row) => {
+          const cells = Array.from(row.querySelectorAll('td'))
+          return {
+            participant: cells[0]?.textContent?.trim() || '',
+            rut: cells[1]?.textContent?.trim() || '',
+            person: cells[2]?.textContent?.trim() || '',
+            name: cells[3]?.textContent?.trim() || ''
+          }
+        })
+      })
+
+      return litigants
+    } catch (error) {
+      console.error('Error extrayendo litigantes:', error)
+      throw error
     }
+  }
+
+  async extractMovementsHistory (cause) {
+    try {
+      await this.scrape.waitForSelector('div#loadHistCuadernoCiv', 500)
+      const historyScrape = new history_scrape_1.HistoryScrape(this.page, cause, 'one')
+      const annexDocs = await historyScrape.start({ skipDocumentDownload: true })
+      this.annex.push(...annexDocs)
+      return historyScrape.getmovementsHistories()
+    } catch (error) {
+      console.error('Error extrayendo el historial de movimientos:', error)
+      throw error
+    }
+  }
+
+  get URLs () {
+    const documents = []
+    this.histories.forEach((movement) => {
+      movement.document.forEach((url, index) => {
+        documents.push({
+          index,
+          url,
+          dateProcedure: movement.dateProcedure,
+          descProcedure: movement.descProcedure,
+          procedure: movement.procedure,
+          rol: this.civils[0]?.rol || this.rit
+        })
+      })
+    })
+    return documents
+  }
+
+  getccivil () {
+    const civilcause = this.civils[0]
+    if (!civilcause) return null
+
+    return {
+      ...civilcause,
+      litigants: this.litigants,
+      documentLinks: civilcause.documentLinks || [],
+      movementsHistory: this.histories.map(({ guid, document, ...history }) => ({
+        ...history,
+        document: document.map((_doc, index) => {
+          return {
+            file: `${(0, parse_string_1.parseStringToCode)(history.procedure)}_${(0, parse_string_1.parseStringToCode)(history.descProcedure)}_${(0, code_calc_1.codeUnique)(history.dateProcedure)}_${index}.pdf`,
+            name: `${history.procedure} ${history.descProcedure}`,
+            annexs: this.annex.filter((item) => item.guid === guid)
+          }
+        })
+      }))
+    }
+  }
+
+  get page () {
+    return this.scrape.getPage()
+  }
 }
 
-exports.UnifiedQuery = UnifiedQuery;
+exports.UnifiedQuery = UnifiedQuery
