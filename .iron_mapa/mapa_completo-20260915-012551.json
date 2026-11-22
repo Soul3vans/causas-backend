@@ -1,0 +1,1439 @@
+{
+  "generado_en": "2026-09-15T01:25:51+00:00",
+  "archivos": [
+    {
+      "ruta": ".directory",
+      "hash": "sha1:6326ed9a22db70a7e19922866d9ed29cb4159aa2",
+      "lineas": 9,
+      "capa": "otro"
+    },
+    {
+      "ruta": ".eslintrc",
+      "hash": "sha1:7fe1542243661acae444dc25d261947d9fcd6884",
+      "lineas": 3,
+      "capa": "otro"
+    },
+    {
+      "ruta": ".gitignore",
+      "hash": "sha1:acf371c9531f09827d96f88d57c5c9bb6c6fec99",
+      "lineas": 17,
+      "capa": "otro"
+    },
+    {
+      "ruta": ".prettierrc",
+      "hash": "sha1:aceb66858b1378f50f61dc0d1e249b6641f5b828",
+      "lineas": 10,
+      "capa": "otro"
+    },
+    {
+      "ruta": ".yarnrc.yml",
+      "hash": "sha1:14eed46b26ae4643497c7613ee870099e93f736f",
+      "lineas": 2,
+      "capa": "config"
+    },
+    {
+      "ruta": "Aptfile",
+      "hash": "sha1:f59c7ec3b45790b577e238fba89d487091a8e9f5",
+      "lineas": 31,
+      "capa": "otro"
+    },
+    {
+      "ruta": "Containerfile",
+      "hash": "sha1:435199fb0e01046b43507d21ef940847a4842102",
+      "lineas": 96,
+      "capa": "otro"
+    },
+    {
+      "ruta": "MAPA_NEURONAL.md",
+      "hash": "sha1:d791620645daee05cb06bd9f810d07664aa4ad56",
+      "lineas": 83,
+      "capa": "otro"
+    },
+    {
+      "ruta": "REPO_MAP.md",
+      "hash": "sha1:1791e9cec0c29044a989bfb6ce92e3b61705a010",
+      "lineas": 79,
+      "capa": "otro"
+    },
+    {
+      "ruta": "STRUCTURE.md",
+      "hash": "sha1:08defa40abc29e86c2fec35d5c6fedc7cb664fa4",
+      "lineas": 79,
+      "capa": "otro"
+    },
+    {
+      "ruta": "apollo.config.js",
+      "hash": "sha1:6e7873252134df943440a2a0bea3910ff70371cd",
+      "lineas": 15,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "capture-competencies.js",
+      "hash": "sha1:f814dcda6d082995340b328794925ce993517182",
+      "lineas": 356,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "competencias.json",
+      "hash": "sha1:711b5ae6f4414ae19149a0dc1035bd9305af2285",
+      "lineas": 1164,
+      "capa": "config"
+    },
+    {
+      "ruta": "competencias_actualizadas.json",
+      "hash": "sha1:6cafe889d7a5f2a6ee4cfcbee6fe0015d44051ac",
+      "lineas": 8542,
+      "capa": "config"
+    },
+    {
+      "ruta": "diagrama rotacion IP.txt",
+      "hash": "sha1:ed9dceba3785bd8b45ad0ee51367c391c4899e85",
+      "lineas": 55,
+      "capa": "otro"
+    },
+    {
+      "ruta": "docker-compose.yml",
+      "hash": "sha1:d7b72740550a871a3a7f495aec189442c2839eec",
+      "lineas": 78,
+      "capa": "config"
+    },
+    {
+      "ruta": "entrypoint.sh",
+      "hash": "sha1:1724db370eb3f7654ab9325d1d582fcd369533ac",
+      "lineas": 64,
+      "capa": "otro"
+    },
+    {
+      "ruta": "fingerprint-test-result.png",
+      "hash": "sha1:87aea29d1da95866dbcfe8f50f9d1869c6f3e33d",
+      "lineas": 6645,
+      "capa": "otro"
+    },
+    {
+      "ruta": "flujo autenticado.txt",
+      "hash": "sha1:212006730626de724d7bfb36acadfc91e5f7b72b",
+      "lineas": 80,
+      "capa": "otro"
+    },
+    {
+      "ruta": "flujo invitado.txt",
+      "hash": "sha1:d20dfbf9e78020b0259371eb6e723bc45064e17a",
+      "lineas": 222,
+      "capa": "otro"
+    },
+    {
+      "ruta": "flujo scrper unificado.txt",
+      "hash": "sha1:602b6bb0dd73dcad15e3b77ba5e0653858bbba84",
+      "lineas": 41,
+      "capa": "otro"
+    },
+    {
+      "ruta": "mapa_completo.json",
+      "hash": "sha1:990a81793a20f422be8b3ccc586c61597e0979c1",
+      "lineas": 998,
+      "capa": "config"
+    },
+    {
+      "ruta": "node",
+      "hash": "sha1:da39a3ee5e6b4b0d3255bfef95601890afd80709",
+      "lineas": 1,
+      "capa": "otro"
+    },
+    {
+      "ruta": "nuevo_mapa.json",
+      "hash": "sha1:51812964c46b1899a5a13c415034b5ad60c3c9de",
+      "lineas": 522,
+      "capa": "config"
+    },
+    {
+      "ruta": "p.js",
+      "hash": "sha1:00772ba304674a383f3276530bcf495f630c11a5",
+      "lineas": 143,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "package-lock.json",
+      "hash": "sha1:6479c77cfbbae0f12bb378e2802ad70a12df103a",
+      "lineas": 9854,
+      "capa": "config"
+    },
+    {
+      "ruta": "package.json",
+      "hash": "sha1:5c01631262c507f7c50d62313a425c8c6597354e",
+      "lineas": 65,
+      "capa": "config"
+    },
+    {
+      "ruta": "podman-run.sh",
+      "hash": "sha1:2ed8b134565f487bfbb4d074898054bd45bca294",
+      "lineas": 33,
+      "capa": "otro"
+    },
+    {
+      "ruta": "resolvers.js",
+      "hash": "sha1:c0c7465bdea4964dd46945607c396d069ddcfc48",
+      "lineas": 2067,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [
+        "sortByDate"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "server.js",
+      "hash": "sha1:87d7fd48ba0ff0394b76baac2aa1b1cb39a9dafd",
+      "lineas": 238,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "set",
+      "hash": "sha1:da39a3ee5e6b4b0d3255bfef95601890afd80709",
+      "lineas": 1,
+      "capa": "otro"
+    },
+    {
+      "ruta": "start-vnc.sh",
+      "hash": "sha1:579d8431f37047426889ba60635cb07346365c11",
+      "lineas": 55,
+      "capa": "otro"
+    },
+    {
+      "ruta": "test-fingerprint.js",
+      "hash": "sha1:ce9222c2582263d5b0f0bce9aeda1909d401ee92",
+      "lineas": 165,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [
+        "getExecutablePath"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "warm-profile-local.sh",
+      "hash": "sha1:d2b95f79845500efe075e60b26e56a4451ab5531",
+      "lineas": 26,
+      "capa": "otro"
+    },
+    {
+      "ruta": "warm-profile.sh",
+      "hash": "sha1:aad7a0ed89a809551c12e379a3bdb42bca69a998",
+      "lineas": 50,
+      "capa": "otro"
+    },
+    {
+      "ruta": "yarn-error.log",
+      "hash": "sha1:fc0b74715666c035d2c551875d7f8477570556cf",
+      "lineas": 2557,
+      "capa": "otro"
+    },
+    {
+      "ruta": "yarn.lock",
+      "hash": "sha1:28503865ba0ef1488d0b180b533eec7b58253607",
+      "lineas": 5449,
+      "capa": "otro"
+    },
+    {
+      "ruta": ".ia_mapa/mapa_completo.json",
+      "hash": "sha1:990a81793a20f422be8b3ccc586c61597e0979c1",
+      "lineas": 998,
+      "capa": "config"
+    },
+    {
+      "ruta": ".ia_mapa/tecnologias.json",
+      "hash": "sha1:cfb341836cfa52ac54dd37a21096ea16a869694f",
+      "lineas": 2,
+      "capa": "config"
+    },
+    {
+      "ruta": ".vscode/settings.json",
+      "hash": "sha1:104fc660d0902a9b4a45001d370d6c29de2681f5",
+      "lineas": 3,
+      "capa": "config"
+    },
+    {
+      "ruta": ".yarn/install-state.gz",
+      "hash": "sha1:19c8fac5741588327e0b7373fa04df2220842e01",
+      "lineas": 4873,
+      "capa": "otro"
+    },
+    {
+      "ruta": "config/mail.js",
+      "hash": "sha1:03ae3e2a8bb211c967036c9075019193acbe0903",
+      "lineas": 41,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "gql/typeDefs.gql",
+      "hash": "sha1:23b9fb28ee65f355fd8b8ddb51979d481f4981fa",
+      "lineas": 512,
+      "capa": "otro"
+    },
+    {
+      "ruta": "models/Activity.js",
+      "hash": "sha1:8514e01b89805478659c4d510debb5900a71876a",
+      "lineas": 30,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/Cases.js",
+      "hash": "sha1:9e542d06c3c7baf103942889fe36c1fa093de1fc",
+      "lineas": 111,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/CasesLogs.js",
+      "hash": "sha1:8d3acd90157b90b547541f255726296ba2e1d95a",
+      "lineas": 36,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/CasesReviews.js",
+      "hash": "sha1:d17fe1b672eaf91a5de8a4493d07c79baca4c783",
+      "lineas": 49,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/CasesSettings.js",
+      "hash": "sha1:cc0c8b3373d1700944ed282c4cdc5365aa487a71",
+      "lineas": 29,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/CasesUpdated.js",
+      "hash": "sha1:bc29cd5230b7565185535b81338525ec4fe60887",
+      "lineas": 66,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/CasesViewed.js",
+      "hash": "sha1:3d91e726c90e718bd45e985ec8c9453e3e1dc1d9",
+      "lineas": 23,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/CauseCivilUpdaters.js",
+      "hash": "sha1:17b04ece2b863af0e5e6d1afee6b533b09c1624a",
+      "lineas": 54,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/Checks.js",
+      "hash": "sha1:6e37ec45cbccb6cacf826d535a96928e445cfe0e",
+      "lineas": 17,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/File.js",
+      "hash": "sha1:2078c93fc3d0f595903b5cf0bc9e2665631ff1aa",
+      "lineas": 14,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/InvolvedUsersCase.js",
+      "hash": "sha1:3f58cc7113a2e0acedb5bc841415c557dd8b5310",
+      "lineas": 39,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/Messages.js",
+      "hash": "sha1:80fffc660c58161adeffc6c95e1e7ab1d0fbfc3a",
+      "lineas": 31,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/Patients.js",
+      "hash": "sha1:3aea73fde7a949c506ea9e0e5a898c75dda63a64",
+      "lineas": 20,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/Posts.js",
+      "hash": "sha1:216613d4792ec4f735edfbb11f6a80645e75ed7c",
+      "lineas": 23,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/Priority.js",
+      "hash": "sha1:e1762eb9d831c343ffd27e4d688849cc7fc3f6e9",
+      "lineas": 15,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/ProcessStatus.js",
+      "hash": "sha1:13f9c76ae5c3109bef6b664d1e1f21fecda895bc",
+      "lineas": 41,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/ScraperConfig.js",
+      "hash": "sha1:60beee92f5c786d7d2694f08bc4191241a5ca037",
+      "lineas": 24,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/ScraperJobs.js",
+      "hash": "sha1:e174a97334decc9d87b8c7a76c610e9084fd028f",
+      "lineas": 94,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/ScrapingOverflow.js",
+      "hash": "sha1:a1b0ed5f27a1b0731578bcbe2bc3a79e8b19652f",
+      "lineas": 15,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/Session.js",
+      "hash": "sha1:a58f02f2e3f5dd1af504022a1aea7d1a4d86959c",
+      "lineas": 67,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/Users.js",
+      "hash": "sha1:ca66a67ea80378e191878b9f890cc058ab04326a",
+      "lineas": 61,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "models/UsersLogs.js",
+      "hash": "sha1:fa7ff04852bd60f31b85f8703b670f77692ca78c",
+      "lineas": 18,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/auth-guard.js",
+      "hash": "sha1:bcb67df70f656356308fb5b4cbe71d60a32cac08",
+      "lineas": 54,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [
+        "extractToken",
+        "requireAuth"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/browser-session-manager.js",
+      "hash": "sha1:96474ef756d98b7bb355f3a5ebba53237af3a782",
+      "lineas": 563,
+      "capa": "frontend",
+      "clases": [
+        "BrowserSessionManager"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/case-updater.js",
+      "hash": "sha1:f39a72e5a6d013121164b2cfe2a2e73ab1fc8475",
+      "lineas": 200,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/compareCaseData.js",
+      "hash": "sha1:7e361a54074cc9586ba07a43ed14a36153a50df5",
+      "lineas": 261,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [
+        "parseDate",
+        "compareDates",
+        "getMovementTimestamp",
+        "getLatestMovementTimestamp",
+        "sortMovementsByDate",
+        "getNewMovements",
+        "haveLitigantsChanged",
+        "compareMainFields",
+        "hasCaseChanged"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/dailystatus.js",
+      "hash": "sha1:78be634c4d9b156245a08253184a730c866eb177",
+      "lineas": 49,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/dateTime.js",
+      "hash": "sha1:26523b35117619d49e536d0242deb71d73a98705",
+      "lineas": 23,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/job-dispatcher.js",
+      "hash": "sha1:7517e7fca0351cb24bdeb9efc5be3500497d9862",
+      "lineas": 352,
+      "capa": "frontend",
+      "clases": [
+        "JobDispatcher"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/logger.js",
+      "hash": "sha1:b48e2ecc3e32a9802d43e137af939a6aeb44ed86",
+      "lineas": 53,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/mail.js",
+      "hash": "sha1:f73d93b4e1912747919818e2bbecaac9287d8d0b",
+      "lineas": 61,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/mongoose-connet.js",
+      "hash": "sha1:ddd46d0a7934d00937093b54697239892dc50ed3",
+      "lineas": 16,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/movupdwork.js",
+      "hash": "sha1:360e7eb9bf7b7b9ff90e4ae8b8f5ee59a33c3441",
+      "lineas": 194,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/objectsUtilities.js",
+      "hash": "sha1:096012df731ba16d5fdff63d5dd9b45411da4a11",
+      "lineas": 22,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/random.js",
+      "hash": "sha1:bab33a08a0f1b222d9f9aec64ed3a8dad4779c1b",
+      "lineas": 31,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/scrap-civil-all.js",
+      "hash": "sha1:41a57c6e5a97737285d3810f4212f71681c62956",
+      "lineas": 24,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/scrap-civil-one.js",
+      "hash": "sha1:6b4af5fdaf658e0139b07e41705104dbc86f5021",
+      "lineas": 42,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/scrap.js",
+      "hash": "sha1:4eaff569405125f1ded8801467b0cb35888e16e0",
+      "lineas": 197,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/scrape-pool.js",
+      "hash": "sha1:f6d57e97f756fc5049d66e15a5549ef76eabb85b",
+      "lineas": 219,
+      "capa": "frontend",
+      "clases": [
+        "PoolRecoveryError"
+      ],
+      "funciones": [
+        "getPoolState",
+        "_ensureRunnerLoop",
+        "_delay"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/scraper-mode-config.js",
+      "hash": "sha1:dfea2cf15cac63e7375f8b883dbaa4df8e313887",
+      "lineas": 98,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [
+        "getMode"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/scrapper-auth.js",
+      "hash": "sha1:9da0baca97fdd47401f19e476ae39cc3c6df2c39",
+      "lineas": 285,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/scrapper.js",
+      "hash": "sha1:85a6d1f87de3e10571fe725e1a03d95bf104501a",
+      "lineas": 562,
+      "capa": "frontend",
+      "clases": [
+        "CaseNotFoundError"
+      ],
+      "funciones": [
+        "calculateBackoffDelay"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/seedsjudge.js",
+      "hash": "sha1:ee10ec03b19c4b6994743be03ff2f57b5130a4c5",
+      "lineas": 263,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/session-guard.js",
+      "hash": "sha1:a4e50d26b286c3f885f5fd88179ff9d27a0815f6",
+      "lineas": 302,
+      "capa": "frontend",
+      "clases": [
+        "TransientNetworkError",
+        "SessionLostError",
+        "SessionGuard"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/tab-worker.js",
+      "hash": "sha1:335c210d7667508aa08b05b37399fac55bad116a",
+      "lineas": 232,
+      "capa": "frontend",
+      "clases": [
+        "TabWorker"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/testcases.js",
+      "hash": "sha1:54cb405812117dc220b106c31a7da5be488561b1",
+      "lineas": 919,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/unified.js",
+      "hash": "sha1:eca0b29720ecb54b82226150111355aa060000a3",
+      "lineas": 37,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "views/error.hbs",
+      "hash": "sha1:23d59e75bec1732e6adf9965c276c664ed397fe0",
+      "lineas": 4,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/index.hbs",
+      "hash": "sha1:36e9715c9a0981cc8cae985b680a4a8ff41aa7f6",
+      "lineas": 3,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/layout.hbs",
+      "hash": "sha1:5382f2beba07492be992d8d1fb4045039eee3abe",
+      "lineas": 11,
+      "capa": "otro"
+    },
+    {
+      "ruta": "workers/cases-filter/index.js",
+      "hash": "sha1:3636162df3b6a5e670be977d875e61d632c1e022",
+      "lineas": 76,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "workers/cases-updater/index.js",
+      "hash": "sha1:534956d9a965fca0d2a45e28c36247ce9b069b42",
+      "lineas": 165,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "workers/mail-sender/activity-reminder.js",
+      "hash": "sha1:fca3e514c16d904062519da4f1bc9b0425f4dff5",
+      "lineas": 96,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "workers/mail-sender/cases-updater.js",
+      "hash": "sha1:ef28a1912cc5d8b6a14e9468e3a83343d8ea7c71",
+      "lineas": 369,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "workers/mail-sender/daily-scraps.js",
+      "hash": "sha1:32b067d05cb11fec5b1810f6a129e3664389e917",
+      "lineas": 65,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "workers/updater/index.js",
+      "hash": "sha1:d0e5173f78c7f6a512eab5b73da0abbf728a36fe",
+      "lineas": 176,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "workers/mail-sender/templates/activity-reminder.tpl.js",
+      "hash": "sha1:6223ab17f0e5f2b4d8b782f02bd9f6bd016ab184",
+      "lineas": 176,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "workers/mail-sender/templates/add-new-cause.tpl.js",
+      "hash": "sha1:0cb2c55d94e10bbaa73ad3dcb18c8da7cad3fd9e",
+      "lineas": 153,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "workers/mail-sender/templates/cases-updates.tpl.js",
+      "hash": "sha1:e6594f18597580bd59b8ea8f4430cefb6df271b8",
+      "lineas": 83,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "workers/mail-sender/templates/not-updates.tpl.js",
+      "hash": "sha1:530f54c6d563df7214e46190f30ec34f4f2141c6",
+      "lineas": 246,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "workers/mail-sender/templates/update-case.tpl.js",
+      "hash": "sha1:4c6fde06a1e32c1d65fae3f0ec7974ef8b675b35",
+      "lineas": 227,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "views/email/client_email_verification_availability.hbs",
+      "hash": "sha1:d052f091d254caf14a4caf04ffb41dd77b890918",
+      "lineas": 91,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/email/client_email_verification_loan.hbs",
+      "hash": "sha1:07107deda9bacc212e0abdf8dd7cda40700a27f3",
+      "lineas": 95,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/email/client_email_verification_message.hbs",
+      "hash": "sha1:3984f84d1523249250070974a4ba0d482a98eb4c",
+      "lineas": 96,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/email/client_email_verification_reserved.hbs",
+      "hash": "sha1:eed031af7f357d8e79b8313404c5e8f5c25d51bd",
+      "lineas": 100,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/email/client_email_verification_sell.hbs",
+      "hash": "sha1:ea45a0c73e87f4a58a79c40b83f7f52bfd45b4a1",
+      "lineas": 95,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/email/client_email_verification_test.hbs",
+      "hash": "sha1:4712fa8db59125caedc05f6079ddd68edeefa360",
+      "lineas": 111,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/email/email_info.hbs",
+      "hash": "sha1:89eb83ad0729ff32c0335dbdd18e3a46d8b9ed45",
+      "lineas": 181,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/email/adf/client_email_verification_availability_adf.hbs",
+      "hash": "sha1:c828b2fe4f3a3ed719cc0a48c9cd660b713ac4fd",
+      "lineas": 33,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/email/adf/client_email_verification_loan_adf.hbs",
+      "hash": "sha1:4446025ec8d308dabbb1ea9450c67602bcefdaa4",
+      "lineas": 33,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/email/adf/client_email_verification_message_adf.hbs",
+      "hash": "sha1:dcde7cf70520a063453b444c294e722e0032108b",
+      "lineas": 26,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/email/adf/client_email_verification_reserved_adf.hbs",
+      "hash": "sha1:beef4146615a40e85aa8ee4f9a0c031cd0cb3c1b",
+      "lineas": 33,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/email/adf/client_email_verification_sell_adf.hbs",
+      "hash": "sha1:e8c6804e7521a227d7a35856e28406a497b6759a",
+      "lineas": 33,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/email/adf/client_email_verification_test_adf.hbs",
+      "hash": "sha1:10962c1c65d98cb388e7395cbbdd1a40aff66569",
+      "lineas": 34,
+      "capa": "otro"
+    },
+    {
+      "ruta": "views/email/adf/email_ADF_sample.hbs",
+      "hash": "sha1:10dfe816851a9c2fbb36ab288b999086ccf58bc3",
+      "lineas": 123,
+      "capa": "otro"
+    },
+    {
+      "ruta": "utils/bootstrap/auth-strategy.js",
+      "hash": "sha1:10ed418b00adff0efb56e3ceaa82e75f0d38a7c9",
+      "lineas": 248,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [
+        "timeout"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/bootstrap/guest-strategy.js",
+      "hash": "sha1:a91e4e7d015da4b86d91622decf881dbca21ceff",
+      "lineas": 225,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [
+        "timeout",
+        "detectHandshakeFailure"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/bootstrap/home-index.php.txt",
+      "hash": "sha1:02da1595e8a75b9bacebb0c23a175c312ddd2a0c",
+      "lineas": 944,
+      "capa": "otro"
+    },
+    {
+      "ruta": "utils/causes/cause.js",
+      "hash": "sha1:993cd77e25024195effac21eebcd4983f00a4184",
+      "lineas": 35,
+      "capa": "frontend",
+      "clases": [
+        "Cause"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/civil-cause-rol.collect.js",
+      "hash": "sha1:e25908d0711b7c73538ce9426ce9d53992e4c2aa",
+      "lineas": 386,
+      "capa": "frontend",
+      "clases": [
+        "CivilCauseRolCollectScrape"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/civil-cause.active.js",
+      "hash": "sha1:4bc1887f34cd288a433148c73c1a7e1974e5c430",
+      "lineas": 163,
+      "capa": "frontend",
+      "clases": [
+        "CivilCauseActiveScrape"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/civil-cause.detail.js",
+      "hash": "sha1:120992b9d4452dcae2a4f4a8ad9fe23a6b8ed00c",
+      "lineas": 26,
+      "capa": "frontend",
+      "clases": [
+        "CivilCauseDetail"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/civil-cause.js",
+      "hash": "sha1:ec0975b1bc9ffe6cfc3d9ed71af2809951590e39",
+      "lineas": 18,
+      "capa": "frontend",
+      "clases": [
+        "CivilCause"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/civil-cause.scrap.js",
+      "hash": "sha1:b7f8ed42de20c9d09a56e7968773b261ff39a1a4",
+      "lineas": 352,
+      "capa": "frontend",
+      "clases": [
+        "CivilCauseScrap"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/civil-cause.types.js",
+      "hash": "sha1:b66edae489b6e4147ce7e1ec65a107e297219771",
+      "lineas": 3,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/civil-extract-doc.failed.js",
+      "hash": "sha1:3679fa4b74b5e9f2ab3cc11f23b9fe076788467c",
+      "lineas": 99,
+      "capa": "frontend",
+      "clases": [
+        "CivilCauseExtractFailed"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/civil-items-collect.js",
+      "hash": "sha1:05c4d7785bc05ca78be41de73928a521b8c0114a",
+      "lineas": 81,
+      "capa": "frontend",
+      "clases": [
+        "CivilItemsCollect"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/dependency-inject.js",
+      "hash": "sha1:91d468e9b095bb8f2e2b836ecc18506f96daeee1",
+      "lineas": 30,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [
+        "getCause"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/index.js",
+      "hash": "sha1:9aa8fb7e55192b8aef777e0cab5178d6465dc5de",
+      "lineas": 23,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/pagination.js",
+      "hash": "sha1:eacb92a03cde05985b98f6517d489baefebef4d1",
+      "lineas": 25,
+      "capa": "frontend",
+      "clases": [
+        "Pagination"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/parse-string.js",
+      "hash": "sha1:6bdb4968809d60a8eaefb6ac258e674e67ca5bc5",
+      "lineas": 26,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/db/ccause-updater.js",
+      "hash": "sha1:0dafe46154cfc8fe0066ad1133f02cd16bfca623",
+      "lineas": 14,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/db/civil-cause-active.schema.js",
+      "hash": "sha1:bbb5492d1871d3ddf3d0f7968df35bde9a264e60",
+      "lineas": 39,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/db/civil-cause.schema.js",
+      "hash": "sha1:bd8c12c17beaeb30d8aafe1acea3af29fd0b3962",
+      "lineas": 100,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/db/daily-updater.js",
+      "hash": "sha1:552b29009aa19607fa8537338e6db9ff68709da6",
+      "lineas": 15,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/db/db.types.js",
+      "hash": "sha1:b66edae489b6e4147ce7e1ec65a107e297219771",
+      "lineas": 3,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/db/document-updater.js",
+      "hash": "sha1:7cef1cc693a93948d43fd4dc700534f6526ca94e",
+      "lineas": 43,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/db/index.js",
+      "hash": "sha1:cbdb6253fd1973512293171969667be1a6a04483",
+      "lineas": 21,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/db/mongoose.js",
+      "hash": "sha1:97a6badcb850108b6b359606a733cb02ed3999c9",
+      "lineas": 94,
+      "capa": "frontend",
+      "clases": [
+        "MongoDatabase"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/plugins/chrome-launch-options.js",
+      "hash": "sha1:b5da897f150f427becda5766b99ef1ec5607b69e",
+      "lineas": 171,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [
+        "getExecutablePath",
+        "buildLaunchOptions"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/plugins/env.plugin.js",
+      "hash": "sha1:de959c46cea7a7971938aa6dadf03d65e378cf72",
+      "lineas": 72,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/plugins/event-emitir.js",
+      "hash": "sha1:55dd6b9447f98127a07c13a05c9d5e801703f05d",
+      "lineas": 11,
+      "capa": "frontend",
+      "clases": [
+        "EventService"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/plugins/file.plugin.js",
+      "hash": "sha1:b42a490aa4702fc273c58b199dfdca5f7d53cf00",
+      "lineas": 144,
+      "capa": "frontend",
+      "clases": [
+        "FileSystemService"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/plugins/index.js",
+      "hash": "sha1:681183b02431e2a23bbdd369d47bca0cbc6af4e0",
+      "lineas": 21,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/plugins/proxies-free.js",
+      "hash": "sha1:bc330cfd0465a7e6280d29615f6bc80c5006536c",
+      "lineas": 87,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/plugins/puppeteer.plugin.js",
+      "hash": "sha1:526d675ea17fd2ae1e9f59d47aded29dc1d524ba",
+      "lineas": 1031,
+      "capa": "frontend",
+      "clases": [
+        "ScrapService"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/plugins/user-agent.js",
+      "hash": "sha1:dcf79d3efd2efb2fd217b31021fdfd0a72d81606",
+      "lineas": 81,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/plugins/wait.js",
+      "hash": "sha1:d113ea4d1212d3f279acec9b265ef2207d42449a",
+      "lineas": 26,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [
+        "wait"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/queues/scraping-queue.js",
+      "hash": "sha1:f867b3f09174507ef00eea9a3b86006b5e4fc555",
+      "lineas": 115,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [
+        "startScrapingWorker"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/daily-status/daily.js",
+      "hash": "sha1:a8d5f1b5026a2bbd924e3aded63a3d7bdf486ba7",
+      "lineas": 256,
+      "capa": "frontend",
+      "clases": [
+        "Daily"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/daily-status/scrape-daily.js",
+      "hash": "sha1:4ea27ddfc89a13633211032677040143cd412702",
+      "lineas": 15,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/helpers/code-calc.js",
+      "hash": "sha1:2ccf2689a90faf5c95c4e7dcadbfb055b214f79a",
+      "lineas": 14,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [
+        "codeUnique"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/helpers/const.js",
+      "hash": "sha1:26f1bac6d34c19104793c9516c3dbbcde563f7ce",
+      "lineas": 6,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/helpers/date-calc.js",
+      "hash": "sha1:ac411dae437cece578f09d1b09e8ad7efb21454c",
+      "lineas": 22,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/helpers/document-all.helper.js",
+      "hash": "sha1:fe1321a721d7b88587b8d9c6d4bf549e31f636ab",
+      "lineas": 18,
+      "capa": "frontend",
+      "clases": [
+        "DocumentAllHelper"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/helpers/document-persist.helper.js",
+      "hash": "sha1:54e1fe8a3d7d956679490f4c4e2f86cbf0c8916b",
+      "lineas": 99,
+      "capa": "frontend",
+      "clases": [
+        "DocumentAnnexPersistHelper"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/helpers/history-scrape.js",
+      "hash": "sha1:7ae7675c99944b564ec7a8b58b986ccbb8a04430",
+      "lineas": 239,
+      "capa": "frontend",
+      "clases": [
+        "HistoryScrape"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/unified-query/scrape-unified.js",
+      "hash": "sha1:e2aed9cd1ea2aea9b61f349cef0d0e2ec28dfb84",
+      "lineas": 14,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/unified-query/unified-query.js",
+      "hash": "sha1:f8bb39548d8ca0d5ce0d37dd68efc7ef01dbdb26",
+      "lineas": 754,
+      "capa": "frontend",
+      "clases": [
+        "UnifiedQuery"
+      ],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/workers/document-fetch.js",
+      "hash": "sha1:aa070ac2a0c87c56ffb2c1a1b532868e2fa0785d",
+      "lineas": 38,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/workers/document-proccess.js",
+      "hash": "sha1:2ee9892227e85b0d417eefe9c2efc0e792c026d3",
+      "lineas": 45,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/workers/worker-launch-document.js",
+      "hash": "sha1:5614fc4e6bbc6d00bedcdf8d6feecce77bc188ce",
+      "lineas": 39,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [
+        "runWorkerDocument"
+      ],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/workers/worker.js",
+      "hash": "sha1:06f6a6ee90ad9f076e3a04a6e12b539e5c014d3e",
+      "lineas": 29,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    },
+    {
+      "ruta": "utils/causes/workers/worker.types.js",
+      "hash": "sha1:b66edae489b6e4147ce7e1ec65a107e297219771",
+      "lineas": 3,
+      "capa": "frontend",
+      "clases": [],
+      "funciones": [],
+      "nota": "extracción por regex, no AST — puede omitir casos"
+    }
+  ]
+}

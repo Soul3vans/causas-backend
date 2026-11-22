@@ -7,7 +7,8 @@
     "start": "node server.js",
     "server": "nodemon -e \"gql,js\" server.js",
     "client": "cd ../client && yarn serve",
-    "dev": "concurrently --names \"server,client\" \"yarn server --silent\" \"yarn client --silent \""
+    "dev": "concurrently --names \"server,client\" \"yarn server --silent\" \"yarn client --silent \"",
+    "test": "node --test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.674.0",
@@ -19,6 +20,7 @@
     "bcrypt": "^5.0.1",
     "body-parser": "^1.20.3",
     "bullmq": "^5.79.1",
+    "cheerio": "^1.2.0",
     "cors": "^2.8.5",
     "cross-env": "^7.0.3",
     "deep-diff": "^1.0.2",

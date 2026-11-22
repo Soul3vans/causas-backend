@@ -1,0 +1,43 @@
+📡 Conectando a MongoDB...
+🔗 URL: mongodb://***:***@ac-rz9rypt-shard-00-00.xbk7lwr.mongodb.net:27017,ac-rz9rypt-shard-00-01.xbk7lwr.mongodb.net:27017,ac-rz9rypt-shard-00-02.xbk7lwr.mongodb.net:27017/?ssl=true&replicaSet=atlas-aufm6o-shard-0&authSource=admin&appName=Cluster0/test
+[32minfo[39m: 📝 Morgan HTTP logging configurado con Winston {"timestamp":"2026-11-19 17:01:09"}
+🔍 DEBUG CORS - allowedOrigins: [ 'http://frontend-causas.netlify.app', 'http://localhost:8080' ]
+🔍 DEBUG CORS - process.env.CORS_ORIGIN_URI: http://frontend-causas.netlify.app,http://localhost:8080
+✅ MongoDB conectado exitosamente
+📊 Base de datos: desconocida
+✅ Conexión a MongoDB establecida correctamente
+[32minfo[39m: ✅ Apollo Server iniciado {"timestamp":"2026-11-19 17:01:10"}
+✅ Apollo Server iniciado
+[32minfo[39m: ✅ Middleware de Apollo aplicado {"timestamp":"2026-11-19 17:01:10"}
+✅ Middleware de Apollo aplicado
+🚀 Servidor corriendo en http://0.0.0.0:4000
+📡 GraphQL endpoint: http://0.0.0.0:4000/graphql
+✅ Health check: http://0.0.0.0:4000/health
+[32minfo[39m: 🚀 Servidor iniciado en http://0.0.0.0:4000 {"timestamp":"2026-11-19 17:01:10"}
+[32minfo[39m: 📡 GraphQL endpoint: http://0.0.0.0:4000/graphql {"timestamp":"2026-11-19 17:01:10"}
+[32minfo[39m: ✅ Conectado a Redis (scraping-queue) {"timestamp":"2026-11-19 17:01:10"}
+Conectado a Mongo correctamente 🚀, BD conectada
+[33mwarn[39m: ⚠️ scraper-mode-config: no hay ScraperConfig en Mongo, usando default en memoria (AUTH) sin persistir todavía {"timestamp":"2026-11-19 17:01:12"}
+[32minfo[39m: 🔧 scraper-mode-config: modo cargado = AUTH {"timestamp":"2026-11-19 17:01:12"}
+[32minfo[39m: 📍 BrowserSessionManager: lanzando browser único... {"timestamp":"2026-11-19 17:01:12"}
+🔧 Plataforma no reconocida (android), usando Chromium de Puppeteer
+Warning: Failure writing file /home/linux/causas-chrome-profile-dev/Default/Preferences {
+  target: 'Profile',
+  file: 'Preferences',
+  contents: '{\n  "intl": {\n    "accept_languages": "en-US,en"\n  }\n}'
+} [Error: ENOENT: no such file or directory, mkdir '/home'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'mkdir',
+  path: '/home'
+}
+❌ Error inicializando scrapePool: Error: Unsupported platform: android
+    at assert (/data/data/com.termux/files/home/proyectos/github/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/common/assert.js:28:15)
+    at new BrowserFetcher (/data/data/com.termux/files/home/proyectos/github/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/node/BrowserFetcher.js:214:44)
+    at resolveExecutablePath (/data/data/com.termux/files/home/proyectos/github/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/node/ProductLauncher.js:130:28)
+    at ChromeLauncher.launch (/data/data/com.termux/files/home/proyectos/github/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/node/ChromeLauncher.js:68:100)
+    at PuppeteerNode.launch (/data/data/com.termux/files/home/proyectos/github/causas-backend/node_modules/puppeteer/lib/cjs/puppeteer/node/Puppeteer.js:146:31)
+    at PuppeteerExtra.launch (/data/data/com.termux/files/home/proyectos/github/causas-backend/node_modules/puppeteer-extra/dist/index.cjs.js:128:41)
+    at async BrowserSessionManager.initialize (/data/data/com.termux/files/home/proyectos/github/causas-backend/utils/browser-session-manager.js:95:20)
+    at async Object.initialize (/data/data/com.termux/files/home/proyectos/github/causas-backend/utils/scrape-pool.js:63:3)
+    at async initScrapePool (/data/data/com.termux/files/home/proyectos/github/causas-backend/server.js:56:5)
